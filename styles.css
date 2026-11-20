@@ -10328,3 +10328,14 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-pt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fx-pn u, .fx-pn s { flex: none; }
 .fx-lus .fx-lu:last-child li > .fx-pn { justify-content: flex-end; }
+/* Tap an insight for the numbers behind it. */
+.fx-ins li.tap { cursor: pointer; }
+.fx-ins li.tap > span::after { content: " ▸"; color: var(--text-dim); font-size: 10px; }
+.fx-ins li.tap.open > span::after { content: " ▾"; }
+.fx-why { width: 100%; margin: 8px 0 2px; border-collapse: collapse; font-size: 11.5px; }
+.fx-why th { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6px; color: var(--text-dim); text-align: right; padding: 4px 4px; border-bottom: 1px solid var(--card-border); }
+.fx-why td { text-align: right; padding: 4px; border-bottom: 1px solid rgba(255, 255, 255, .05); color: rgba(255, 255, 255, .8); }
+.fx-why th:first-child, .fx-why td:first-child, .fx-why th:nth-child(2), .fx-why td:nth-child(2) { text-align: left; }
+.fx-why tr.me td { color: var(--neon-cyan); }
+.fx-whyn { margin: 6px 0 0; font-size: 11px; line-height: 1.45; color: var(--text-dim); }
+.fx-whyn b { color: #fff; font-weight: 600; }

@@ -96,18 +96,56 @@
   const insights = (o) => {
     const st = data.stats || {}, ti = st.teams?.[o], ap = st.allPlay?.[o], od = st.odds?.[o], rg = (st.regret || []).find((x) => x.owner === o);
     const s0 = (data.standings || []).find((r) => r.owner === o) || {}, out = [];
-    if (ti?.ppg) { const d = Math.round((ti.ppg - ti.leagueAvg) * 10) / 10; out.push(`Scoring <b>${pts(ti.ppg)}</b> a game, ${d >= 0 ? `<b class="up">${pts(d)} above</b>` : `<b class="dn">${pts(-d)} below</b>`} the league average.`); }
+    const add = (kind, html) => out.push({ kind, html });
+    if (ti?.ppg) { const d = Math.round((ti.ppg - ti.leagueAvg) * 10) / 10; add("ppg", `Scoring <b>${pts(ti.ppg)}</b> a game, ${d >= 0 ? `<b class="up">${pts(d)} above</b>` : `<b class="dn">${pts(-d)} below</b>`} the league average.`); }
     if (ti?.posRank) {
       const r = Object.entries(ti.posRank).filter(([, n]) => n), best = r.sort((a, b) => a[1] - b[1])[0], worst = [...r].sort((a, b) => b[1] - a[1])[0];
-      if (best && worst && best[0] !== worst[0]) out.push(`Strongest at <b>${esc(best[0])}</b> (${ord(best[1])} in the league), weakest at <b>${esc(worst[0])}</b> (${ord(worst[1])}).`);
+      if (best && worst && best[0] !== worst[0]) add("pos", `Strongest at <b>${esc(best[0])}</b> (${ord(best[1])} in the league), weakest at <b>${esc(worst[0])}</b> (${ord(worst[1])}).`);
     }
-    if (ti?.topShare >= 0.3 && ti.topTwo?.length === 2) out.push(`Leans on <b>${esc(ti.topTwo[0])}</b> and <b>${esc(ti.topTwo[1])}</b>: ${pct(ti.topShare)} of the roster's points.`);
-    if (ap) out.push(Math.abs(ap.luck) >= 1 ? `${ap.luck > 0 ? "Lucky" : "Unlucky"}: <b>${s0.wins}-${s0.losses}</b> but <b>${ap.apW}-${ap.apL}</b> against the whole league (luck <b class="${ap.luck > 0 ? "up" : "dn"}">${ap.luck > 0 ? "+" : ""}${ap.luck}</b>).` : `Record matches the scoring: <b>${ap.apW}-${ap.apL}</b> against the whole league.`);
-    if (od) out.push(`<b>${pct(od.playoffs)}</b> to make the playoffs, <b>${pct(od.bye)}</b> for a bye, <b class="gold">${pct(od.title)}</b> to win the title.`);
-    if (ti?.sos?.rank && ti.sos.of > 1) { const r = ti.sos.rank; if (r <= 3 || r > ti.sos.of - 3) { const n = r <= 3 ? r : ti.sos.of - r + 1; out.push(`${r <= 3 ? "Tough" : "Soft"} run-in: the ${n === 1 ? "" : `${ord(n)} `}${r <= 3 ? "hardest" : "easiest"} remaining schedule (${ti.sos.opponents.map(esc).join(", ")}).`); } }
-    if (rg?.season) out.push(`Left <b>${pts(rg.season)}</b> points on the bench${rg.worst ? `, most in week ${rg.worst.week} (${pts(rg.worst.left)})` : ""}.`);
+    if (ti?.topShare >= 0.3 && ti.topTwo?.length === 2) add("lean", `Leans on <b>${esc(ti.topTwo[0])}</b> and <b>${esc(ti.topTwo[1])}</b>: ${pct(ti.topShare)} of the roster's points.`);
+    if (ap) add("luck", Math.abs(ap.luck) >= 1 ? `${ap.luck > 0 ? "Lucky" : "Unlucky"}: <b>${s0.wins}-${s0.losses}</b> but <b>${ap.apW}-${ap.apL}</b> against the whole league (luck <b class="${ap.luck > 0 ? "up" : "dn"}">${ap.luck > 0 ? "+" : ""}${ap.luck}</b>).` : `Record matches the scoring: <b>${ap.apW}-${ap.apL}</b> against the whole league.`);
+    if (od) add("odds", `<b>${pct(od.playoffs)}</b> to make the playoffs, <b>${pct(od.bye)}</b> for a bye, <b class="gold">${pct(od.title)}</b> to win the title.`);
+    if (ti?.sos?.rank && ti.sos.of > 1) { const r = ti.sos.rank; if (r <= 3 || r > ti.sos.of - 3) { const n = r <= 3 ? r : ti.sos.of - r + 1; add("sos", `${r <= 3 ? "Tough" : "Soft"} run-in: the ${n === 1 ? "" : `${ord(n)} `}${r <= 3 ? "hardest" : "easiest"} remaining schedule (${ti.sos.opponents.map(esc).join(", ")}).`); } }
+    if (rg?.season) add("bench", `Left <b>${pts(rg.season)}</b> points on the bench${rg.worst ? `, most in week ${rg.worst.week} (${pts(rg.worst.left)})` : ""}.`);
     return out;
   };
+  // The numbers behind an insight, shown when it is tapped.
+  const tbl = (head, rows) => `<table class="fx-why"><tr>${head.map((h) => `<th>${h}</th>`).join("")}</tr>${rows.map((r) => `<tr class="${r.me ? "me" : ""}">${r.c.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</table>`;
+  const why = (kind, o) => {
+    const st = data.stats || {}, T = st.teams || {}, owners = (data.standings || []).map((r) => r.owner);
+    if (kind === "ppg") {
+      const rows = owners.map((x) => ({ x, v: T[x]?.ppg || 0 })).sort((a, b) => b.v - a.v);
+      const mine = (data.weekly || []).filter((w) => w.owner === o).sort((a, b) => a.week - b.week);
+      return tbl(["#", "Owner", "Pts a game"], rows.map((r, i) => ({ me: r.x === o, c: [i + 1, esc(r.x), pts(r.v)] }))) + `<p class="fx-whyn">${esc(o)} by week: ${mine.map((w) => `wk${w.week} <b>${pts(w.points)}</b>`).join(" · ")}. League average ${pts(T[o]?.leagueAvg)}.</p>`;
+    }
+    if (kind === "pos") {
+      const ti = T[o]; if (!ti) return "";
+      return tbl(["Pos", "Points", "Rank", "League best"], Object.keys(ti.posPts).map((pos) => { const best = owners.map((x) => [x, T[x]?.posPts?.[pos] || 0]).sort((a, b) => b[1] - a[1])[0]; return { c: [esc(pos), pts(ti.posPts[pos]), ord(ti.posRank[pos]), `${esc(best[0])} ${pts(best[1])}`] }; })) + `<p class="fx-whyn">Season points of the top starters at each spot (QB1, RB1-2, WR1-2, TE1, K, D/ST).</p>`;
+    }
+    if (kind === "lean") {
+      const r = data.rosters?.[o] || [], tot = r.reduce((n, p) => n + (p.season || 0), 0);
+      return tbl(["Player", "Pts", "Share"], r.slice(0, 6).map((p) => ({ c: [esc(p.name), pts(p.season), pct(tot ? p.season / tot : 0)] })));
+    }
+    if (kind === "luck") {
+      const rows = Object.values(st.allPlay || {}).sort((a, b) => b.luck - a.luck);
+      return tbl(["Owner", "W-L", "All-play", "Exp W", "Luck"], rows.map((x) => { const s0 = (data.standings || []).find((r) => r.owner === x.owner) || {}; return { me: x.owner === o, c: [esc(x.owner), `${s0.wins}-${s0.losses}`, `${x.apW}-${x.apL}`, x.expWins, `${x.luck > 0 ? "+" : ""}${x.luck}`] }; })) + `<p class="fx-whyn">All-play: each week's score against all nine other teams. Expected wins = all-play win rate × games. Luck = real wins minus expected.</p>`;
+    }
+    if (kind === "odds") {
+      const rows = Object.entries(st.odds || {}).sort((a, b) => b[1].title - a[1].title);
+      return tbl(["Owner", "Playoffs", "Bye", "Title", "Seed"], rows.map(([x, v]) => ({ me: x === o, c: [esc(x), pct(v.playoffs), pct(v.bye), pct(v.title), v.avgSeed ?? "–"] }))) + `<p class="fx-whyn">The rest of the regular season and the bracket played 4,000 times, each team scoring from its own average and spread (pulled toward the league average early on). Top ${st.playoffTeams || 6} make it.</p>`;
+    }
+    if (kind === "sos") {
+      const ti = T[o]; if (!ti?.sos) return "";
+      return tbl(["Week", "Opponent", "Their pts a game"], (data.remaining || []).filter((g) => g.home === o || g.away === o).map((g) => { const op = g.home === o ? g.away : g.home; return { c: [g.week, esc(op), pts(T[op]?.ppg)] }; })) + `<p class="fx-whyn">Average opponent ${pts(ti.sos.avgOpp)} a game: ${ord(ti.sos.rank)} toughest of ${ti.sos.of}.</p>`;
+    }
+    if (kind === "bench") {
+      const reg = data.regret || {};
+      return tbl(["Week", "Played", "Best", "Left"], Object.keys(reg).map(Number).sort((a, b) => a - b).filter((w) => reg[w][o]).map((w) => { const x = reg[w][o]; return { c: [w, pts(x.points), pts(x.best), pts(Math.max(0, x.best - x.points))] }; })) + `<p class="fx-whyn">Best = the highest lineup the roster allowed that week. Weeks start from when the app began tracking lineups.</p>`;
+    }
+    return "";
+  };
+  let insOpen = null;
+
   // The best lineup this week: fill each starting slot with the highest
   // average player who can play it, skipping byes and anyone OUT, on IR,
   // doubtful or suspended. Rarest slots first; FLEX takes RB, WR or TE.
@@ -169,13 +207,17 @@
     m.innerHTML = `<div class="fx-tcard">
       <div class="fx-thead">${badge(t)}<span class="fx-nm"><b>${esc(t.name || o)}</b><small>${esc(o)}</small></span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div>
       <div class="fx-facts top"><span><small>RECORD</small><b>${s0.wins ?? 0}-${s0.losses ?? 0}</b><em>${s0.rank ? ord(s0.rank) : ""}</em></span><span><small>POWER</small><b>${pw ? ord(pw.rank) : "–"}</b><em>${pw?.move ? (pw.move > 0 ? `▲${pw.move}` : `▼${-pw.move}`) : ""}</em></span><span><small>PLAYOFFS</small><b>${st.odds?.[o] ? pct(st.odds[o].playoffs) : "–"}</b><em>${st.streak?.[o] || ""}</em></span></div>
-      <div class="fx-k2">INSIGHTS</div><ul class="fx-ins">${insights(o).map((x) => `<li>${x}</li>`).join("")}</ul>
+      <div class="fx-k2">INSIGHTS</div><ul class="fx-ins">${insights(o).map((x) => `<li class="tap${insOpen === x.kind ? " open" : ""}" data-fxins="${x.kind}" role="button" tabindex="0"><span>${x.html}</span>${insOpen === x.kind ? why(x.kind, o) : ""}</li>`).join("")}</ul>
       <div class="fx-k2">BY POSITION · LEAGUE RANK</div>${posBars(o)}
       ${oddsLine(o)}
       <div class="fx-k2">WEEK BY WEEK</div>${sparkline(o)}<div class="fx-key"><span><i class="k-me"></i>${esc(o)}</span><span><i class="k-avg"></i>League average</span></div>
       <div class="fx-k2">ROSTER</div>${rosterHtml(o)}
     </div>`;
-    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest("[data-fxx]")) m.remove(); });
+    m.addEventListener("click", (e) => {
+      if (e.target === m || e.target.closest("[data-fxx]")) { insOpen = null; return m.remove(); }
+      const li = e.target.closest("[data-fxins]");
+      if (li) { const k = li.dataset.fxins, top = m.querySelector(".fx-tcard").scrollTop; insOpen = insOpen === k ? null : k; try { window.noteUse?.("fantasy-insight", k); } catch {} openTeam(o).then(() => { const c = document.querySelector("#fx-team .fx-tcard"); if (c) c.scrollTop = top; }); }
+    });
     document.body.appendChild(m);
     try { window.noteUse?.("fantasy-team", o); } catch {}
   }
@@ -287,7 +329,7 @@
     const t = e.target.closest("[data-fxtab]");
     if (t) { tab = t.dataset.fxtab; card = null; if (tab === "both") loadPickem(); try { window.noteUse?.("fantasy-tab", tab); } catch {} return paint(); }
     const o = e.target.closest("[data-fxo]");
-    if (o) return openTeam(o.dataset.fxo);
+    if (o) { insOpen = null; return openTeam(o.dataset.fxo); }
     const side = e.target.closest("[data-fxteam]");
     if (side) { e.stopPropagation(); return openTeam(side.dataset.fxteam); }
     const mu = e.target.closest("[data-fxmu]");
