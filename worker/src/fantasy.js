@@ -5,6 +5,7 @@
 // the current season into KV; the archive reads it and falls back to the
 // bundled export when it is missing. Each pull's outcome is kept under
 // STATUS_KEY so a failing pull is visible.
+import { fantasyStats } from "./fantasy-stats.js";
 export const CURRENT_KEY = "history:current";
 export const STATUS_KEY = "history:current:status";
 const MAX_AGE = 6 * 3600 * 1000;
@@ -186,6 +187,9 @@ export async function pullCurrentSeason(env, ownerMap, { force = false, now = Da
     }
     cur.regret = regret;
     if (prev?.take && prev.year === cur.year) cur.take = prev.take;
+    const oh = { ...(prev?.year === cur.year ? prev?.oddsHist || {} : {}) };
+    try { const od = fantasyStats(cur)?.odds; if (od && cur.weeksPlayed) oh[cur.weeksPlayed] = Object.fromEntries(Object.entries(od).map(([o, x]) => [o, x.title])); } catch {}
+    cur.oddsHist = oh;
   } catch {}
   await env.LIFTR_KV.put(CURRENT_KEY, JSON.stringify(cur));
   await status({ ok: true, how, weeksPlayed: cur.weeksPlayed, live: !!cur.live });

@@ -25,6 +25,7 @@ import { HISTORY } from "./history-data.js";
 import { MATCHUPS } from "./matchup-data.js";
 import { pullCurrentSeason, CURRENT_KEY, freshFor } from "./fantasy.js";
 import { fantasyStats } from "./fantasy-stats.js";
+import { historyContext } from "./fantasy-history.js";
 import { ROAST_SYSTEM, cleanRoastStats } from "./roast.js";
 
 const app = {
@@ -314,7 +315,8 @@ const app = {
       const h2h = {};
       for (const m of cur.live?.matchups || []) { const a = m.away?.owner, b = m.home?.owner; const x = a && b && MATCHUPS.headToHead?.[a]?.[b]; if (x) h2h[`${a}|${b}`] = x; }
       let stats = null; try { stats = fantasyStats(cur); } catch {}
-      return json({ ...cur, h2h, stats }, 200, { ...corsHeaders, "Cache-Control": "public, max-age=60" });
+      let history = null; try { history = historyContext(cur, { everyGameByYear: MATCHUPS.everyGameByYear, records: MATCHUPS.leagueMatchupRecords, seasons: HISTORY.seasons }); } catch {}
+      return json({ ...cur, h2h, stats, history }, 200, { ...corsHeaders, "Cache-Control": "public, max-age=60" });
     }
     // Admin: pull the live fantasy season now instead of waiting for the cron.
     if (url.pathname === "/history-refresh") {
@@ -4881,7 +4883,8 @@ async function handleWeekChat(request, env, corsHeaders, url = new URL(request.u
   let lastUser = messages.length - 1; while (lastUser > 0 && messages[lastUser].role !== "user") lastUser--;
   let prevUser = lastUser - 1; while (prevUser >= 0 && messages[prevUser].role !== "user") prevUser--;
   const prevRoute = prevUser >= 0 ? leagueRoute(messages[prevUser].content, games).route : null;
-  const route = leagueRoute(messages[lastUser]?.content, games, prevRoute);
+  const screen = body?.context?.screen === "fantasy" ? "fantasy" : null;
+  const route = leagueRoute(messages[lastUser]?.content, games, prevRoute || screen);
   let logId = typeof body?.logId === "string" && body.logId.startsWith(WCHAT_LOG) ? body.logId : null;
   if (messages[messages.length - 1].role === "user") {
     logId = await weekChatLog(env, null, { at: Date.now(), asker, sid, build, q: String(messages[messages.length - 1].content).slice(0, 500), a: null, status: "asked", tools: [], route: route.route, turn: messages.filter((x) => x.role === "user").length });

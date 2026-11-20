@@ -567,7 +567,9 @@
   const SID = Math.random().toString(36).slice(2, 10);
   function context() {
     const f = fins();
-    return { asker: me(), members: MANAGERS, games: GAMES.map((g) => { const l = latestLive[g.id], fin = f[g.id]; const sc = fin || (l?.state === "in" ? l : null); return { id: g.id, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort, favorite: g.favorite, spread: g.spread, status: fin ? "final" : l?.state === "in" ? `live ${l.detail || ""} (kicked off ${g.kickoffLabel || ""})`.trim() : `not started (${g.kickoffLabel || ""})`, score: sc ? `${g.awayShort} ${sc.awayScore}, ${g.homeShort} ${sc.homeScore}` : "" }; }) };
+    // Which tab the question was asked from: on Fantasy a question with no
+    // league words is a fantasy question.
+    return { screen: document.getElementById("history-screen")?.classList.contains("hidden") === false ? "fantasy" : "pickem", asker: me(), members: MANAGERS, games: GAMES.map((g) => { const l = latestLive[g.id], fin = f[g.id]; const sc = fin || (l?.state === "in" ? l : null); return { id: g.id, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort, favorite: g.favorite, spread: g.spread, status: fin ? "final" : l?.state === "in" ? `live ${l.detail || ""} (kicked off ${g.kickoffLabel || ""})`.trim() : `not started (${g.kickoffLabel || ""})`, score: sc ? `${g.awayShort} ${sc.awayScore}, ${g.homeShort} ${sc.homeScore}` : "" }; }) };
   }
   async function send(q) {
     q = String(q || "").trim(); if (q.length < 2 || busy) return;
