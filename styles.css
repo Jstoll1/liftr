@@ -10101,10 +10101,10 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .lvn-imp.l1 i:nth-child(1), .lvn-imp.l2 i:nth-child(-n+2), .lvn-imp.l3 i { background: var(--arcade-gold); }
 .lvn-pts.up { color: var(--neon-green); }
 .lvn-pts.dn { color: var(--neon-pink); }
-/* A new play: the row flashes cyan and the play text lights up. */
+/* A new play: the row flashes cyan, a small cyan dot leads the play text. */
 .lvn-row.fresh { animation: lvn-fresh 2.4s ease-out 1; }
 .lvn-row.fresh .lvn-tk { color: #fff; font-weight: 600; }
-.lvn-row.fresh .lvn-tk::before { content: "NEW PLAY"; flex: none; font-family: 'Press Start 2P', monospace; font-size: 6px; padding: 3px 5px; border-radius: 4px; background: var(--neon-cyan); color: var(--ink); }
+.lvn-row.fresh .lvn-tk::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 5px var(--neon-cyan); }
 @keyframes lvn-fresh { 0%, 25% { background: rgba(var(--neon-cyan-rgb), .16); box-shadow: inset 3px 0 0 var(--neon-cyan); } 100% { background: transparent; box-shadow: inset 3px 0 0 transparent; } }
 @media (prefers-reduced-motion: reduce) { .lvn-row.fresh { animation: none; box-shadow: inset 3px 0 0 var(--neon-cyan); } }
 .lvn-tm { display: flex; align-items: center; gap: 6px; min-width: 0; color: rgba(255, 255, 255, .7); }
