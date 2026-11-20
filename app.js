@@ -11556,7 +11556,9 @@ function goToScoresNow() {
   // A new slate with nothing kicked off yet: picks first. Once the week is
   // under way, the scoreboard.
   // Picks while any game can still be picked or changed; Scores once all are locked.
-  if (picksStillOpen()) showPicksScreen(); else showScoreboard();
+  // A game on right now (kicked off in the last four hours) opens Scores.
+  const now = Date.now(), liveNow = GAMES.some((g) => { const k = new Date(g.kickoff).getTime(); return k <= now && now - k < 4 * 3600e3; });
+  if (picksStillOpen() && !liveNow) showPicksScreen(); else showScoreboard();
   document.documentElement.classList.remove("known");
 }
 (async () => {
