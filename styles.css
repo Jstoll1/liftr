@@ -10339,3 +10339,10 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-why tr.me td { color: var(--neon-cyan); }
 .fx-whyn { margin: 6px 0 0; font-size: 11px; line-height: 1.45; color: var(--text-dim); }
 .fx-whyn b { color: #fff; font-weight: 600; }
+/* Each line under an open matchup says what it is. */
+.fx-ctx { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.fx-ctx > small { font-family: 'Press Start 2P', monospace; font-size: 6px; line-height: 1.5; color: var(--arcade-gold); }
+.fx-ctx > span { font-size: 11.5px; line-height: 1.45; color: rgba(255, 255, 255, .75); }
+.fx-ctx > span b { color: #fff; font-weight: 600; }
+.fx-ctx .fx-sw, .fx-ctx .fx-wp { margin: 0; }
+.fx-ctx .fx-sw { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }

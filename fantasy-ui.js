@@ -222,6 +222,16 @@
     try { window.noteUse?.("fantasy-team", o); } catch {}
   }
 
+  // "Connie 6-11 Jake" -> "Jake leads 11-6"; "Connie 3-0 Jake" -> "Connie 3-0".
+  const leadOf = (t) => { const m = String(t || "").match(/^(\S+) (\d+)-(\d+) (\S+)$/); if (!m) return esc(t || ""); const [, a, x, y, b] = m, X = +x, Y = +y; return X === Y ? `tied ${X}-${Y}` : X > Y ? `<b>${esc(a)}</b> leads ${X}-${Y}` : `<b>${esc(b)}</b> leads ${Y}-${X}`; };
+  const h2hLine = (h) => {
+    const parts = [leadOf(h.regularSeason)];
+    if (h.playoffs) parts.push(`playoffs: ${leadOf(h.playoffs).replace(" leads", "")}`);
+    for (const c of h.championshipGames || []) parts.push(`<b>${esc(c.winner)}</b> won the ${esc(c.year)} final`);
+    const lm = String(h.lastMeeting || "").match(/^(\d{4}) week (\d+): (\S+) ([\d.]+)-([\d.]+)/);
+    if (lm) parts.push(`last: <b>${esc(lm[3])}</b> won ${pts(lm[4])}–${pts(lm[5])} (${lm[1]}, wk ${lm[2]})`);
+    return parts.join(" · ");
+  };
   // The players still to play who will decide a matchup: each side's
   // biggest projection not yet in the books.
   const swing = (m) => {
@@ -229,8 +239,8 @@
     const top = (t) => (t?.starters || []).filter((p) => toPlay(p) === true || live(p)).sort((a, b) => remaining(b) - remaining(a))[0];
     const a = top(m.away), b = top(m.home);
     if (!a && !b) return "";
-    const one = (p) => (p ? `${nflLogo(p.nfl)}<b>${esc(p.name)}</b>${p.proj != null ? `<em>${pts(p.proj)}</em>` : ""}` : "<em>none left</em>");
-    return `<p class="fx-sw"><span>${one(a)}</span><small>SWING</small><span>${one(b)}</span></p>`;
+    const one = (p) => (p ? `${nflLogo(p.nfl)}<b>${esc(p.name)}</b>${p.proj != null ? `<em>proj ${pts(p.proj)}</em>` : ""}` : "<em>all played</em>");
+    return `<div class="fx-ctx"><small>BIGGEST LEFT</small><p class="fx-sw"><span>${one(a)}</span><i>vs</i><span>${one(b)}</span></p></div>`;
   };
   // This week's best and worst starters across the league.
   const performers = () => {
@@ -299,7 +309,7 @@
       const h = data.h2h?.[`${m.away?.owner}|${m.home?.owner}`];
       return `${mine(m) ? `<span class="fx-k2 fx-mine-k">YOUR MATCHUP</span>` : ""}<div class="fx-mu${isOpen ? " open" : ""}${m.final ? " final" : ""}${mine(m) ? " mine" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-expanded="${isOpen}">
         <div class="fx-row">${sideHtml(m.away, m.home, "a", oa)}<span class="fx-vs">${m.final ? "FINAL" : "VS"}</span>${sideHtml(m.home, m.away, "h", oh)}</div>
-        ${isOpen ? `${h ? `<p class="fx-h2h">${esc(h.regularSeason || "")}${h.playoffs ? ` · playoffs ${esc(String(h.playoffs).replace(/^(\S+) (\d+-\d+) \S+$/, "$2"))}` : ""}${h.championshipGames?.length ? ` · ${h.championshipGames.map((c) => `${esc(c.winner)} won the ${esc(c.year)} final`).join(", ")}` : ""}${h.lastMeeting ? ` · last: ${esc(String(h.lastMeeting).replace(/\s*\(regular season\)/, ""))}` : ""}</p>` : ""}${swing(m)}${wp != null ? `<div class="fx-wp" title="Win chance from live points and projections"><b>${pct(wp)}</b><span><i style="width:${(wp * 100).toFixed(1)}%"></i></span><b>${pct(1 - wp)}</b></div>` : ""}` : ""}
+        ${isOpen ? `${h ? `<div class="fx-ctx"><small>ALL TIME</small><span>${h2hLine(h)}</span></div>` : ""}${swing(m)}${wp != null ? `<div class="fx-ctx"><small>WIN CHANCE</small><div class="fx-wp" title="From live points and projections for players still to play"><b>${pct(wp)}</b><span><i style="width:${(wp * 100).toFixed(1)}%"></i></span><b>${pct(1 - wp)}</b></div></div>` : ""}` : ""}
         ${isOpen ? `<div class="fx-lus">${lineup(m.away)}${lineup(m.home)}</div><p class="fx-note">Grey number = projection for a player still to play.</p>` : ""}
       </div>`;
     }).join("");
