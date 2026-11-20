@@ -209,7 +209,7 @@
     const firstAt = {}; rows.forEach((r, i) => { if (!(r.o in firstAt)) firstAt[r.o] = r.k === "rec" ? -1 : i; else if (r.k === "rec") firstAt[r.o] = Math.min(firstAt[r.o], -1); });
     rows.sort((a, b) => firstAt[a.o] - firstAt[b.o] || (a.o === b.o ? 0 : a.o.localeCompare(b.o)));
     if (!rows.length) return "";
-    return `<div class="fx-sec"><span class="fx-k2">THIS HAS HAPPENED BEFORE</span><ul class="fx-hist">${rows.map((r) => `<li class="${esc(r.k)}">${owner(r.o)} ${esc(r.t)}</li>`).join("")}</ul></div>`;
+    return `<div class="fx-sec"><span class="fx-k2">AGAINST HISTORY</span><ul class="fx-hist">${rows.map((r) => `<li class="${esc(r.k)}">${owner(r.o)} ${esc(r.t)}</li>`).join("")}</ul></div>`;
   };
   // Both leagues: fantasy place next to pick'em place this season.
   let pickem = null;
