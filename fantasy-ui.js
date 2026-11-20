@@ -18,7 +18,7 @@
   const pct = (x) => (x >= 0.995 ? "99%+" : x > 0 && x < 0.01 ? "<1%" : `${Math.round((x || 0) * 100)}%`);
   const me = () => (typeof currentManager !== "undefined" ? currentManager : null);
   const colour = (o) => (typeof A !== "undefined" && A.colors?.[o]) || "#8b8498";
-  const nflLogo = (ab) => (ab ? `<img class="fx-nfl" src="https://a.espncdn.com/i/teamlogos/nfl/500/${esc(ab.toLowerCase())}.png" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : "");
+  const nflLogo = (ab) => (ab ? `<img class="fx-nfl" src="https://a.espncdn.com/i/teamlogos/nfl/500-dark/${esc(ab.toLowerCase())}.png" alt="" loading="lazy" onerror="if(!this.dataset.f){this.dataset.f=1;this.src=this.src.replace('/500-dark/','/500/')}else this.style.visibility='hidden'">` : "");
   // No ESPN logo: the owner's pick'em avatar (their emoji or initial on
   // their pick'em colour), so a face is the same across both leagues.
   const pk = (o) => ({ c: (typeof accentFor === "function" && accentFor(o)) || colour(o), t: (typeof avatarOverrides !== "undefined" && avatarOverrides?.[o]) || String(o || "?")[0] });
