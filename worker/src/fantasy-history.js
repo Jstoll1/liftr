@@ -75,12 +75,16 @@ export function historyContext(cur, archive) {
   for (const p of pace) {
     if (p.pfRank <= 3) record.push({ owner: p.owner, text: p.pfRank === 1 ? `on pace for ${p.pf} points, past the record${most ? ` (${most.owner}, ${r1(most.pf)} in ${most.year})` : ""}` : `on pace for ${p.pf} points, the ${ord(p.pfRank)} most ever${most ? ` (record: ${most.owner}, ${r1(most.pf)} in ${most.year})` : ""}` });
     if (p.pfRank >= p.of - 1) record.push({ owner: p.owner, text: `on pace for ${p.pf} points, the ${p.pfRank === p.of ? "fewest" : "2nd fewest"} ever${least ? ` (low: ${least.owner}, ${r1(least.pf)} in ${least.year})` : ""}` });
-    if (p.winRank === 1) record.push({ owner: p.owner, text: `on pace for ${p.wins} wins, tied for or setting the most ever` });
+    if (p.winRank === 1) { const best = Math.max(0, ...full.map((x) => x.wins)), who = full.filter((x) => x.wins === best).sort((a, b) => b.year - a.year)[0]; record.push({ owner: p.owner, text: p.wins > best ? `on pace for ${p.wins} wins, past the record of ${best} (${who.owner}, ${who.year})` : `on pace for ${p.wins} wins, tying the record (${who.owner}, ${who.year})` }); }
   }
   // This season's top weeks against the all-time top ten.
   const allTop = (archive.records?.highestWeeklyScores || []).map((t) => Number((String(t).match(/\s([\d.]+)\sin\s/) || [])[1])).filter(Number.isFinite);
   const cutoff = allTop.length ? Math.min(...allTop) : Infinity;
-  for (const g of cur.weekly || []) if (g.points >= cutoff) record.push({ owner: g.owner, text: `${g.points} in week ${g.week} is one of the ten best weeks ever` });
+  const tops = archive.records?.highestWeeklyScores || [], top1 = allTop.length ? Math.max(...allTop) : Infinity;
+  for (const g of cur.weekly || []) if (g.points >= cutoff) {
+    const rank = 1 + allTop.filter((x) => x > g.points).length;
+    record.push({ owner: g.owner, text: g.points > top1 ? `${g.points} in week ${g.week} is the best week ever, past ${String(tops[0] || "").replace(/ \(\w\)$/, "")}` : `${g.points} in week ${g.week} is the ${ord(rank)} best week ever` });
+  }
 
   return { week: wk, before, pace, record };
 }
