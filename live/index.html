@@ -1638,6 +1638,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     if (e.k === "recap-sheet-close") return ["Closed a replay breakdown", ({ x: "with ✕", outside: "tapping outside", swipe: "swiping down" })[e.d] || ""];
     if (e.k === "pot-sort") return ["Sorted the pot table", e.d || ""];
     if (e.k === "announce-seen") return ["Saw the announcement", e.d || ""];
+    if (e.k === "announce-go") return ["Tapped Take me there on the announcement", e.d || ""];
     if (e.k === "sim-open") return ["Opened the live simulator", ""];
     if (e.k === "fantasy-insight") return ["Opened the numbers behind a fantasy insight", e.d || ""];
     if (e.k === "fantasy-team") return ["Opened a fantasy team page", e.d || ""];
