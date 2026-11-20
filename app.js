@@ -127,7 +127,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=848887010903", "lightning-ui.js?v=812074492059", "attract-facts.js?v=621767480045", "history.js?v=451197308157", "fantasy-ui.js?v=348956651665", "sim.js?v=374204176553", "gridcard.js?v=867340868336"];
+const EXTRAS = ["ask-ui.js?v=848887010903", "lightning-ui.js?v=812074492059", "attract-facts.js?v=621767480045", "history.js?v=451197308157", "fantasy-ui.js?v=976438833802", "sim.js?v=374204176553", "gridcard.js?v=867340868336"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -11892,16 +11892,17 @@ document.getElementById("sim-open")?.addEventListener("click", () => {
 
 // One-off announcement: shown once per phone, until it expires.
 (() => {
-  const A = { id: "nissan-wedding-2026", until: Date.parse("2026-11-10T11:00:00Z"), kicker: "ANNOUNCEMENT", title: "Happy wedding weekend, Nissan!", body: "We love you." };
+  const A = { id: "fantasy-page-2026", until: Date.parse("2027-01-15T00:00:00Z"), kicker: "NEW FEATURE", title: "Fantasy page", body: "Track this week's fantasy matchups, gain insights, and make history.", cta: "Take me there", go: () => document.getElementById("nav-history-btn")?.click() };
   const KEY = `brochiefs_announce_${A.id}`;
   const show = () => {
-    try { if (localStorage.getItem(KEY) || Date.now() > A.until || window.__liveView || window.__adminEntry) return; } catch { return; }
+    // Signed-in members only; wait for sign-in rather than skipping it.
+    try { if (localStorage.getItem(KEY) || Date.now() > A.until || window.__liveView || window.__adminEntry) return; if (!localStorage.getItem("brochiefs_me_v1")) return setTimeout(show, 5000); } catch { return; }
     if (document.getElementById("theme-poll") || document.querySelector(".modal-overlay:not(.hidden)")) return setTimeout(show, 4000);
     const m = document.createElement("div");
     m.id = "announce"; m.className = "ann-ov"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", A.title);
-    m.innerHTML = `<div class="ann-card"><div class="ann-k">${A.kicker}</div><h2>${A.title}</h2><p>${A.body}</p><button type="button" class="ann-b">🥂 Cheers</button></div>`;
+    m.innerHTML = `<div class="ann-card"><div class="ann-ic">${document.querySelector("#nav-history-btn svg")?.outerHTML || ""}</div><div class="ann-k">${A.kicker}</div><h2>${A.title}</h2><p>${A.body}</p><div class="ann-row"><button type="button" class="ann-b ann-later">Later</button><button type="button" class="ann-b ann-go">${A.cta}</button></div></div>`;
     const close = () => { try { localStorage.setItem(KEY, String(Date.now())); } catch {} m.classList.add("out"); setTimeout(() => m.remove(), 250); };
-    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".ann-b")) close(); });
+    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".ann-b")) { close(); if (e.target.closest(".ann-go")) { A.go(); try { noteUse("announce-go", A.id); } catch {} } } });
     document.body.appendChild(m);
     try { noteUse("announce-seen", A.id); } catch {}
   };
