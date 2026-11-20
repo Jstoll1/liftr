@@ -10215,6 +10215,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-spark polyline { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; }
 .fx-spark polyline.mine { stroke: var(--neon-cyan); } .fx-spark polyline.avg { stroke: rgba(255, 255, 255, .3); stroke-dasharray: 3 3; }
 .fx-spark circle { fill: var(--neon-cyan); }
+.fx-spark circle.w { fill: var(--neon-green); } .fx-spark circle.l { fill: var(--neon-pink); }
 .fx-key { display: flex; gap: 14px; margin-top: 4px; font-size: 10px; color: var(--text-dim); }
 .fx-key i { display: inline-block; width: 12px; height: 2px; margin-right: 5px; vertical-align: middle; }
 .fx-key .k-me { background: var(--neon-cyan); } .fx-key .k-avg { background: rgba(255, 255, 255, .35); }
@@ -10400,3 +10401,29 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-hist li.tap { cursor: pointer; }
 .fx-hist li.tap > span::after { content: " ▸"; color: var(--text-dim); font-size: 10px; }
 .fx-hist li.tap.open > span::after { content: " ▾"; }
+/* Team page: career strip, finish tiles, playoff path, standouts, Ask the Chief. */
+.fx-spk-wk { position: relative; height: 8px; margin-top: 4px; font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--text-dim); }
+.fx-spk-wk span { position: absolute; transform: translateX(-50%); white-space: nowrap; } .fx-spk-wk span:first-child { transform: none; } .fx-spk-wk span:last-child { transform: translateX(-100%); }
+.fx-spk-wk .hi { color: var(--neon-green); } .fx-spk-wk .lo { color: var(--neon-pink); }
+.fx-cv { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; font-size: 12px; color: var(--text-dim); }
+.fx-cv b { color: #fff; font-weight: 600; } .fx-cv b.gold { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8px; color: var(--arcade-gold); }
+.fx-cv i { width: 1px; height: 12px; background: var(--card-border); }
+.fx-fin { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.fx-fin span { flex: 0 0 calc((100% - 20px) / 6); display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 0; border-radius: 6px; border: 1px solid var(--card-border); }
+.fx-fin small { font-size: 9px; color: var(--text-dim); }
+.fx-fin b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8px; color: rgba(255, 255, 255, .55); }
+.fx-fin .pod { border-color: rgba(var(--neon-cyan-rgb), .5); } .fx-fin .pod b { color: var(--neon-cyan); }
+.fx-fin .gold { border-color: rgba(var(--arcade-gold-rgb), .7); background: rgba(var(--arcade-gold-rgb), .08); } .fx-fin .gold b { color: var(--arcade-gold); }
+.fx-path { margin: 0; font-size: 12px; line-height: 1.5; color: rgba(255, 255, 255, .8); }
+.fx-path b { font-weight: 600; } .fx-path b.up { color: var(--neon-green); } .fx-path b.dn { color: var(--neon-pink); }
+.fx-std { display: flex; }
+.fx-std > span { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 4px; text-align: center; }
+.fx-std > span + span { border-left: 1px solid var(--card-border); }
+.fx-std small { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--text-dim); }
+.fx-std .mvp small { color: var(--arcade-gold); } .fx-std .dw small { color: var(--neon-pink); } .fx-std .gem small { color: var(--neon-green); }
+.fx-std b { max-width: 100%; font-size: 11.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fx-std em { font-style: normal; font-size: 10px; color: var(--text-dim); }
+.fx-std .fx-nfl { width: 20px; height: 20px; }
+.fx-askt { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 16px; padding: 9px 12px; border-radius: 10px; border: 1px solid rgba(var(--arcade-gold-rgb), .45); background: transparent; color: var(--text); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; }
+.fx-askt img { width: 26px; height: 26px; border-radius: 50%; }
+.fx-askt span { flex: 1; } .fx-askt i { font-style: normal; color: var(--arcade-gold); }

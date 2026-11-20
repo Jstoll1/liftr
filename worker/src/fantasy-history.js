@@ -94,3 +94,19 @@ export function historyContext(cur, archive) {
 
   return { week: wk, before, pace, record };
 }
+
+// Each owner's league career from the archive: titles, finals, all-time
+// regular-season record and where they finished each year.
+export function careers(seasons) {
+  const out = {};
+  for (const [year, s] of Object.entries(seasons || {})) for (const x of s.standings || []) {
+    const c = out[x.owner] ||= { titles: 0, finals: 0, wins: 0, losses: 0, years: [] };
+    c.wins += x.wins || 0; c.losses += x.losses || 0;
+    if (x.result === "champion") c.titles++;
+    if (x.result === "champion" || x.result === "runner-up") c.finals++;
+    c.years.push({ year: Number(year), finish: x.finish, of: s.teams || (s.standings || []).length, result: x.result });
+  }
+  for (const c of Object.values(out)) c.years.sort((a, b) => a.year - b.year);
+  return out;
+}
+
