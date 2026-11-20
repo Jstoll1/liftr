@@ -10308,3 +10308,11 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-lus .fx-lu:last-child li > i { order: 4; text-align: right; }
 .fx-lus .fx-lu:first-child li > b { text-align: right; }
 .fx-lus { column-gap: 14px; }
+/* Balance: the swing line mirrors around a centred label, and the two
+   lineups meet at a thin centre rule with equal air on each side. */
+.fx-sw { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; }
+.fx-sw span:first-child { justify-content: flex-start; }
+.fx-sw small { text-align: center; }
+.fx-lus { column-gap: 0; }
+.fx-lus .fx-lu:first-child { padding-right: 10px; border-right: 1px solid var(--card-border); }
+.fx-lus .fx-lu:last-child { padding-left: 10px; }

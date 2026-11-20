@@ -188,7 +188,7 @@
     const a = top(m.away), b = top(m.home);
     if (!a && !b) return "";
     const one = (p) => (p ? `${nflLogo(p.nfl)}<b>${esc(p.name)}</b>${p.proj != null ? `<em>${pts(p.proj)}</em>` : ""}` : "<em>none left</em>");
-    return `<p class="fx-sw"><small>SWING</small><span>${one(a)}</span><i>vs</i><span>${one(b)}</span></p>`;
+    return `<p class="fx-sw"><span>${one(a)}</span><small>SWING</small><span>${one(b)}</span></p>`;
   };
   // This week's best and worst starters across the league.
   const performers = () => {
