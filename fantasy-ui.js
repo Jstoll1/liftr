@@ -21,6 +21,13 @@
   const nflLogo = (ab) => (ab ? `<img class="fx-nfl" src="https://a.espncdn.com/i/teamlogos/nfl/500/${esc(ab.toLowerCase())}.png" alt="" loading="lazy" onerror="this.style.display='none'">` : "");
   const ini = (o) => `<span class="fx-badge ini" style="--oc:${esc(colour(o))}">${esc(String(o || "?")[0])}</span>`;
   const badge = (t) => (t?.logo ? `<img class="fx-badge" src="${esc(t.logo)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'fx-badge ini',textContent:'${esc(String(t.owner || "?")[0])}'}))">` : ini(t?.owner));
+  const INJ = { QUESTIONABLE: "Q", DOUBTFUL: "D", OUT: "OUT", INJURY_RESERVE: "IR", SUSPENSION: "SUSP", DAY_TO_DAY: "DTD", PUP: "PUP" };
+  const status = (p) => {
+    const bye = Object.keys(nfl).length > 4 && p.nfl && !nfl[String(p.nfl).toUpperCase()];
+    // An injury says more than a bye (an IR player is out either way).
+    if (bye && !p.injury) return `<u class="bye">BYE</u>`;
+    return p.injury ? `<u class="${p.injury === "QUESTIONABLE" || p.injury === "DAY_TO_DAY" ? "q" : ""}">${esc(INJ[p.injury] || p.injury.slice(0, 4))}</u>` : "";
+  };
   const owner = (o) => `<b class="${o === me() ? "me" : ""}">${esc(o)}</b>`;
   let data = null, at = 0, busy = false, nfl = {}, nflAt = 0;
   const open = new Set();
@@ -62,7 +69,7 @@
     const tp = o && (o.left || o.now) ? `<span class="fx-tp">${o.now ? `${o.now} live` : ""}${o.now && o.left ? " · " : ""}${o.left ? `${o.left} to play` : ""}</span>` : "";
     return `<span class="fx-side ${k}${lead ? " lead" : ""}${t?.owner === me() ? " me" : ""}"><span class="fx-tlink" data-fxteam="${esc(t?.owner || "")}" role="button" aria-label="Open ${esc(t?.owner || "")}'s team">${badge(t)}</span><span class="fx-nm"><b>${esc(t?.owner || t?.name || "")}</b><small>${t?.record ? `${esc(t.record)} · ` : ""}${esc(t?.name || "")}</small>${tp}</span><em>${pts(t?.points)}</em></span>`;
   };
-  const lineup = (t) => `<ol class="fx-lu">${(t?.starters || []).map((p) => { const tp = toPlay(p), lv = live(p); return `<li class="${tp ? "tp" : ""}${lv ? " lv" : ""}"><i>${esc(p.slot)}</i><span>${esc(p.name)}${p.injury ? `<u>${esc(p.injury === "QUESTIONABLE" ? "Q" : p.injury === "OUT" ? "O" : p.injury === "DOUBTFUL" ? "D" : p.injury[0])}</u>` : ""}</span>${nflLogo(p.nfl)}<b class="${p.pts > 0 ? "on" : ""}">${tp && p.proj != null ? `<small>${pts(p.proj)}</small>` : pts(p.pts)}</b></li>`; }).join("")}</ol>`;
+  const lineup = (t) => `<ol class="fx-lu">${(t?.starters || []).map((p) => { const tp = toPlay(p), lv = live(p); return `<li class="${tp ? "tp" : ""}${lv ? " lv" : ""}"><i>${esc(p.slot)}</i><span>${esc(p.name)}${status(p)}</span>${nflLogo(p.nfl)}<b class="${p.pts > 0 ? "on" : ""}">${tp && p.proj != null ? `<small>${pts(p.proj)}</small>` : pts(p.pts)}</b></li>`; }).join("")}</ol>`;
 
   const sparkline = (o) => {
     const wk = (data.weekly || []), mine = wk.filter((x) => x.owner === o).sort((a, b) => a.week - b.week);
@@ -104,7 +111,7 @@
     const order = ["QB", "RB", "WR", "TE", "FLEX", "D/ST", "K"];
     const starters = r.filter((p) => p.slot !== "BE" && p.slot !== "IR").sort((a, b) => order.indexOf(a.slot) - order.indexOf(b.slot));
     const bench = r.filter((p) => p.slot === "BE" || p.slot === "IR");
-    const row = (p) => `<li><i>${esc(p.slot === "BE" ? p.pos : p.slot)}</i><span>${esc(p.name)}${p.injury ? `<u>${esc(p.injury === "QUESTIONABLE" ? "Q" : p.injury === "OUT" ? "O" : p.injury === "DOUBTFUL" ? "D" : p.injury === "INJURY_RESERVE" ? "IR" : p.injury[0])}</u>` : ""}</span>${nflLogo(p.nfl)}<b>${pts(p.season)}</b><em>${pts(p.avg)}</em></li>`;
+    const row = (p) => `<li><i>${esc(p.slot === "BE" ? p.pos : p.slot)}</i><span>${esc(p.name)}${status(p)}</span>${nflLogo(p.nfl)}<b>${pts(p.season)}</b><em>${pts(p.avg)}</em></li>`;
     return `<div class="fx-rh"><span></span><span>SEASON</span><span>AVG</span></div><ol class="fx-ro">${starters.map(row).join("")}</ol><div class="fx-k2 fx-bench">BENCH</div><ol class="fx-ro bench">${bench.map(row).join("")}</ol>`;
   };
   const posBars = (o) => {
@@ -112,8 +119,9 @@
     const n = (data.standings || []).length || 10;
     return `<div class="fx-pos">${Object.entries(ti.posRank).map(([pos, r]) => `<span class="${r <= 3 ? "up" : r > n - 3 ? "dn" : ""}"><small>${esc(pos)}</small><b>${ord(r)}</b></span>`).join("")}</div>`;
   };
-  function openTeam(o) {
+  async function openTeam(o) {
     if (!data) return;
+    if (!Object.keys(nfl).length) await load(true);
     document.getElementById("fx-team")?.remove();
     const st = data.stats || {}, s0 = (data.standings || []).find((r) => r.owner === o) || {}, t = { ...(data.teams?.[o] || {}), owner: o };
     const pw = (st.power || []).find((x) => x.owner === o);

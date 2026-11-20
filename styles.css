@@ -10238,8 +10238,8 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .hist-fold > summary i { margin-left: auto; font-style: normal; color: var(--text-dim); transition: transform .2s; }
 .hist-fold[open] > summary i { transform: rotate(180deg); }
 /* Fantasy team sheet (tap an owner) */
-.fx-team { position: fixed; inset: 0; z-index: 9000; display: flex; justify-content: center; align-items: flex-end; background: rgba(4, 3, 12, .72); }
-.fx-tcard { width: min(560px, 100%); max-height: 92vh; overflow-y: auto; padding: 14px 14px calc(18px + env(safe-area-inset-bottom)); border-radius: 14px 14px 0 0; border: 1px solid var(--card-border); border-bottom: 0; background: var(--card-bg); }
+.fx-team { position: fixed; inset: 0; z-index: 9000; display: flex; justify-content: center; align-items: center; padding: 16px; background: rgba(4, 3, 12, .72); }
+.fx-tcard { width: min(560px, 100%); max-height: calc(100vh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; padding: 14px 14px 18px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--card-bg); }
 .fx-thead { display: flex; align-items: center; gap: 10px; }
 .fx-thead .fx-badge { width: 40px; height: 40px; font-size: 14px; }
 .fx-thead .fx-nm b { font-size: 15px; }
@@ -10263,7 +10263,9 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-ro li { display: grid; grid-template-columns: 32px minmax(0, 1fr) 16px 52px 40px; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px solid rgba(255, 255, 255, .05); font-size: 12px; }
 .fx-ro i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); }
 .fx-ro span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fx-ro u { text-decoration: none; margin-left: 4px; font-size: 9px; color: var(--neon-pink); }
+.fx-ro u, .fx-lu u { text-decoration: none; margin-left: 5px; padding: 1px 4px; border-radius: 3px; font-family: 'Press Start 2P', monospace; font-size: 6px; vertical-align: 1px; color: #fff; background: var(--neon-pink); }
+.fx-ro u.q, .fx-lu u.q { background: transparent; color: var(--arcade-gold); border: 1px solid rgba(var(--arcade-gold-rgb), .6); }
+.fx-ro u.bye, .fx-lu u.bye { background: transparent; color: var(--text-dim); border: 1px solid var(--card-border); }
 .fx-ro b { text-align: right; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8px; color: #fff; }
 .fx-ro em { text-align: right; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 7px; color: rgba(255, 255, 255, .5); }
 .fx-ro.bench li { opacity: .7; }
