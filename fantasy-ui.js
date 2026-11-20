@@ -310,10 +310,13 @@
       // Closed: a small scorebug card, two owners and their scores, the
       // leader bright, a thin win-chance bar. Open: the full matchup.
       if (!isOpen) {
-        const row = (t, o) => `<span class="fx-cr${(t?.points || 0) > (o?.points || 0) ? " lead" : ""}${t?.owner === me() ? " me" : ""}">${badge(t)}<b>${esc(t?.owner || "")}</b><em>${pts(t?.points)}</em></span>`;
-        return `<div class="fx-card-mu${mine(m) ? " mine" : ""}${m.final ? " final" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-expanded="false" aria-label="${esc(m.away?.owner)} against ${esc(m.home?.owner)}">
-          ${mine(m) ? `<span class="fx-cmk">YOUR MATCHUP</span>` : m.final ? `<span class="fx-cmk dim">FINAL</span>` : ""}${row(m.away, m.home)}${row(m.home, m.away)}
-          ${wp != null ? `<span class="fx-cbar" title="Win chance: ${esc(m.away?.owner)} ${pct(wp)}"><i style="width:${(wp * 100).toFixed(1)}%"></i></span>` : ""}
+        // Yours on the left; each row shows the projected final beside the
+        // live score; the bar splits in the two owners' colours.
+        const flip = m.home?.owner === me(), A = flip ? m.home : m.away, B = flip ? m.away : m.home, pa = flip ? oh : oa, pb = flip ? oa : oh, w = wp == null ? null : flip ? 1 - wp : wp;
+        const row = (t, o, x) => `<span class="fx-cr${(t?.points || 0) > (o?.points || 0) ? " lead" : ""}${t?.owner === me() ? " me" : ""}">${badge(t)}<span class="fx-cn"><b>${esc(t?.owner || "")}</b>${m.final ? "" : `<small title="Projected final">proj ${pts(x.exp)}</small>`}</span><em>${pts(t?.points)}</em></span>`;
+        return `<div class="fx-card-mu${mine(m) ? " mine" : ""}${m.final ? " final" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-expanded="false" aria-label="${esc(A?.owner)} against ${esc(B?.owner)}">
+          ${mine(m) ? `<span class="fx-cmk">YOUR MATCHUP</span>` : m.final ? `<span class="fx-cmk dim">FINAL</span>` : ""}${row(A, B, pa)}${row(B, A, pb)}
+          ${w != null ? `<span class="fx-cbar" style="--a:${pk(A?.owner).c};--b:${pk(B?.owner).c}" title="Win chance: ${esc(A?.owner)} ${pct(w)}, ${esc(B?.owner)} ${pct(1 - w)}"><i style="width:${(w * 100).toFixed(1)}%"></i></span>` : ""}
         </div>`;
       }
       return `${mine(m) ? `<span class="fx-k2 fx-mine-k">YOUR MATCHUP</span>` : ""}<div class="fx-mu${isOpen ? " open" : ""}${m.final ? " final" : ""}${mine(m) ? " mine" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-expanded="${isOpen}">
