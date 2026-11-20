@@ -2584,7 +2584,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     ].filter(Boolean).join("");
     const kpisNb = kpis.replace("<!--NB-->", nRows ? `<div class="nb-rows">${nRows}</div>` : "");
     const pageBody = {
-      home: `${ucPanel}${recCard("home")}${kpisNb}${overview}${timeline}${feedHtml}${strips}`,
+      home: `${kpisNb}${timeline}${overview}${recCard("home")}${ucPanel}${feedHtml}${strips}`,
       activity: "",
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
       bi: `<div class="pg-bar"><h1>Ask Chief</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${chiefMsgPanel()}${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
