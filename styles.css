@@ -10297,3 +10297,6 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-take-btn em { font-style: normal; font-size: 11px; color: var(--text-dim); }
 .fx-take-btn i { margin-left: auto; font-style: normal; color: var(--arcade-gold); }
 .fx-take-p { margin: 12px 0 0; font-size: 14px; line-height: 1.55; color: rgba(255, 255, 255, .88); }
+.fx-mine-k { display: block; margin: 2px 0 2px; color: var(--neon-cyan); }
+.fx-mu.mine { margin: 0 -8px 6px; padding: 10px 8px; border: 1px solid rgba(var(--neon-cyan-rgb), .45); border-radius: 8px; background: rgba(var(--neon-cyan-rgb), .06); }
+.fx-mu.mine + .fx-mu { border-top: 0; }

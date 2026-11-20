@@ -246,11 +246,13 @@
     if (!data) { root.innerHTML = `<div class="fx-head"><span class="fx-k">FANTASY</span></div><p class="fx-note">Loading the league…</p>`; return; }
     const lw = data.live, week = lw?.week || data.weeksPlayed + 1;
     const anyLive = Object.values(nfl).some((g) => g.state === "in");
-    const games = (lw?.matchups || []).map((m) => {
+    // The signed-in owner's matchup first, marked as theirs.
+    const mine = (m) => m.home?.owner === me() || m.away?.owner === me();
+    const games = [...(lw?.matchups || [])].sort((a, b) => mine(b) - mine(a)).map((m) => {
       const isOpen = open.has(m.id), oa = outlook(m.away), oh = outlook(m.home);
       const wp = m.final ? null : phi((oa.exp - oh.exp) / Math.sqrt(oa.sd ** 2 + oh.sd ** 2));
       const h = data.h2h?.[`${m.away?.owner}|${m.home?.owner}`];
-      return `<div class="fx-mu${isOpen ? " open" : ""}${m.final ? " final" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-expanded="${isOpen}">
+      return `${mine(m) ? `<span class="fx-k2 fx-mine-k">YOUR MATCHUP</span>` : ""}<div class="fx-mu${isOpen ? " open" : ""}${m.final ? " final" : ""}${mine(m) ? " mine" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-expanded="${isOpen}">
         <div class="fx-row">${sideHtml(m.away, m.home, "a", oa)}<span class="fx-vs">${m.final ? "FINAL" : "VS"}</span>${sideHtml(m.home, m.away, "h", oh)}</div>
         ${h ? `<p class="fx-h2h">${esc(h.regularSeason || "")}${h.championshipGames?.length ? ` · ${h.championshipGames.map((c) => `${esc(c.winner)} won the ${esc(c.year)} final`).join(", ")}` : ""}${h.lastMeeting ? ` · last: ${esc(String(h.lastMeeting).replace(/\s*\(regular season\)/, ""))}` : ""}</p>` : ""}
         ${swing(m)}
