@@ -53,11 +53,12 @@ export function historyContext(cur, archive) {
         const ended = same.map((x) => ({ ...x, end: finish(x.year, x.owner) }));
         const titles = ended.filter((x) => x.end === "won the title").length;
         const ex = ended.sort((a, b) => b.year - a.year)[0];
-        before.push({ owner: s.owner, kind: hot ? "hot" : "cold", record: `${s.wins}-${s.losses}`, times: same.length, titles,
+        const why = { head: ["Year", "Owner", `After ${wk}`, "Finish"], rows: [{ me: true, c: ["Now", s.owner, `${s.wins}-${s.losses}`, "?"] }, ...[...ended].sort((a, b) => b.year - a.year).map((x) => ({ c: [x.year, x.owner, `${x.wins}-${x.losses}`, x.end || "–"] }))] };
+        before.push({ why, owner: s.owner, kind: hot ? "hot" : "cold", record: `${s.wins}-${s.losses}`, times: same.length, titles,
           line: `${s.wins}-${s.losses} after ${wk}: ${same.length === 1 ? "done once before" : `done ${same.length} times before`}${hot ? `, ${titles ? `${titles} won the title` : "none won the title"}` : ""}. Last: ${ex.owner} in ${ex.year}${ex.end ? `, who ${ex.end}` : ""}.` });
       } else before.push({ owner: s.owner, kind: hot ? "hot" : "cold", record: `${s.wins}-${s.losses}`, times: 0, line: `${s.wins}-${s.losses} after ${wk}: never happened in BroChiefs history.` });
     } else if (like.length && like.length <= 3) {
-      before.push({ owner: s.owner, kind: "rare", record: `${s.wins}-${s.losses}`, times: like.length, line: `${s.wins}-${s.losses} after ${wk}: only ${like.length} other${like.length === 1 ? "" : "s"} ever.` });
+      before.push({ why: { head: ["Year", "Owner", `After ${wk}`, "Finish"], rows: like.map((x) => ({ c: [x.year, x.owner, `${x.wins}-${x.losses}`, finish(x.year, x.owner) || "–"] })) }, owner: s.owner, kind: "rare", record: `${s.wins}-${s.losses}`, times: like.length, line: `${s.wins}-${s.losses} after ${wk}: only ${like.length} other${like.length === 1 ? "" : "s"} ever.` });
     }
   }
 
@@ -72,10 +73,14 @@ export function historyContext(cur, archive) {
   });
   const most = [...full].sort((a, b) => b.pf - a.pf)[0], least = [...full].sort((a, b) => a.pf - b.pf)[0];
   const record = [];
+  // The all-time list a pace sits in: the top five past seasons with this
+  // season's pace placed among them.
+  const board = (key, label, p) => { const list = [...full].sort((a, b) => b[key] - a[key]).slice(0, 5).map((x) => ({ v: x[key], c: [x.owner, x.year] })); list.push({ v: key === "pf" ? p.pf : p.wins, me: true, c: [p.owner, "pace"] }); list.sort((a, b) => b.v - a.v); return { head: ["#", "Owner", "Year", label], rows: list.map((x, i) => ({ me: x.me, c: [i + 1, ...x.c, key === "pf" ? r1(x.v) : x.v] })) }; };
+  const lowBoard = (p) => { const list = [...full].sort((a, b) => a.pf - b.pf).slice(0, 5).map((x) => ({ v: x.pf, c: [x.owner, x.year] })); list.push({ v: p.pf, me: true, c: [p.owner, "pace"] }); list.sort((a, b) => a.v - b.v); return { head: ["#", "Owner", "Year", "Points"], rows: list.map((x, i) => ({ me: x.me, c: [i + 1, ...x.c, r1(x.v)] })) }; };
   for (const p of pace) {
-    if (p.pfRank <= 3) record.push({ owner: p.owner, text: p.pfRank === 1 ? `on pace for ${p.pf} points, past the record${most ? ` (${most.owner}, ${r1(most.pf)} in ${most.year})` : ""}` : `on pace for ${p.pf} points, the ${ord(p.pfRank)} most ever${most ? ` (record: ${most.owner}, ${r1(most.pf)} in ${most.year})` : ""}` });
-    if (p.pfRank >= p.of - 1) record.push({ owner: p.owner, text: `on pace for ${p.pf} points, the ${p.pfRank === p.of ? "fewest" : "2nd fewest"} ever${least ? ` (low: ${least.owner}, ${r1(least.pf)} in ${least.year})` : ""}` });
-    if (p.winRank === 1) { const best = Math.max(0, ...full.map((x) => x.wins)), who = full.filter((x) => x.wins === best).sort((a, b) => b.year - a.year)[0]; record.push({ owner: p.owner, text: p.wins > best ? `on pace for ${p.wins} wins, past the record of ${best} (${who.owner}, ${who.year})` : `on pace for ${p.wins} wins, tying the record (${who.owner}, ${who.year})` }); }
+    if (p.pfRank <= 3) record.push({ why: board("pf", "Points", p), owner: p.owner, text: p.pfRank === 1 ? `on pace for ${p.pf} points, past the record${most ? ` (${most.owner}, ${r1(most.pf)} in ${most.year})` : ""}` : `on pace for ${p.pf} points, the ${ord(p.pfRank)} most ever${most ? ` (record: ${most.owner}, ${r1(most.pf)} in ${most.year})` : ""}` });
+    if (p.pfRank >= p.of - 1) record.push({ why: lowBoard(p), owner: p.owner, text: `on pace for ${p.pf} points, the ${p.pfRank === p.of ? "fewest" : "2nd fewest"} ever${least ? ` (low: ${least.owner}, ${r1(least.pf)} in ${least.year})` : ""}` });
+    if (p.winRank === 1) { const best = Math.max(0, ...full.map((x) => x.wins)), who = full.filter((x) => x.wins === best).sort((a, b) => b.year - a.year)[0]; record.push({ why: board("wins", "Wins", p), owner: p.owner, text: p.wins > best ? `on pace for ${p.wins} wins, past the record of ${best} (${who.owner}, ${who.year})` : `on pace for ${p.wins} wins, tying the record (${who.owner}, ${who.year})` }); }
   }
   // This season's top weeks against the all-time top ten.
   const allTop = (archive.records?.highestWeeklyScores || []).map((t) => Number((String(t).match(/\s([\d.]+)\sin\s/) || [])[1])).filter(Number.isFinite);
@@ -83,7 +88,8 @@ export function historyContext(cur, archive) {
   const tops = archive.records?.highestWeeklyScores || [], top1 = allTop.length ? Math.max(...allTop) : Infinity;
   for (const g of cur.weekly || []) if (g.points >= cutoff) {
     const rank = 1 + allTop.filter((x) => x > g.points).length;
-    record.push({ owner: g.owner, text: g.points > top1 ? `${g.points} in week ${g.week} is the best week ever, past ${String(tops[0] || "").replace(/ \(\w\)$/, "")}` : `${g.points} in week ${g.week} is the ${ord(rank)} best week ever` });
+    const wl = tops.map((t, i) => ({ v: allTop[i], c: [String(t).replace(/ \(\w\)$/, "")] })).concat([{ v: g.points, me: true, c: [`${g.owner} ${g.points} in ${cur.year || "this season"} week ${g.week}`] }]).filter((x) => Number.isFinite(x.v)).sort((a, b) => b.v - a.v).slice(0, 11);
+    record.push({ why: { head: ["#", "Week"], rows: wl.map((x, i) => ({ me: x.me, c: [i + 1, x.c[0]] })) }, owner: g.owner, text: g.points > top1 ? `${g.points} in week ${g.week} is the best week ever, past ${String(tops[0] || "").replace(/ \(\w\)$/, "")}` : `${g.points} in week ${g.week} is the ${ord(rank)} best week ever` });
   }
 
   return { week: wk, before, pace, record };

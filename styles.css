@@ -10396,3 +10396,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-chip { padding: 2px 7px; border-radius: 10px; border: 1px solid var(--card-border); font-size: 11px; line-height: 1.5; white-space: nowrap; }
 .fx-mucard .fx-side em { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .fx-side em small { font-family: system-ui, sans-serif; font-size: 10px; color: var(--text-dim); white-space: nowrap; }
+/* Tap an Against History line for the list behind it. */
+.fx-hist li.tap { cursor: pointer; }
+.fx-hist li.tap > span::after { content: " ▸"; color: var(--text-dim); font-size: 10px; }
+.fx-hist li.tap.open > span::after { content: " ▾"; }
