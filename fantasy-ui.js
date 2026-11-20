@@ -84,8 +84,9 @@
     if (mine.length < 2) return "";
     const weeks = mine.map((x) => x.week), avg = weeks.map((w) => { const l = wk.filter((x) => x.week === w); return l.reduce((n, x) => n + x.points, 0) / (l.length || 1); });
     const all = [...mine.map((x) => x.points), ...avg], lo = Math.min(...all) - 5, hi = Math.max(...all) + 5, W = 300, H = 70;
+    const hiW = mine.reduce((a, x) => (x.points > a.points ? x : a), mine[0]), loW = mine.reduce((a, x) => (x.points < a.points ? x : a), mine[0]);
     const xy = (i, v) => `${(i / (weeks.length - 1)) * (W - 8) + 4},${H - 4 - ((v - lo) / (hi - lo)) * (H - 8)}`;
-    return `<svg class="fx-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(o)}'s weekly scores against the league average"><polyline class="avg" points="${avg.map((v, i) => xy(i, v)).join(" ")}"/><polyline class="mine" points="${mine.map((x, i) => xy(i, x.points)).join(" ")}"/>${mine.map((x, i) => `<circle cx="${xy(i, x.points).split(",")[0]}" cy="${xy(i, x.points).split(",")[1]}" r="2.5"/>`).join("")}</svg>`;
+    return `<svg class="fx-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(o)}'s weekly scores against the league average"><polyline class="avg" points="${avg.map((v, i) => xy(i, v)).join(" ")}"/><polyline class="mine" points="${mine.map((x, i) => xy(i, x.points)).join(" ")}"/>${mine.map((x, i) => { const op = wk.find((y) => y.week === x.week && y.owner === x.opponent); const r = op ? (x.points > op.points ? "w" : x.points < op.points ? "l" : "") : ""; const [cx, cy] = xy(i, x.points).split(","); return `<circle class="${r}" cx="${cx}" cy="${cy}" r="${x === hiW || x === loW ? 4 : 3}"><title>Week ${x.week}: ${pts(x.points)}${op ? ` vs ${esc(x.opponent)} ${pts(op.points)}` : ""}</title></circle>`; }).join("")}</svg><div class="fx-spk-wk">${mine.map((x, i) => `<span style="left:${((i / (weeks.length - 1)) * (W - 8) + 4) / W * 100}%" class="${x === hiW ? "hi" : x === loW ? "lo" : ""}">${x === hiW ? "BEST" : x === loW ? "LOW" : x.week}</span>`).join("")}</div>`;
   };
   const ownerCard = (o) => {
     const st = data.stats || {}, mine = (data.weekly || []).filter((x) => x.owner === o);
@@ -200,6 +201,38 @@
     }
     return `${lines.length || pace ? `<div class="fx-k2">AGAINST HISTORY</div><ul class="fx-ins">${lines.map((t) => `<li>${esc(t)}</li>`).join("")}${pace ? `<li>On pace for <b>${pts(pace.pf)}</b> points (${ord(pace.pfRank)} of ${pace.of} seasons ever) and <b>${pace.wins}</b> wins.</li>` : ""}</ul>` : ""}${chart ? `<div class="fx-k2">TITLE CHANCE</div>${chart}` : ""}`;
   };
+  // The owner's league career: titles, finals, all-time record.
+  const careerHtml = (o) => {
+    const c = data.careers?.[o]; if (!c) return "";
+    const tiles = c.years.map((y) => `<span class="${y.result === "champion" ? "gold" : y.finish <= 3 ? "pod" : ""}" title="${y.year}: ${ord(y.finish)} of ${y.of}"><small>'${String(y.year).slice(2)}</small><b>${y.finish}</b></span>`).join("");
+    return `<p class="fx-cv">${c.titles ? `<b class="gold">${c.titles}× CHAMP</b>` : `<b>NO TITLES YET</b>`}<i></i><b>${c.finals}</b> final${c.finals === 1 ? "" : "s"}<i></i><b>${c.wins}-${c.losses}</b> all time</p><div class="fx-k2">FINISH BY SEASON</div><div class="fx-fin">${tiles}</div>`;
+  };
+  // Where the owner stands in the playoff race, in words.
+  const pathLine = (o) => {
+    const st = [...(data.standings || [])].sort((a, b) => a.rank - b.rank), P = data.playoffTeams || 6;
+    const me0 = st.find((x) => x.owner === o); if (!me0 || st.length <= P) return "";
+    const rem = (data.remaining || []).filter((g) => g.home === o || g.away === o).length;
+    const lastIn = st[P - 1], firstOut = st[P], g = (n) => `${n} game${n === 1 ? "" : "s"}`;
+    let t;
+    if (me0.rank <= P) {
+      const lead = me0.wins - firstOut.wins;
+      t = lead > rem ? `<b class="up">Clinched</b> a playoff spot.` : lead > 0 ? `In at <b>${ord(me0.rank)}</b>, ${g(lead)} clear of ${owner(firstOut.owner)} (${ord(P + 1)}) with ${rem} to play.` : `In at <b>${ord(me0.rank)}</b> but level on wins with ${owner(firstOut.owner)} (${ord(P + 1)}); points decide it. ${rem} to play.`;
+    } else {
+      const back = lastIn.wins - me0.wins;
+      t = me0.wins + rem < lastIn.wins ? `<b class="dn">Out of the race:</b> can't catch ${owner(lastIn.owner)} (${ord(P)}) with ${rem} to play.` : back >= rem ? `<b class="dn">Must win out</b> (${rem} left) and needs ${owner(lastIn.owner)} (${ord(P)}) to slip.` : back > 0 ? `${g(back)} behind ${owner(lastIn.owner)} for the last spot (${ord(P)}) with ${rem} to play.` : `Level on wins with ${owner(lastIn.owner)} for the last spot (${ord(P)}); points decide it. ${rem} to play.`;
+    }
+    return `<div class="fx-k2">PLAYOFF PATH</div><p class="fx-path">${t}</p>`;
+  };
+  // Season standouts from the roster: the best, the weakest starter, the bench gem.
+  const standouts = (o) => {
+    const r = data.rosters?.[o] || []; if (!r.length) return "";
+    const start = r.filter((p) => !/^(BE|IR)$/.test(p.slot)), bench = r.filter((p) => p.slot === "BE");
+    const mvp = [...r].sort((a, b) => (b.season || 0) - (a.season || 0))[0];
+    const dead = start.filter((p) => !/^(K|D\/ST)$/.test(p.pos)).sort((a, b) => (a.avg || 0) - (b.avg || 0))[0];
+    const gem = bench.sort((a, b) => (b.avg || 0) - (a.avg || 0))[0];
+    const one = (k, p, v, cls) => (p ? `<span class="${cls}"><small>${k}</small>${nflLogo(p.nfl)}<b>${esc(p.name)}</b><em>${v}</em></span>` : "");
+    return `<div class="fx-k2">STANDOUTS</div><div class="fx-std">${one("MVP", mvp, `${pts(mvp?.season)} pts`, "mvp")}${one("DEAD WEIGHT", dead, `${pts(dead?.avg)} a game`, "dw")}${one("BENCH GEM", gem, `${pts(gem?.avg)} a game`, "gem")}</div>`;
+  };
   async function openTeam(o) {
     if (!data) return;
     if (!Object.keys(nfl).length) await load(true);
@@ -211,14 +244,25 @@
     m.innerHTML = `<div class="fx-tcard">
       <div class="fx-thead">${badge(t)}<span class="fx-nm"><b>${esc(t.name || o)}</b><small>${esc(o)}</small></span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div>
       <div class="fx-facts top"><span><small>RECORD</small><b>${s0.wins ?? 0}-${s0.losses ?? 0}</b><em>${s0.rank ? ord(s0.rank) : ""}</em></span><span><small>POWER</small><b>${pw ? ord(pw.rank) : "–"}</b><em>${pw?.move ? (pw.move > 0 ? `▲${pw.move}` : `▼${-pw.move}`) : ""}</em></span><span><small>PLAYOFFS</small><b>${st.odds?.[o] ? pct(st.odds[o].playoffs) : "–"}</b><em>${st.streak?.[o] || ""}</em></span></div>
+      ${careerHtml(o)}
       <div class="fx-k2">INSIGHTS</div><ul class="fx-ins">${insights(o).map((x) => `<li class="tap${insOpen === x.kind ? " open" : ""}" data-fxins="${x.kind}" role="button" tabindex="0"><span>${x.html}</span>${insOpen === x.kind ? why(x.kind, o) : ""}</li>`).join("")}</ul>
       <div class="fx-k2">BY POSITION · LEAGUE RANK</div>${posBars(o)}
+      ${pathLine(o)}
+      ${standouts(o)}
       ${oddsLine(o)}
       <div class="fx-k2">WEEK BY WEEK</div>${sparkline(o)}<div class="fx-key"><span><i class="k-me"></i>${esc(o)}</span><span><i class="k-avg"></i>League average</span></div>
       <div class="fx-k2">ROSTER</div>${rosterHtml(o)}
+      <button type="button" class="fx-askt" data-fxaskt="1"><img src="assets/images/chief/chief2-96.webp" alt=""><span>Ask the Chief about ${esc(o)}'s season</span><i>▸</i></button>
     </div>`;
     m.addEventListener("click", (e) => {
       if (e.target === m || e.target.closest("[data-fxx]")) { insOpen = null; return m.remove(); }
+      if (e.target.closest("[data-fxaskt]")) {
+        insOpen = null; m.remove();
+        const f = document.getElementById("archive-ask"), q = document.getElementById("archive-q");
+        if (f && q) { q.value = `How is ${o}'s fantasy season going, and what are their playoff chances?`; q.dispatchEvent(new Event("input", { bubbles: true })); f.scrollIntoView({ behavior: "smooth", block: "center" }); f.requestSubmit ? f.requestSubmit() : f.dispatchEvent(new Event("submit", { cancelable: true })); }
+        try { window.noteUse?.("fantasy-ask-team", o); } catch {}
+        return;
+      }
       const li = e.target.closest("[data-fxins]");
       if (li) { const k = li.dataset.fxins, top = m.querySelector(".fx-tcard").scrollTop; insOpen = insOpen === k ? null : k; try { window.noteUse?.("fantasy-insight", k); } catch {} openTeam(o).then(() => { const c = document.querySelector("#fx-team .fx-tcard"); if (c) c.scrollTop = top; }); }
     });

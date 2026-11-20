@@ -25,7 +25,7 @@ import { HISTORY } from "./history-data.js";
 import { MATCHUPS } from "./matchup-data.js";
 import { pullCurrentSeason, CURRENT_KEY, freshFor } from "./fantasy.js";
 import { fantasyStats } from "./fantasy-stats.js";
-import { historyContext } from "./fantasy-history.js";
+import { historyContext, careers } from "./fantasy-history.js";
 import { ROAST_SYSTEM, cleanRoastStats } from "./roast.js";
 
 const app = {
@@ -316,7 +316,8 @@ const app = {
       for (const m of cur.live?.matchups || []) { const a = m.away?.owner, b = m.home?.owner; const x = a && b && MATCHUPS.headToHead?.[a]?.[b]; if (x) h2h[`${a}|${b}`] = x; }
       let stats = null; try { stats = fantasyStats(cur); } catch {}
       let history = null; try { history = historyContext(cur, { everyGameByYear: MATCHUPS.everyGameByYear, records: MATCHUPS.leagueMatchupRecords, seasons: HISTORY.seasons }); } catch {}
-      return json({ ...cur, h2h, stats, history }, 200, { ...corsHeaders, "Cache-Control": "public, max-age=60" });
+      let career = null; try { career = careers(HISTORY.seasons); } catch {}
+      return json({ ...cur, h2h, stats, history, careers: career }, 200, { ...corsHeaders, "Cache-Control": "public, max-age=60" });
     }
     // Admin: pull the live fantasy season now instead of waiting for the cron.
     if (url.pathname === "/history-refresh") {
