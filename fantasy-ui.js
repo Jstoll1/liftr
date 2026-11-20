@@ -45,7 +45,7 @@
     if (Date.now() - nflAt > 55000) {
       try {
         const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?t=${Math.floor(Date.now() / 60000)}`);
-        if (r.ok) { const j = await r.json(); nfl = {}; for (const ev of j.events || []) { const c = ev.competitions?.[0]; const st = c?.status?.type?.state || "pre"; for (const t of c?.competitors || []) nfl[String(t.team?.abbreviation || "").toUpperCase()] = { state: st, done: !!c?.status?.type?.completed }; } nflAt = Date.now(); }
+        if (r.ok) { const j = await r.json(); nfl = {}; for (const ev of j.events || []) { const c = ev.competitions?.[0]; const st = c?.status?.type?.state || "pre"; for (const t of c?.competitors || []) nfl[String(t.team?.abbreviation || "").toUpperCase()] = { state: st, done: !!c?.status?.type?.completed, ball: st === "in" && !!c?.situation?.possession && String(c.situation.possession) === String(t.team?.id), rz: !!c?.situation?.isRedZone }; } nflAt = Date.now(); }
       } catch {}
     }
     busy = false;
@@ -77,7 +77,7 @@
   const stOf = (p) => { const g = gameOf(p); return !g ? "" : g.state === "in" ? "live" : g.state === "post" || g.done ? "done" : "pre"; };
   // Each starter with a dot for done/live/to play; the higher score in each
   // slot row is lit; a totals row closes the column.
-  const lineup = (t, o, x) => { const os = o?.starters || []; return `<ol class="fx-lu">${(t?.starters || []).map((p, i) => { const tp = toPlay(p), lv = live(p), q = os[i], st = stOf(p); const win = q && !tp && toPlay(q) !== true && (p.pts || 0) > (q.pts || 0); return `<li class="${tp ? "tp" : ""}${lv ? " fx-on" : ""}"><i>${esc(p.slot)}</i>${nflLogo(p.nfl) || "<span></span>"}<span class="fx-pn"><span class="fx-pt">${esc(p.name)}</span>${status(p)}</span><b class="${win ? "win" : ""}">${st ? `<s class="fx-sd ${st}" title="${st === "pre" ? "To play" : st === "live" ? "Playing now" : "Done"}"></s>` : ""}${tp && p.proj != null ? `<small>${pts(p.proj)}</small>` : pts(p.pts)}</b></li>`; }).join("")}<li class="tot"><i>TOTAL</i><span></span><span class="fx-pn"><span class="fx-pt">${x && !x.final ? `proj ${pts(x.exp)}` : ""}</span></span><b>${pts(t?.points)}</b></li></ol>`; };
+  const lineup = (t, o, x) => { const os = o?.starters || []; return `<ol class="fx-lu">${(t?.starters || []).map((p, i) => { const tp = toPlay(p), lv = live(p), q = os[i], st = stOf(p); const win = q && !tp && toPlay(q) !== true && (p.pts || 0) > (q.pts || 0); return `<li class="${tp ? "tp" : ""}${lv ? " fx-on" : ""}"><i>${esc(p.slot)}</i>${nflLogo(p.nfl) || "<span></span>"}<span class="fx-pn"><span class="fx-pt">${esc(p.name)}</span>${status(p)}</span><b class="${win ? "win" : ""}">${st ? (st === "live" && gameOf(p)?.ball ? `<s class="fx-ball${gameOf(p).rz ? " rz" : ""}" title="${gameOf(p).rz ? "Has the ball in the red zone" : "Has the ball"}"></s>` : `<s class="fx-sd ${st}" title="${st === "pre" ? "To play" : st === "live" ? "Playing now" : "Done"}"></s>`) : ""}${tp && p.proj != null ? `<small>${pts(p.proj)}</small>` : pts(p.pts)}</b></li>`; }).join("")}<li class="tot"><i>TOTAL</i><span></span><span class="fx-pn"><span class="fx-pt">${x && !x.final ? `proj ${pts(x.exp)}` : ""}</span></span><b>${pts(t?.points)}</b></li></ol>`; };
 
   const sparkline = (o) => {
     const wk = (data.weekly || []), mine = wk.filter((x) => x.owner === o).sort((a, b) => a.week - b.week);
@@ -395,7 +395,7 @@
       return { id: m.id, card, mine: mine(m), full: `<div class="fx-mu open${m.final ? " final" : ""}${mine(m) ? " mine" : ""}" data-fxmu="${m.id}">
         <div class="fx-row">${sideHtml(L, Rt, "a", oL)}<span class="fx-vs">${m.final ? "FINAL" : "VS"}</span>${sideHtml(Rt, L, "h", oR)}</div>
         ${h ? `<div class="fx-ctx"><small>ALL TIME</small><span class="fx-chips">${h2hLine(h, m.id)}</span></div>` : ""}${swing({ ...m, away: L, home: Rt })}${wL != null ? `<div class="fx-ctx"><small>WIN CHANCE</small><div class="fx-wp" title="From live points and projections for players still to play"><b>${esc(L?.owner)} ${pct(wL)}</b><span><i style="width:${(wL * 100).toFixed(1)}%"></i></span><b>${pct(1 - wL)} ${esc(Rt?.owner)}</b></div></div>` : ""}
-        <div class="fx-lus">${lineup(L, Rt, oL)}${lineup(Rt, L, oR)}</div><p class="fx-note fx-sdkey"><span><s class="fx-sd done"></s>done</span><span><s class="fx-sd live"></s>playing</span><span><s class="fx-sd pre"></s>to play (projection)</span></p>
+        <div class="fx-lus">${lineup(L, Rt, oL)}${lineup(Rt, L, oR)}</div><p class="fx-note fx-sdkey"><span><s class="fx-sd done"></s>done</span><span><s class="fx-sd live"></s>playing</span><span><s class="fx-ball"></s>has the ball</span><span><s class="fx-sd pre"></s>to play (projection)</span></p>
       </div>` };
     });
     // Tap a card: the full breakdown opens in a pop-up.

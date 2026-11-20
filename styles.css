@@ -10389,11 +10389,11 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-sd.live { background: var(--neon-cyan); box-shadow: 0 0 4px var(--neon-cyan); }
 .fx-sd.pre { border: 1px solid var(--text-dim); }
 .fx-lus .fx-lu:last-child li > b { display: flex; flex-direction: row-reverse; justify-content: flex-end; align-items: center; }
-.fx-lus .fx-lu:last-child li > b .fx-sd { margin: 0 0 0 3px; }
+.fx-lus .fx-lu:last-child li > b .fx-sd, .fx-lus .fx-lu:last-child li > b .fx-ball { margin: 0 0 0 3px; }
 .fx-lu li.tot { margin-top: 3px; padding-top: 5px; border-top: 1px solid var(--card-border); }
 .fx-lu li.tot .fx-pt { color: var(--text-dim); font-size: 10.5px; }
 .fx-lu li.tot b { color: #fff; font-size: 9px; }
-.fx-sdkey { display: flex; justify-content: center; gap: 14px; }
+.fx-sdkey { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; }
 .fx-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .fx-chip { padding: 2px 7px; border-radius: 10px; border: 1px solid var(--card-border); font-size: 11px; line-height: 1.5; white-space: nowrap; }
 .fx-mucard .fx-side em { display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -10432,3 +10432,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-chip.tap { cursor: pointer; }
 .fx-chip.on { border-color: rgba(var(--neon-cyan-rgb), .6); background: rgba(var(--neon-cyan-rgb), .08); }
 .fx-chipt { flex-basis: 100%; }
+/* Matchup pop-up: a small football on players whose team has the ball (pink in the red zone). */
+.fx-ball { flex: none; display: inline-block; width: 11px; height: 7px; margin-right: 3px; text-decoration: none; border-radius: 50%; background: var(--neon-orange); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35); position: relative; vertical-align: 1px; }
+.fx-ball::after { content: ""; position: absolute; left: 3px; right: 3px; top: 3px; height: 1px; background: rgba(255, 255, 255, .85); }
+.fx-ball.rz { background: var(--neon-pink); box-shadow: 0 0 4px var(--neon-pink); }
