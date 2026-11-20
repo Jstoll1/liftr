@@ -297,34 +297,53 @@
     </ul></div>${rg.length ? `<div class="fx-sec"><span class="fx-k2">BENCH REGRET · SEASON</span><ul class="fx-aw">${rg.slice(0, 5).map((x, i) => `<li><small>${i + 1}</small>${owner(x.owner)}<span>${pts(x.season)} pts left${x.worst ? ` · worst wk ${x.worst.week} (${pts(x.worst.left)})` : ""}</span></li>`).join("")}</ul></div>` : ""}`;
   };
 
+  let fullById = {};
+  const openMu = (id) => {
+    document.getElementById("fx-mupop")?.remove();
+    const m = document.createElement("div");
+    m.id = "fx-mupop"; m.className = "fx-team"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Matchup");
+    m.innerHTML = `<div class="fx-tcard fx-mucard" data-id="${id}"><div class="fx-thead"><span class="fx-k2">WEEK ${esc(data.live?.week || "")} MATCHUP</span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-popbody">${fullById[id] || ""}</div></div>`;
+    m.addEventListener("click", (e) => {
+      if (e.target === m || e.target.closest("[data-fxx]")) return m.remove();
+      const side = e.target.closest("[data-fxteam]");
+      if (side) { m.remove(); insOpen = null; openTeam(side.dataset.fxteam); }
+    });
+    document.body.appendChild(m);
+  };
   function paint() {
     if (!data) { root.innerHTML = `<div class="fx-head"><span class="fx-k">FANTASY</span></div><p class="fx-note">Loading the league…</p>`; return; }
     const lw = data.live, week = lw?.week || data.weeksPlayed + 1;
     const anyLive = Object.values(nfl).some((g) => g.state === "in");
     // The signed-in owner's matchup first, marked as theirs.
     const mine = (m) => m.home?.owner === me() || m.away?.owner === me();
-    const games = [...(lw?.matchups || [])].sort((a, b) => mine(b) - mine(a)).map((m) => {
-      const isOpen = open.has(m.id), oa = outlook(m.away), oh = outlook(m.home);
+    const cards = [...(lw?.matchups || [])].sort((a, b) => mine(b) - mine(a)).map((m) => {
+      const isOpen = true, oa = outlook(m.away), oh = outlook(m.home);
       const wp = m.final ? null : phi((oa.exp - oh.exp) / Math.sqrt(oa.sd ** 2 + oh.sd ** 2));
       const h = data.h2h?.[`${m.away?.owner}|${m.home?.owner}`];
       // Closed: a small scorebug card, two owners and their scores, the
       // leader bright, a thin win-chance bar. Open: the full matchup.
-      if (!isOpen) {
+      {
         // Yours on the left; each row shows the projected final beside the
         // live score; the bar splits in the two owners' colours.
         const flip = m.home?.owner === me(), A = flip ? m.home : m.away, B = flip ? m.away : m.home, pa = flip ? oh : oa, pb = flip ? oa : oh, w = wp == null ? null : flip ? 1 - wp : wp;
         const row = (t, o, x) => `<span class="fx-cr${(t?.points || 0) > (o?.points || 0) ? " lead" : ""}${t?.owner === me() ? " me" : ""}">${badge(t)}<b>${esc(t?.owner || "")}</b><em>${pts(t?.points)}</em>${m.final ? "" : `<small title="Projected final">(${Math.round(x.exp)})</small>`}</span>`;
-        return `<div class="fx-card-mu${mine(m) ? " mine" : ""}${m.final ? " final" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-expanded="false" aria-label="${esc(A?.owner)} against ${esc(B?.owner)}">
+        var card = `<div class="fx-card-mu${mine(m) ? " mine" : ""}${m.final ? " final" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-haspopup="dialog" aria-label="${esc(A?.owner)} against ${esc(B?.owner)}">
           ${mine(m) ? `<span class="fx-cmk">YOUR MATCHUP</span>` : m.final ? `<span class="fx-cmk dim">FINAL</span>` : ""}${row(A, B, pa)}${row(B, A, pb)}
           ${w != null ? `<span class="fx-cbar" title="Win chance: ${esc(A?.owner)} ${pct(w)}, ${esc(B?.owner)} ${pct(1 - w)}"><i style="width:${(w * 100).toFixed(1)}%"></i></span>` : ""}
         </div>`;
       }
-      return `${mine(m) ? `<span class="fx-k2 fx-mine-k">YOUR MATCHUP</span>` : ""}<div class="fx-mu${isOpen ? " open" : ""}${m.final ? " final" : ""}${mine(m) ? " mine" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-expanded="${isOpen}">
+      if (!isOpen) return { card, full: "", mine: mine(m) };
+      return { id: m.id, card, mine: mine(m), full: `<div class="fx-mu${isOpen ? " open" : ""}${m.final ? " final" : ""}${mine(m) ? " mine" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-expanded="${isOpen}">
         <div class="fx-row">${sideHtml(m.away, m.home, "a", oa)}<span class="fx-vs">${m.final ? "FINAL" : "VS"}</span>${sideHtml(m.home, m.away, "h", oh)}</div>
         ${isOpen ? `${h ? `<div class="fx-ctx"><small>ALL TIME</small><span>${h2hLine(h)}</span></div>` : ""}${swing(m)}${wp != null ? `<div class="fx-ctx"><small>WIN CHANCE</small><div class="fx-wp" title="From live points and projections for players still to play"><b>${pct(wp)}</b><span><i style="width:${(wp * 100).toFixed(1)}%"></i></span><b>${pct(1 - wp)}</b></div></div>` : ""}` : ""}
         ${isOpen ? `<div class="fx-lus">${lineup(m.away)}${lineup(m.home)}</div><p class="fx-note">Grey number = projection for a player still to play.</p>` : ""}
-      </div>`;
-    }).join("");
+      </div>` };
+    });
+    // Tap a card: the full breakdown opens in a pop-up.
+    const games = cards.map((g) => g.card).join("");
+    fullById = Object.fromEntries(cards.map((g) => [g.id, g.full]));
+    const pop = document.querySelector("#fx-mupop .fx-tcard");
+    if (pop && fullById[pop.dataset.id]) pop.querySelector(".fx-popbody").innerHTML = fullById[pop.dataset.id];
     root.innerHTML = `
       <div class="fx-head"><span class="fx-k">FANTASY · ${esc(data.year)}</span><span class="fx-wk">${anyLive ? `<i class="fx-dot"></i>LIVE · ` : ""}WEEK ${esc(week)}</span></div>
       ${data.take?.text ? `<button type="button" class="fx-take-btn" data-fxtake="1"><img src="assets/images/chief/chief2-96.webp" alt=""><span class="fx-k2">WEEK ${esc(data.take.week)} RECAP</span><em>from the Chief</em><i>▸</i></button>` : ""}
@@ -355,7 +374,7 @@
     const side = e.target.closest("[data-fxteam]");
     if (side) { e.stopPropagation(); return openTeam(side.dataset.fxteam); }
     const mu = e.target.closest("[data-fxmu]");
-    if (mu) { const id = Number(mu.dataset.fxmu); open.has(id) ? open.delete(id) : open.add(id); try { const mm = data.live?.matchups?.find((x) => x.id === id); window.noteUse?.("fantasy-matchup", mm ? `${mm.away?.owner} vs ${mm.home?.owner}` : ""); } catch {} paint(); }
+    if (mu) { const id = Number(mu.dataset.fxmu); openMu(id); try { const mm = data.live?.matchups?.find((x) => x.id === id); window.noteUse?.("fantasy-matchup", mm ? `${mm.away?.owner} vs ${mm.home?.owner}` : ""); } catch {} paint(); }
   });
   root.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.closest("[data-fxmu],[data-fxo]")) { e.preventDefault(); e.target.click(); } });
 
