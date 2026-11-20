@@ -71,9 +71,13 @@
   const sideHtml = (t, other, k, o) => {
     const lead = (t?.points || 0) > (other?.points || 0);
     const tp = o && (o.left || o.now) ? `<span class="fx-tp">${o.now ? `${o.now} live` : ""}${o.now && o.left ? " · " : ""}${o.left ? `${o.left} to play` : ""}</span>` : "";
-    return `<span class="fx-side ${k}${lead ? " lead" : ""}${t?.owner === me() ? " me" : ""}"><span class="fx-tlink" data-fxteam="${esc(t?.owner || "")}" role="button" aria-label="Open ${esc(t?.owner || "")}'s team">${badge(t)}</span><span class="fx-nm"><b>${esc(t?.owner || t?.name || "")}</b><small>${t?.record ? `${esc(t.record)} · ` : ""}${esc(t?.name || "")}</small>${tp}</span><em>${pts(t?.points)}</em></span>`;
+    return `<span class="fx-side ${k}${lead ? " lead" : ""}${t?.owner === me() ? " me" : ""}"><span class="fx-tlink" data-fxteam="${esc(t?.owner || "")}" role="button" aria-label="Open ${esc(t?.owner || "")}'s team">${badge(t)}</span><span class="fx-nm"><b>${esc(t?.owner || t?.name || "")}</b><small>${t?.record ? `${esc(t.record)} · ` : ""}${esc(t?.name || "")}</small>${tp}</span><em>${pts(t?.points)}${o && !o.final ? `<small>proj ${pts(o.exp)}</small>` : ""}</em></span>`;
   };
-  const lineup = (t) => `<ol class="fx-lu">${(t?.starters || []).map((p) => { const tp = toPlay(p), lv = live(p); return `<li class="${tp ? "tp" : ""}${lv ? " fx-on" : ""}"><i>${esc(p.slot)}</i>${nflLogo(p.nfl) || "<span></span>"}<span class="fx-pn"><span class="fx-pt">${esc(p.name)}</span>${status(p)}</span><b class="${p.pts > 0 ? "on" : ""}">${tp && p.proj != null ? `<small>${pts(p.proj)}</small>` : pts(p.pts)}</b></li>`; }).join("")}</ol>`;
+  // A starter's state: done, live, or still to play.
+  const stOf = (p) => { const g = gameOf(p); return !g ? "" : g.state === "in" ? "live" : g.state === "post" || g.done ? "done" : "pre"; };
+  // Each starter with a dot for done/live/to play; the higher score in each
+  // slot row is lit; a totals row closes the column.
+  const lineup = (t, o, x) => { const os = o?.starters || []; return `<ol class="fx-lu">${(t?.starters || []).map((p, i) => { const tp = toPlay(p), lv = live(p), q = os[i], st = stOf(p); const win = q && !tp && toPlay(q) !== true && (p.pts || 0) > (q.pts || 0); return `<li class="${tp ? "tp" : ""}${lv ? " fx-on" : ""}"><i>${esc(p.slot)}</i>${nflLogo(p.nfl) || "<span></span>"}<span class="fx-pn"><span class="fx-pt">${esc(p.name)}</span>${status(p)}</span><b class="${win ? "win" : ""}">${st ? `<s class="fx-sd ${st}" title="${st === "pre" ? "To play" : st === "live" ? "Playing now" : "Done"}"></s>` : ""}${tp && p.proj != null ? `<small>${pts(p.proj)}</small>` : pts(p.pts)}</b></li>`; }).join("")}<li class="tot"><i>TOTAL</i><span></span><span class="fx-pn"><span class="fx-pt">${x && !x.final ? `proj ${pts(x.exp)}` : ""}</span></span><b>${pts(t?.points)}</b></li></ol>`; };
 
   const sparkline = (o) => {
     const wk = (data.weekly || []), mine = wk.filter((x) => x.owner === o).sort((a, b) => a.week - b.week);
@@ -230,7 +234,7 @@
     for (const c of h.championshipGames || []) parts.push(`<b>${esc(c.winner)}</b> won the ${esc(c.year)} final`);
     const lm = String(h.lastMeeting || "").match(/^(\d{4}) week (\d+): (\S+) ([\d.]+)-([\d.]+)/);
     if (lm) parts.push(`last: <b>${esc(lm[3])}</b> won ${pts(lm[4])}–${pts(lm[5])} (${lm[1]}, wk ${lm[2]})`);
-    return parts.join(" · ");
+    return parts.map((x) => `<span class="fx-chip">${x}</span>`).join("");
   };
   // The players still to play who will decide a matchup: each side's
   // biggest projection not yet in the books.
@@ -333,10 +337,12 @@
         </div>`;
       }
       if (!isOpen) return { card, full: "", mine: mine(m) };
-      return { id: m.id, card, mine: mine(m), full: `<div class="fx-mu${isOpen ? " open" : ""}${m.final ? " final" : ""}${mine(m) ? " mine" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-expanded="${isOpen}">
-        <div class="fx-row">${sideHtml(m.away, m.home, "a", oa)}<span class="fx-vs">${m.final ? "FINAL" : "VS"}</span>${sideHtml(m.home, m.away, "h", oh)}</div>
-        ${isOpen ? `${h ? `<div class="fx-ctx"><small>ALL TIME</small><span>${h2hLine(h)}</span></div>` : ""}${swing(m)}${wp != null ? `<div class="fx-ctx"><small>WIN CHANCE</small><div class="fx-wp" title="From live points and projections for players still to play"><b>${pct(wp)}</b><span><i style="width:${(wp * 100).toFixed(1)}%"></i></span><b>${pct(1 - wp)}</b></div></div>` : ""}` : ""}
-        ${isOpen ? `<div class="fx-lus">${lineup(m.away)}${lineup(m.home)}</div><p class="fx-note">Grey number = projection for a player still to play.</p>` : ""}
+      const fl = m.home?.owner === me(), L = fl ? m.home : m.away, Rt = fl ? m.away : m.home, oL = fl ? oh : oa, oR = fl ? oa : oh, wL = wp == null ? null : fl ? 1 - wp : wp;
+      if (m.final) { oL.final = oR.final = true; }
+      return { id: m.id, card, mine: mine(m), full: `<div class="fx-mu open${m.final ? " final" : ""}${mine(m) ? " mine" : ""}" data-fxmu="${m.id}">
+        <div class="fx-row">${sideHtml(L, Rt, "a", oL)}<span class="fx-vs">${m.final ? "FINAL" : "VS"}</span>${sideHtml(Rt, L, "h", oR)}</div>
+        ${h ? `<div class="fx-ctx"><small>ALL TIME</small><span class="fx-chips">${h2hLine(h)}</span></div>` : ""}${swing({ ...m, away: L, home: Rt })}${wL != null ? `<div class="fx-ctx"><small>WIN CHANCE</small><div class="fx-wp" title="From live points and projections for players still to play"><b>${esc(L?.owner)} ${pct(wL)}</b><span><i style="width:${(wL * 100).toFixed(1)}%"></i></span><b>${pct(1 - wL)} ${esc(Rt?.owner)}</b></div></div>` : ""}
+        <div class="fx-lus">${lineup(L, Rt, oL)}${lineup(Rt, L, oR)}</div><p class="fx-note fx-sdkey"><span><s class="fx-sd done"></s>done</span><span><s class="fx-sd live"></s>playing</span><span><s class="fx-sd pre"></s>to play (projection)</span></p>
       </div>` };
     });
     // Tap a card: the full breakdown opens in a pop-up.

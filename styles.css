@@ -10177,7 +10177,8 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-lu span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fx-lu u { text-decoration: none; margin-left: 3px; font-size: 9px; color: var(--neon-pink); }
 .fx-lu b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8px; color: rgba(255, 255, 255, .4); }
-.fx-lu b.on { color: var(--neon-green); }
+.fx-lu b { color: rgba(255, 255, 255, .8); }
+.fx-lu b.win { color: var(--neon-green); }
 .fx-nfl { width: 14px; height: 14px; object-fit: contain; }
 .fx-sth { display: grid; grid-template-columns: 1fr 44px 56px; gap: 6px; margin-top: 12px; padding-bottom: 5px; border-bottom: 1px solid var(--card-border); font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text-dim); }
 .fx-sth span:not(:first-child) { text-align: right; }
@@ -10188,10 +10189,10 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-pf { color: rgba(255, 255, 255, .6); }
 .fx-note { margin: 8px 0 2px; font-size: 10.5px; color: var(--text-dim); }
 .fx-tp { font-size: 9.5px; color: var(--neon-cyan); white-space: nowrap; }
-.fx-wp { display: grid; grid-template-columns: 34px 1fr 34px; align-items: center; gap: 6px; margin-top: 7px; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); }
+.fx-wp { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; margin-top: 7px; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); }
 .fx-wp b { font-weight: normal; } .fx-wp b:last-child { text-align: right; }
-.fx-wp span { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .12); overflow: hidden; }
-.fx-wp i { display: block; height: 100%; background: var(--neon-cyan); }
+.fx-wp span { display: flex; height: 4px; border-radius: 2px; background: var(--neon-purple); overflow: hidden; }
+.fx-wp i { display: block; height: 100%; background: var(--neon-cyan); border-right: 2px solid var(--card-bg); }
 .fx-h2h { margin: 8px 0 0; font-size: 11px; color: var(--text-dim); }
 .fx-lu li.tp b { color: var(--text-dim); } .fx-lu li.tp b small { font-family: inherit; font-size: inherit; }
 .fx-lu li.fx-on span { color: var(--neon-cyan); }
@@ -10380,3 +10381,18 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-mucard .fx-thead { align-items: center; }
 .fx-mucard .fx-thead .fx-k2 { margin: 0; }
 .fx-mucard .fx-mu { border: 0; padding: 0; margin: 10px 0 0; background: none; box-shadow: none; cursor: default; }
+/* Matchup pop-up: state dots, slot winners, totals, all-time chips. */
+.fx-sd { display: inline-block; width: 5px; height: 5px; margin-right: 3px; border-radius: 50%; vertical-align: 1px; text-decoration: none; }
+.fx-sd.done { background: rgba(255, 255, 255, .45); }
+.fx-sd.live { background: var(--neon-cyan); box-shadow: 0 0 4px var(--neon-cyan); }
+.fx-sd.pre { border: 1px solid var(--text-dim); }
+.fx-lus .fx-lu:last-child li > b { display: flex; flex-direction: row-reverse; justify-content: flex-end; align-items: center; }
+.fx-lus .fx-lu:last-child li > b .fx-sd { margin: 0 0 0 3px; }
+.fx-lu li.tot { margin-top: 3px; padding-top: 5px; border-top: 1px solid var(--card-border); }
+.fx-lu li.tot .fx-pt { color: var(--text-dim); font-size: 10.5px; }
+.fx-lu li.tot b { color: #fff; font-size: 9px; }
+.fx-sdkey { display: flex; justify-content: center; gap: 14px; }
+.fx-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.fx-chip { padding: 2px 7px; border-radius: 10px; border: 1px solid var(--card-border); font-size: 11px; line-height: 1.5; white-space: nowrap; }
+.fx-mucard .fx-side em { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.fx-side em small { font-family: system-ui, sans-serif; font-size: 10px; color: var(--text-dim); white-space: nowrap; }
