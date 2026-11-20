@@ -10084,7 +10084,11 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 
 /* ==== RETRO: live now (top of Scores while games are in progress) ==== */
 #since-line.lv-now-on { display: flex; flex-direction: column; gap: 0; }
-#since-line.lv-now-on .lvn-h { margin-bottom: 6px; }
+#since-line.lv-now-on .lvn-h { margin-bottom: 4px; }
+/* Tight: rows sit close to the box edge, the last one without a bottom gap. */
+#since-line.lv-now-on { padding-bottom: 6px; }
+#since-line.lv-now-on .lvn-row { padding: 7px 2px; gap: 4px; }
+#since-line.lv-now-on .lvn-row:last-child { padding-bottom: 2px; }
 .lvn-h { display: flex; align-items: center; gap: 6px; }
 .lvn-h em { font-style: normal; color: var(--text-dim); }
 .lvn-h .lvn-imp { margin-left: auto; }
