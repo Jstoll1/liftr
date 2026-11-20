@@ -10319,3 +10319,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 /* NFL logos on navy: ESPN's dark-background versions, plus a soft light
    halo so a dark mark (Bears, Texans, Saints) still reads. */
 .fx-nfl { filter: drop-shadow(0 0 1.5px rgba(255, 255, 255, .55)) drop-shadow(0 0 3px rgba(255, 255, 255, .2)); }
+/* Matchups closed: owner and score only; tap for everything else. */
+.fx-mu:not(.open) .fx-nm small, .fx-mu:not(.open) .fx-tp { display: none; }
+.fx-mu:not(.open) { padding: 8px 2px; }
+.fx-mu:not(.open)::after { content: "▾"; display: block; text-align: center; margin-top: -2px; font-size: 9px; color: var(--text-dim); line-height: 1; }
