@@ -59,6 +59,7 @@ export function buildCurrentSeason(league, ownerMap, year, now = Date.now()) {
     closestGames: [...margins].sort((a, b) => a.margin - b.margin).slice(0, 3).map((x) => `${x.winner} over ${x.loser} by ${x.margin} (${x.score}) in ${year} week ${x.week}`),
   };
   return { year, exportedAt: new Date(now).toISOString(), regularSeasonWeeks: reg, weeksPlayed, standings, results, records,
+    rosters: buildRosters(league, ownerOf, year),
     weekly: scores.map((x) => ({ week: x.week, owner: x.owner, points: x.points, opponent: x.opponent })),
     remaining,
     playoffTeams: Number(league.settings?.scheduleSettings?.playoffTeamCount) || 6,
@@ -72,6 +73,27 @@ const SLOT = { 0: "QB", 2: "RB", 4: "WR", 6: "TE", 16: "D/ST", 17: "K", 23: "FLE
 const POS = { 1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "D/ST" };
 const SLOT_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "D/ST", "K"];
 const NFL = { 1: "ATL", 2: "BUF", 3: "CHI", 4: "CIN", 5: "CLE", 6: "DAL", 7: "DEN", 8: "DET", 9: "GB", 10: "TEN", 11: "IND", 12: "KC", 13: "LV", 14: "LAR", 15: "MIA", 16: "MIN", 17: "NE", 18: "NO", 19: "NYG", 20: "NYJ", 21: "PHI", 22: "ARI", 23: "PIT", 24: "LAC", 25: "SF", 26: "SEA", 27: "TB", 28: "WSH", 29: "CAR", 30: "JAX", 33: "BAL", 34: "HOU" };
+
+// Every team's roster for the season: each player's season points, average
+// a game, ESPN's full-season projection, position, NFL team, injury and
+// lineup slot, best first. From mRoster on the season read.
+export function buildRosters(league, ownerOf, year) {
+  const out = {};
+  for (const t of league.teams || []) {
+    const o = ownerOf[t.id]; if (!o) continue;
+    out[o] = (t.roster?.entries || []).map((e) => {
+      const p = e.playerPoolEntry?.player || {};
+      const stat = (src) => (p.stats || []).find((x) => x.statSourceId === src && x.statSplitTypeId === 0 && (!x.seasonId || Number(x.seasonId) === Number(year)));
+      const season = stat(0), proj = stat(1);
+      return { id: p.id || null, name: p.fullName || "Player", pos: POS[p.defaultPositionId] || "", slot: SLOT[e.lineupSlotId] || "BE", nfl: NFL[p.proTeamId] || null,
+        injury: p.injuryStatus && p.injuryStatus !== "ACTIVE" ? p.injuryStatus : null,
+        season: Math.round((season?.appliedTotal || 0) * 10) / 10, avg: Math.round((season?.appliedAverage || 0) * 10) / 10,
+        proj: proj?.appliedTotal != null ? Math.round(proj.appliedTotal) : null,
+        acquired: e.acquisitionType || null };
+    }).sort((a, b) => b.season - a.season);
+  }
+  return out;
+}
 
 // The most a lineup could have scored: fill the starting slots with the
 // highest scorers eligible for each, rarest slot first (QB, K, D/ST, TE,
@@ -131,7 +153,7 @@ export async function pullCurrentSeason(env, ownerMap, { force = false, now = Da
     if (prev && now - Date.parse(prev.exportedAt) < MAX_AGE) return { skipped: "fresh" };
   }
   const year = new Date(now).getUTCFullYear();
-  const qs = ["mTeam", "mMatchup", "mSettings"].map((v) => `view=${v}`).join("&");
+  const qs = ["mTeam", "mMatchup", "mSettings", "mRoster"].map((v) => `view=${v}`).join("&");
   const url = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${year}/segments/0/leagues/${env.ESPN_LEAGUE_ID}?${qs}`;
   const status = (x) => env.LIFTR_KV.put(STATUS_KEY, JSON.stringify({ at: now, ...x })).catch(() => {});
   const get = (cookies) => fetch(url, { headers: { Accept: "application/json", ...(cookies ? { Cookie: `espn_s2=${env.ESPN_S2}; SWID=${env.ESPN_SWID}` } : {}) } });

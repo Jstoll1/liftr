@@ -300,7 +300,8 @@ const app = {
     // minutes during NFL games, three hours otherwise).
     if (url.pathname === "/fantasy" && request.method === "GET") {
       let cur = await env.LIFTR_KV.get(CURRENT_KEY, "json");
-      if (!cur || Date.now() - Date.parse(cur.exportedAt) > freshFor()) {
+      // An older save (before weekly scores and rosters) is re-pulled at once.
+      if (!cur || !Array.isArray(cur.weekly) || !cur.rosters || Date.now() - Date.parse(cur.exportedAt) > freshFor()) {
         try { await pullCurrentSeason(env, MATCHUPS.espnOwners, { force: true }); cur = await env.LIFTR_KV.get(CURRENT_KEY, "json"); } catch {}
       }
       if (!cur) return json({ error: "No fantasy season yet" }, 503, corsHeaders);
