@@ -60,7 +60,7 @@
   const sideHtml = (t, other, k, o) => {
     const lead = (t?.points || 0) > (other?.points || 0);
     const tp = o && (o.left || o.now) ? `<span class="fx-tp">${o.now ? `${o.now} live` : ""}${o.now && o.left ? " · " : ""}${o.left ? `${o.left} to play` : ""}</span>` : "";
-    return `<span class="fx-side ${k}${lead ? " lead" : ""}${t?.owner === me() ? " me" : ""}">${badge(t)}<span class="fx-nm"><b>${esc(t?.owner || t?.name || "")}</b><small>${t?.record ? `${esc(t.record)} · ` : ""}${esc(t?.name || "")}</small>${tp}</span><em>${pts(t?.points)}</em></span>`;
+    return `<span class="fx-side ${k}${lead ? " lead" : ""}${t?.owner === me() ? " me" : ""}"><span class="fx-tlink" data-fxteam="${esc(t?.owner || "")}" role="button" aria-label="Open ${esc(t?.owner || "")}'s team">${badge(t)}</span><span class="fx-nm"><b>${esc(t?.owner || t?.name || "")}</b><small>${t?.record ? `${esc(t.record)} · ` : ""}${esc(t?.name || "")}</small>${tp}</span><em>${pts(t?.points)}</em></span>`;
   };
   const lineup = (t) => `<ol class="fx-lu">${(t?.starters || []).map((p) => { const tp = toPlay(p), lv = live(p); return `<li class="${tp ? "tp" : ""}${lv ? " lv" : ""}"><i>${esc(p.slot)}</i><span>${esc(p.name)}${p.injury ? `<u>${esc(p.injury === "QUESTIONABLE" ? "Q" : p.injury === "OUT" ? "O" : p.injury === "DOUBTFUL" ? "D" : p.injury[0])}</u>` : ""}</span>${nflLogo(p.nfl)}<b class="${p.pts > 0 ? "on" : ""}">${tp && p.proj != null ? `<small>${pts(p.proj)}</small>` : pts(p.pts)}</b></li>`; }).join("")}</ol>`;
 
@@ -81,12 +81,63 @@
       <div class="fx-facts"><span><small>BEST</small><b>${pts(best.points)}</b><em>wk ${best.week}</em></span><span><small>WORST</small><b>${pts(worst.points)}</b><em>wk ${worst.week}</em></span><span><small>STREAK</small><b>${esc(st.streak?.[o] || "–")}</b></span>${od ? `<span><small>PLAYOFFS</small><b>${pct(od.playoffs)}</b></span>` : ""}${ap ? `<span><small>LUCK</small><b class="${ap.luck > 0 ? "up" : ap.luck < 0 ? "dn" : ""}">${ap.luck > 0 ? "+" : ""}${ap.luck}</b></span>` : ""}${rg ? `<span><small>BENCHED</small><b>${pts(rg.season)}</b></span>` : ""}</div></div>`;
   };
 
+  // The team sheet: a full page over the tab for one owner.
+  const ord = (n) => `${n}${["th", "st", "nd", "rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10 < 4 ? n % 10 : 0]}`;
+  const insights = (o) => {
+    const st = data.stats || {}, ti = st.teams?.[o], ap = st.allPlay?.[o], od = st.odds?.[o], rg = (st.regret || []).find((x) => x.owner === o);
+    const s0 = (data.standings || []).find((r) => r.owner === o) || {}, out = [];
+    if (ti?.ppg) { const d = Math.round((ti.ppg - ti.leagueAvg) * 10) / 10; out.push(`Scoring <b>${pts(ti.ppg)}</b> a game, ${d >= 0 ? `<b class="up">${pts(d)} above</b>` : `<b class="dn">${pts(-d)} below</b>`} the league average.`); }
+    if (ti?.posRank) {
+      const r = Object.entries(ti.posRank).filter(([, n]) => n), best = r.sort((a, b) => a[1] - b[1])[0], worst = [...r].sort((a, b) => b[1] - a[1])[0];
+      if (best && worst && best[0] !== worst[0]) out.push(`Strongest at <b>${esc(best[0])}</b> (${ord(best[1])} in the league), weakest at <b>${esc(worst[0])}</b> (${ord(worst[1])}).`);
+    }
+    if (ti?.topShare >= 0.3 && ti.topTwo?.length === 2) out.push(`Leans on <b>${esc(ti.topTwo[0])}</b> and <b>${esc(ti.topTwo[1])}</b>: ${pct(ti.topShare)} of the roster's points.`);
+    if (ap) out.push(Math.abs(ap.luck) >= 1 ? `${ap.luck > 0 ? "Lucky" : "Unlucky"}: <b>${s0.wins}-${s0.losses}</b> but <b>${ap.apW}-${ap.apL}</b> against the whole league (luck <b class="${ap.luck > 0 ? "up" : "dn"}">${ap.luck > 0 ? "+" : ""}${ap.luck}</b>).` : `Record matches the scoring: <b>${ap.apW}-${ap.apL}</b> against the whole league.`);
+    if (od) out.push(`<b>${pct(od.playoffs)}</b> to make the playoffs, <b>${pct(od.bye)}</b> for a bye, <b class="gold">${pct(od.title)}</b> to win the title.`);
+    if (ti?.sos?.rank && ti.sos.of > 1) { const r = ti.sos.rank; if (r <= 3 || r > ti.sos.of - 3) out.push(`${r <= 3 ? "Tough" : "Soft"} run-in: the ${ord(r <= 3 ? r : ti.sos.of - r + 1)} ${r <= 3 ? "hardest" : "easiest"} remaining schedule (${ti.sos.opponents.map(esc).join(", ")}).`); }
+    if (rg?.season) out.push(`Left <b>${pts(rg.season)}</b> points on the bench${rg.worst ? `, most in week ${rg.worst.week} (${pts(rg.worst.left)})` : ""}.`);
+    return out;
+  };
+  const rosterHtml = (o) => {
+    const r = data.rosters?.[o] || [];
+    if (!r.length) return `<p class="fx-note">The roster shows after the next ESPN pull.</p>`;
+    const order = ["QB", "RB", "WR", "TE", "FLEX", "D/ST", "K"];
+    const starters = r.filter((p) => p.slot !== "BE" && p.slot !== "IR").sort((a, b) => order.indexOf(a.slot) - order.indexOf(b.slot));
+    const bench = r.filter((p) => p.slot === "BE" || p.slot === "IR");
+    const row = (p) => `<li><i>${esc(p.slot === "BE" ? p.pos : p.slot)}</i><span>${esc(p.name)}${p.injury ? `<u>${esc(p.injury === "QUESTIONABLE" ? "Q" : p.injury === "OUT" ? "O" : p.injury === "DOUBTFUL" ? "D" : p.injury === "INJURY_RESERVE" ? "IR" : p.injury[0])}</u>` : ""}</span>${nflLogo(p.nfl)}<b>${pts(p.season)}</b><em>${pts(p.avg)}</em></li>`;
+    return `<div class="fx-rh"><span></span><span>SEASON</span><span>AVG</span></div><ol class="fx-ro">${starters.map(row).join("")}</ol><div class="fx-k2 fx-bench">BENCH</div><ol class="fx-ro bench">${bench.map(row).join("")}</ol>`;
+  };
+  const posBars = (o) => {
+    const ti = data.stats?.teams?.[o]; if (!ti?.posRank) return "";
+    const n = (data.standings || []).length || 10;
+    return `<div class="fx-pos">${Object.entries(ti.posRank).map(([pos, r]) => `<span class="${r <= 3 ? "up" : r > n - 3 ? "dn" : ""}"><small>${esc(pos)}</small><b>${ord(r)}</b></span>`).join("")}</div>`;
+  };
+  function openTeam(o) {
+    if (!data) return;
+    document.getElementById("fx-team")?.remove();
+    const st = data.stats || {}, s0 = (data.standings || []).find((r) => r.owner === o) || {}, t = { ...(data.teams?.[o] || {}), owner: o };
+    const pw = (st.power || []).find((x) => x.owner === o);
+    const m = document.createElement("div");
+    m.id = "fx-team"; m.className = "fx-team"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", `${o}'s team`);
+    m.innerHTML = `<div class="fx-tcard">
+      <div class="fx-thead">${badge(t)}<span class="fx-nm"><b>${esc(t.name || o)}</b><small>${esc(o)}</small></span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div>
+      <div class="fx-facts top"><span><small>RECORD</small><b>${s0.wins ?? 0}-${s0.losses ?? 0}</b><em>${s0.rank ? ord(s0.rank) : ""}</em></span><span><small>POWER</small><b>${pw ? ord(pw.rank) : "–"}</b><em>${pw?.move ? (pw.move > 0 ? `▲${pw.move}` : `▼${-pw.move}`) : ""}</em></span><span><small>PLAYOFFS</small><b>${st.odds?.[o] ? pct(st.odds[o].playoffs) : "–"}</b><em>${st.streak?.[o] || ""}</em></span></div>
+      <div class="fx-k2">INSIGHTS</div><ul class="fx-ins">${insights(o).map((x) => `<li>${x}</li>`).join("")}</ul>
+      <div class="fx-k2">BY POSITION · LEAGUE RANK</div>${posBars(o)}
+      <div class="fx-k2">WEEK BY WEEK</div>${sparkline(o)}<div class="fx-key"><span><i class="k-me"></i>${esc(o)}</span><span><i class="k-avg"></i>League average</span></div>
+      <div class="fx-k2">ROSTER</div>${rosterHtml(o)}
+    </div>`;
+    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest("[data-fxx]")) m.remove(); });
+    document.body.appendChild(m);
+    try { window.noteUse?.("fantasy-team"); } catch {}
+  }
+
   const tables = () => {
     const st = data.stats || {}, line = st.playoffTeams || data.playoffTeams || 6;
     const row = (o, cells, i) => `<div class="fx-st${o === me() ? " me" : ""}${card === o ? " open" : ""}${i === line - 1 && (tab === "standings" || tab === "odds") ? " cut" : ""}" data-fxo="${esc(o)}" role="button" tabindex="0"><span class="fx-rk">${cells.rank}</span>${badge({ ...(data.teams?.[o] || {}), owner: o })}<span class="fx-nm">${owner(o)}<small>${esc(cells.sub || "")}</small></span>${cells.cols.map((c) => `<span class="fx-c${c.cls ? ` ${c.cls}` : ""}">${c.v}</span>`).join("")}</div>${card === o ? ownerCard(o) : ""}`;
     const sets = {
       standings: { head: ["W-L", "PF", "STRK"], rows: (data.standings || []).map((r, i) => row(r.owner, { rank: r.rank, sub: data.teams?.[r.owner]?.name, cols: [{ v: `${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}` }, { v: pts(r.pointsFor), cls: "dim" }, { v: esc(st.streak?.[r.owner] || "–"), cls: /^W/.test(st.streak?.[r.owner]) ? "up" : /^L/.test(st.streak?.[r.owner]) ? "dn" : "" }] }, i)) },
-      power: { head: ["MOVE", "", ""], rows: (st.power || []).map((r, i) => row(r.owner, { rank: r.rank, sub: data.teams?.[r.owner]?.name, cols: [{ v: r.move > 0 ? `▲${r.move}` : r.move < 0 ? `▼${-r.move}` : "–", cls: r.move > 0 ? "up" : r.move < 0 ? "dn" : "dim" }, { v: "" }, { v: "" }] }, i)) },
+      power: { head: ["MOVE", "PPG", "ALL-PL"], rows: (st.power || []).map((r, i) => { const s0 = (data.standings || []).find((x) => x.owner === r.owner) || {}; return row(r.owner, { rank: r.rank, sub: `${s0.wins ?? 0}-${s0.losses ?? 0} · ${data.teams?.[r.owner]?.name || ""}`, cols: [{ v: r.move > 0 ? `▲${r.move}` : r.move < 0 ? `▼${-r.move}` : "–", cls: r.move > 0 ? "up" : r.move < 0 ? "dn" : "dim" }, { v: pts(st.teams?.[r.owner]?.ppg), cls: "dim" }, { v: pct(st.allPlay?.[r.owner]?.apPct) }] }, i); }) },
       odds: { head: ["PLAYOFF", "BYE", "TITLE"], rows: Object.entries(st.odds || {}).sort((a, b) => b[1].playoffs - a[1].playoffs || b[1].title - a[1].title).map(([o, x], i) => row(o, { rank: i + 1, sub: x.avgSeed ? `avg seed ${x.avgSeed}` : "", cols: [{ v: pct(x.playoffs), cls: x.playoffs >= 0.5 ? "up" : "" }, { v: pct(x.bye), cls: "dim" }, { v: pct(x.title), cls: x.title >= 0.2 ? "gold" : "" }] }, i)) },
       luck: { head: ["W-L", "ALL-PL", "LUCK"], rows: Object.values(st.allPlay || {}).sort((a, b) => b.luck - a.luck).map((x, i) => { const s = (data.standings || []).find((r) => r.owner === x.owner) || {}; return row(x.owner, { rank: i + 1, sub: x.luck > 0.9 ? "lucky" : x.luck < -0.9 ? "unlucky" : "", cols: [{ v: `${s.wins ?? 0}-${s.losses ?? 0}` }, { v: `${x.apW}-${x.apL}`, cls: "dim" }, { v: `${x.luck > 0 ? "+" : ""}${x.luck}`, cls: x.luck > 0 ? "up" : x.luck < 0 ? "dn" : "" }] }, i); }) },
     };
@@ -94,7 +145,7 @@
     const why = { standings: `Top ${line} make the playoffs.`, power: "All-play record, points per game and the last three weeks.", odds: `The rest of the season simulated 4,000 times. Top ${line} make it.`, luck: "All-play: your score against every team each week. Luck is real wins minus all-play wins." }[tab];
     return `<div class="fx-tabs" role="tablist">${[["standings", "STANDINGS"], ["power", "POWER"], ["odds", "ODDS"], ["luck", "LUCK"]].map(([k, l]) => `<button type="button" role="tab" aria-selected="${tab === k}" class="${tab === k ? "on" : ""}" data-fxtab="${k}">${l}</button>`).join("")}</div>
       <div class="fx-sth"><span></span>${set.head.map((h) => `<span>${h}</span>`).join("")}</div>
-      <div class="fx-sts">${set.rows.join("")}</div><p class="fx-note">${esc(why)} Tap an owner for their season.</p>`;
+      <div class="fx-sts">${set.rows.join("")}</div><p class="fx-note">${esc(why)} Tap an owner for their team.</p>`;
   };
 
   const awards = () => {
@@ -137,7 +188,9 @@
     const t = e.target.closest("[data-fxtab]");
     if (t) { tab = t.dataset.fxtab; card = null; try { window.noteUse?.("fantasy-tab", tab); } catch {} return paint(); }
     const o = e.target.closest("[data-fxo]");
-    if (o) { card = card === o.dataset.fxo ? null : o.dataset.fxo; try { window.noteUse?.("fantasy-owner"); } catch {} return paint(); }
+    if (o) return openTeam(o.dataset.fxo);
+    const side = e.target.closest("[data-fxteam]");
+    if (side) { e.stopPropagation(); return openTeam(side.dataset.fxteam); }
     const mu = e.target.closest("[data-fxmu]");
     if (mu) { const id = Number(mu.dataset.fxmu); open.has(id) ? open.delete(id) : open.add(id); try { window.noteUse?.("fantasy-matchup"); } catch {} paint(); }
   });

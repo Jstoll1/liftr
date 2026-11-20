@@ -57,3 +57,13 @@ test("fantasyStats: one call with everything and streaks", () => {
   assert.equal(st.streak.A, "W2"); assert.equal(st.streak.D, "L2");
   assert.ok(st.odds && st.power && st.awards);
 });
+
+test("teamInsights: position ranks, top-two share and remaining schedule", async () => {
+  const { teamInsights } = await import("../src/fantasy-stats.js");
+  const rosters = { A: [{ name: "QbA", pos: "QB", season: 250 }, { name: "RbA", pos: "RB", season: 150 }], B: [{ name: "QbB", pos: "QB", season: 200 }, { name: "RbB", pos: "RB", season: 180 }], C: [], D: [] };
+  const t = teamInsights(rosters, weekly, [{ week: 3, home: "A", away: "D" }, { week: 3, home: "B", away: "C" }], standings);
+  assert.equal(t.A.posRank.QB, 1); assert.equal(t.B.posRank.RB, 1);
+  assert.equal(t.A.topShare, 1);
+  assert.equal(t.B.sos.opponents[0], "C");
+  assert.ok(t.B.sos.avgOpp > t.A.sos.avgOpp, "C scores more than D");
+});

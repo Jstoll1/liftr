@@ -124,6 +124,38 @@ export function regretTotals(regret) {
   return Object.values(tot).sort((a, b) => b.season - a.season);
 }
 
+// Team insights from the rosters and schedule: each position's points
+// (QB1, RB1-2, WR1-2, TE1, K, D/ST by season points) ranked against the
+// league, how much of the roster's points come from its top two players,
+// and how hard the remaining schedule is (opponents' points a game).
+export function teamInsights(rosters, weekly, remaining, standings) {
+  const need = { QB: 1, RB: 2, WR: 2, TE: 1, K: 1, "D/ST": 1 };
+  const owners = (standings || []).map((s) => s.owner);
+  const posPts = {};
+  for (const o of owners) {
+    const roster = rosters?.[o] || [];
+    posPts[o] = Object.fromEntries(Object.entries(need).map(([pos, n]) => [pos, r1(roster.filter((p) => p.pos === pos).slice(0, n).reduce((t, p) => t + (p.season || 0), 0))]));
+  }
+  const ppg = {};
+  for (const o of owners) { const m = (weekly || []).filter((x) => x.owner === o); ppg[o] = m.length ? m.reduce((t, x) => t + x.points, 0) / m.length : 0; }
+  const lg = owners.length ? owners.reduce((t, o) => t + ppg[o], 0) / owners.length : 0;
+  const sos = {};
+  for (const o of owners) {
+    const opps = (remaining || []).filter((g) => g.home === o || g.away === o).map((g) => (g.home === o ? g.away : g.home));
+    sos[o] = { opponents: opps, avgOpp: opps.length ? r1(opps.reduce((t, x) => t + (ppg[x] || lg), 0) / opps.length) : null };
+  }
+  const withSos = owners.filter((o) => sos[o].avgOpp != null).sort((a, b) => sos[b].avgOpp - sos[a].avgOpp);
+  const out = {};
+  for (const o of owners) {
+    const posRank = {};
+    for (const pos of Object.keys(need)) posRank[pos] = 1 + owners.filter((x) => posPts[x][pos] > posPts[o][pos]).length;
+    const roster = rosters?.[o] || [], total = roster.reduce((t, p) => t + (p.season || 0), 0);
+    out[o] = { posPts: posPts[o], posRank, topTwo: roster.slice(0, 2).map((p) => p.name), topShare: total ? r3(roster.slice(0, 2).reduce((t, p) => t + p.season, 0) / total) : null,
+      ppg: r1(ppg[o]), leagueAvg: r1(lg), sos: { ...sos[o], rank: withSos.indexOf(o) + 1 || null, of: withSos.length } };
+  }
+  return out;
+}
+
 // Everything for the page, in one call.
 export function fantasyStats(cur) {
   const standings = cur?.standings || [], weekly = cur?.weekly || [];
@@ -133,5 +165,5 @@ export function fantasyStats(cur) {
   // Streak: the current run of wins or losses.
   const streak = {};
   for (const s of standings) { const mine = weekly.filter((x) => x.owner === s.owner).sort((a, b) => b.week - a.week); let n = 0, kind = null; for (const g of mine) { const o = weekly.find((y) => y.week === g.week && y.owner === g.opponent); const r = !o ? null : g.points > o.points ? "W" : g.points < o.points ? "L" : "T"; if (!kind) kind = r; if (r !== kind) break; n++; } streak[s.owner] = kind ? `${kind}${n}` : ""; }
-  return { allPlay: ap, power: powerRankings(weekly, standings), odds: playoffOdds(weekly, standings, cur.remaining || [], cur.playoffTeams || 6), awards: weekAwards(weekly, last), regret: regretTotals(cur.regret), streak, playoffTeams: cur.playoffTeams || 6 };
+  return { teams: teamInsights(cur.rosters || {}, weekly, cur.remaining || [], standings), allPlay: ap, power: powerRankings(weekly, standings), odds: playoffOdds(weekly, standings, cur.remaining || [], cur.playoffTeams || 6), awards: weekAwards(weekly, last), regret: regretTotals(cur.regret), streak, playoffTeams: cur.playoffTeams || 6 };
 }
