@@ -10316,3 +10316,6 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-lus { column-gap: 0; }
 .fx-lus .fx-lu:first-child { padding-right: 10px; border-right: 1px solid var(--card-border); }
 .fx-lus .fx-lu:last-child { padding-left: 10px; }
+/* NFL logos on navy: ESPN's dark-background versions, plus a soft light
+   halo so a dark mark (Bears, Texans, Saints) still reads. */
+.fx-nfl { filter: drop-shadow(0 0 1.5px rgba(255, 255, 255, .55)) drop-shadow(0 0 3px rgba(255, 255, 255, .2)); }
