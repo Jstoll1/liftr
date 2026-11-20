@@ -19,8 +19,11 @@
   const me = () => (typeof currentManager !== "undefined" ? currentManager : null);
   const colour = (o) => (typeof A !== "undefined" && A.colors?.[o]) || "#8b8498";
   const nflLogo = (ab) => (ab ? `<img class="fx-nfl" src="https://a.espncdn.com/i/teamlogos/nfl/500/${esc(ab.toLowerCase())}.png" alt="" loading="lazy" onerror="this.style.display='none'">` : "");
-  const ini = (o) => `<span class="fx-badge ini" style="--oc:${esc(colour(o))}">${esc(String(o || "?")[0])}</span>`;
-  const badge = (t) => (t?.logo ? `<img class="fx-badge" src="${esc(t.logo)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'fx-badge ini',textContent:'${esc(String(t.owner || "?")[0])}'}))">` : ini(t?.owner));
+  // No ESPN logo: the owner's pick'em avatar (their emoji or initial on
+  // their pick'em colour), so a face is the same across both leagues.
+  const pk = (o) => ({ c: (typeof accentFor === "function" && accentFor(o)) || colour(o), t: (typeof avatarOverrides !== "undefined" && avatarOverrides?.[o]) || String(o || "?")[0] });
+  const ini = (o) => { const a = pk(o); return `<span class="fx-badge ini" style="--oc:${esc(a.c)}">${esc(a.t)}</span>`; };
+  const badge = (t) => (t?.logo ? `<img class="fx-badge" src="${esc(t.logo)}" alt="" loading="lazy" onerror="this.outerHTML=this.dataset.fb" data-fb="${esc(ini(t.owner))}">` : ini(t?.owner));
   const INJ = { QUESTIONABLE: "Q", DOUBTFUL: "D", OUT: "OUT", INJURY_RESERVE: "IR", SUSPENSION: "SUSP", DAY_TO_DAY: "DTD", PUP: "PUP" };
   const status = (p) => {
     const bye = Object.keys(nfl).length > 4 && p.nfl && !nfl[String(p.nfl).toUpperCase()];
