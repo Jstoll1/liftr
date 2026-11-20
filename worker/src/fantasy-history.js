@@ -110,3 +110,14 @@ export function careers(seasons) {
   return out;
 }
 
+// Every game two owners have played, newest first, playoff weeks marked.
+export function meetings(everyGameByYear, a, b) {
+  const out = [];
+  for (const [year, list] of Object.entries(everyGameByYear || {})) for (const line of list || []) {
+    const m = String(line).match(GAME); if (!m) continue;
+    if (!((m[2] === a && m[4] === b) || (m[2] === b && m[4] === a))) continue;
+    out.push({ year: Number(year), week: Number(m[1]), winner: m[2], w: Number(m[3]), loser: m[4], l: Number(m[5]), playoff: /playoff/i.test(line) || Number(m[1]) >= 14 });
+  }
+  return out.sort((x, y) => y.year - x.year || y.week - x.week);
+}
+
