@@ -9424,12 +9424,15 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 /* One-off announcement: all black, quiet type. */
 .ann-ov { position: fixed; inset: 0; z-index: 2147482000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(0, 0, 0, .78); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); animation: ann-in .3s ease-out; }
 .ann-ov.out { opacity: 0; transition: opacity .25s; }
-.ann-card { width: min(340px, 100%); padding: 30px 24px 22px; text-align: center; background: #000; border: 1px solid #222; border-radius: 18px; box-shadow: 0 24px 60px rgba(0, 0, 0, .8); color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif; }
-.ann-k { font-size: 11px; font-weight: 600; letter-spacing: .28em; color: #8a8a8a; }
-.ann-card h2 { margin: 14px 0 8px; font-size: 24px; font-weight: 700; line-height: 1.2; letter-spacing: -.01em; color: #fff; }
-.ann-card p { margin: 0 0 22px; font-size: 16px; color: #cfcfcf; }
-.ann-b { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #333; background: #111; color: #fff; font: 600 15px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; cursor: pointer; }
-.ann-b:active { background: #1c1c1c; }
+.ann-card { width: min(340px, 100%); padding: 24px 20px 18px; text-align: center; background: var(--card-bg); border: 1px solid var(--card-border-feature); border-radius: 10px; color: var(--text); }
+.ann-ic { display: flex; justify-content: center; color: var(--neon-orange); }
+.ann-ic svg { width: 34px; height: 34px; color: var(--neon-orange); opacity: 1; filter: drop-shadow(0 0 4px rgba(var(--neon-orange-rgb), .55)); }
+.ann-k { margin-top: 8px; font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .08em; color: var(--arcade-gold); }
+.ann-card h2 { margin: 12px 0 8px; font-family: 'Press Start 2P', monospace; font-size: 15px; font-weight: normal; line-height: 1.4; color: #fff; }
+.ann-card p { margin: 0 0 18px; font-size: 14.5px; line-height: 1.5; color: rgba(255, 255, 255, .78); }
+.ann-row { display: flex; gap: 8px; }
+.ann-b { flex: 1; padding: 11px; border-radius: 10px; border: 1px solid var(--card-border); background: transparent; color: var(--text-dim); font: 600 14px system-ui, sans-serif; cursor: pointer; }
+.ann-b.ann-go { flex: 1.6; border-color: rgba(var(--neon-cyan-rgb), .6); background: rgba(var(--neon-cyan-rgb), .1); color: var(--neon-cyan); }
 @keyframes ann-in { from { opacity: 0; } }
 .rm-side .rm-by { grid-column: 1 / -1; margin-top: -2px; font-size: 11px; font-weight: 600; color: var(--text-dim); }
 .rm-side.hit .rm-by { color: var(--neon-green); } .rm-side.miss .rm-by { color: var(--neon-pink); }
