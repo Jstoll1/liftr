@@ -272,13 +272,20 @@
 
   // "Connie 6-11 Jake" -> "Jake leads 11-6"; "Connie 3-0 Jake" -> "Connie 3-0".
   const leadOf = (t) => { const m = String(t || "").match(/^(\S+) (\d+)-(\d+) (\S+)$/); if (!m) return esc(t || ""); const [, a, x, y, b] = m, X = +x, Y = +y; return X === Y ? `tied ${X}-${Y}` : X > Y ? `<b>${esc(a)}</b> leads ${X}-${Y}` : `<b>${esc(b)}</b> leads ${Y}-${X}`; };
-  const h2hLine = (h) => {
-    const parts = [leadOf(h.regularSeason)];
-    if (h.playoffs) parts.push(`playoffs: ${leadOf(h.playoffs).replace(" leads", "")}`);
-    for (const c of h.championshipGames || []) parts.push(`<b>${esc(c.winner)}</b> won the ${esc(c.year)} final`);
+  // Each chip opens the games behind it: every regular-season meeting, the
+  // playoff ones, a final, or the last few.
+  const h2hLine = (h, mid) => {
+    const parts = [["reg", leadOf(h.regularSeason)]];
+    if (h.playoffs) parts.push(["po", `playoffs: ${leadOf(h.playoffs).replace(" leads", "")}`]);
+    for (const c of h.championshipGames || []) parts.push([`final-${c.year}`, `<b>${esc(c.winner)}</b> won the ${esc(c.year)} final`]);
     const lm = String(h.lastMeeting || "").match(/^(\d{4}) week (\d+): (\S+) ([\d.]+)-([\d.]+)/);
-    if (lm) parts.push(`last: <b>${esc(lm[3])}</b> won ${pts(lm[4])}–${pts(lm[5])} (${lm[1]}, wk ${lm[2]})`);
-    return parts.map((x) => `<span class="fx-chip">${x}</span>`).join("");
+    if (lm) parts.push(["last", `last: <b>${esc(lm[3])}</b> won ${pts(lm[4])}–${pts(lm[5])} (${lm[1]}, wk ${lm[2]})`]);
+    const g = h.games || [], k = chipOpen?.mid === mid ? chipOpen.k : null;
+    const chips = parts.map(([id, x]) => `<span class="fx-chip${g.length ? " tap" : ""}${k === id ? " on" : ""}"${g.length ? ` data-fxchip="${id}" data-mid="${mid}" role="button" tabindex="0"` : ""}>${x}</span>`).join("");
+    if (!k) return chips;
+    const list = k === "reg" ? g.filter((x) => !x.playoff) : k === "po" ? g.filter((x) => x.playoff) : k === "last" ? g.slice(0, 5) : g.filter((x) => x.playoff && String(x.year) === k.slice(6));
+    const table = tbl(["Year", "Wk", "Winner", "Score"], list.map((x) => ({ me: x.winner === me(), c: [x.year, `${x.week}${x.playoff ? " P" : ""}`, esc(x.winner), `${pts(x.w)}–${pts(x.l)}`] })));
+    return `${chips}<div class="fx-chipt">${table}${k === "last" && g.length > 5 ? `<p class="fx-whyn">Last five of ${g.length} meetings.</p>` : ""}${list.some((x) => x.playoff) ? `<p class="fx-whyn">P = playoff week.</p>` : ""}</div>`;
   };
   // The players still to play who will decide a matchup: each side's
   // biggest projection not yet in the books.
@@ -345,14 +352,16 @@
     </ul></div>${rg.length ? `<div class="fx-sec"><span class="fx-k2">BENCH REGRET · SEASON</span><ul class="fx-aw">${rg.slice(0, 5).map((x, i) => `<li><small>${i + 1}</small>${owner(x.owner)}<span>${pts(x.season)} pts left${x.worst ? ` · worst wk ${x.worst.week} (${pts(x.worst.left)})` : ""}</span></li>`).join("")}</ul></div>` : ""}`;
   };
 
-  let fullById = {}, histOpen = null;
+  let fullById = {}, histOpen = null, chipOpen = null;
   const openMu = (id) => {
     document.getElementById("fx-mupop")?.remove();
     const m = document.createElement("div");
     m.id = "fx-mupop"; m.className = "fx-team"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Matchup");
     m.innerHTML = `<div class="fx-tcard fx-mucard" data-id="${id}"><div class="fx-thead"><span class="fx-k2">WEEK ${esc(data.live?.week || "")} MATCHUP</span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-popbody">${fullById[id] || ""}</div></div>`;
     m.addEventListener("click", (e) => {
-      if (e.target === m || e.target.closest("[data-fxx]")) return m.remove();
+      if (e.target === m || e.target.closest("[data-fxx]")) { chipOpen = null; return m.remove(); }
+      const ch = e.target.closest("[data-fxchip]");
+      if (ch) { const k = ch.dataset.fxchip, mid = Number(ch.dataset.mid); chipOpen = chipOpen?.mid === mid && chipOpen.k === k ? null : { mid, k }; try { window.noteUse?.("fantasy-h2h", k); } catch {} return paint(); }
       const side = e.target.closest("[data-fxteam]");
       if (side) { m.remove(); insOpen = null; openTeam(side.dataset.fxteam); }
     });
@@ -385,7 +394,7 @@
       if (m.final) { oL.final = oR.final = true; }
       return { id: m.id, card, mine: mine(m), full: `<div class="fx-mu open${m.final ? " final" : ""}${mine(m) ? " mine" : ""}" data-fxmu="${m.id}">
         <div class="fx-row">${sideHtml(L, Rt, "a", oL)}<span class="fx-vs">${m.final ? "FINAL" : "VS"}</span>${sideHtml(Rt, L, "h", oR)}</div>
-        ${h ? `<div class="fx-ctx"><small>ALL TIME</small><span class="fx-chips">${h2hLine(h)}</span></div>` : ""}${swing({ ...m, away: L, home: Rt })}${wL != null ? `<div class="fx-ctx"><small>WIN CHANCE</small><div class="fx-wp" title="From live points and projections for players still to play"><b>${esc(L?.owner)} ${pct(wL)}</b><span><i style="width:${(wL * 100).toFixed(1)}%"></i></span><b>${pct(1 - wL)} ${esc(Rt?.owner)}</b></div></div>` : ""}
+        ${h ? `<div class="fx-ctx"><small>ALL TIME</small><span class="fx-chips">${h2hLine(h, m.id)}</span></div>` : ""}${swing({ ...m, away: L, home: Rt })}${wL != null ? `<div class="fx-ctx"><small>WIN CHANCE</small><div class="fx-wp" title="From live points and projections for players still to play"><b>${esc(L?.owner)} ${pct(wL)}</b><span><i style="width:${(wL * 100).toFixed(1)}%"></i></span><b>${pct(1 - wL)} ${esc(Rt?.owner)}</b></div></div>` : ""}
         <div class="fx-lus">${lineup(L, Rt, oL)}${lineup(Rt, L, oR)}</div><p class="fx-note fx-sdkey"><span><s class="fx-sd done"></s>done</span><span><s class="fx-sd live"></s>playing</span><span><s class="fx-sd pre"></s>to play (projection)</span></p>
       </div>` };
     });

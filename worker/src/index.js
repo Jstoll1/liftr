@@ -25,7 +25,7 @@ import { HISTORY } from "./history-data.js";
 import { MATCHUPS } from "./matchup-data.js";
 import { pullCurrentSeason, CURRENT_KEY, freshFor } from "./fantasy.js";
 import { fantasyStats } from "./fantasy-stats.js";
-import { historyContext, careers } from "./fantasy-history.js";
+import { historyContext, careers, meetings } from "./fantasy-history.js";
 import { ROAST_SYSTEM, cleanRoastStats } from "./roast.js";
 
 const app = {
@@ -313,7 +313,7 @@ const app = {
       }
       // All-time head to head (regular season, playoffs) for this week's pairings.
       const h2h = {};
-      for (const m of cur.live?.matchups || []) { const a = m.away?.owner, b = m.home?.owner; const x = a && b && MATCHUPS.headToHead?.[a]?.[b]; if (x) h2h[`${a}|${b}`] = x; }
+      for (const m of cur.live?.matchups || []) { const a = m.away?.owner, b = m.home?.owner; const x = a && b && MATCHUPS.headToHead?.[a]?.[b]; if (x) h2h[`${a}|${b}`] = { ...x, games: meetings(MATCHUPS.everyGameByYear, a, b) }; }
       let stats = null; try { stats = fantasyStats(cur); } catch {}
       let history = null; try { history = historyContext(cur, { everyGameByYear: MATCHUPS.everyGameByYear, records: MATCHUPS.leagueMatchupRecords, seasons: HISTORY.seasons }); } catch {}
       let career = null; try { career = careers(HISTORY.seasons); } catch {}

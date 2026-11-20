@@ -10428,3 +10428,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-askt { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 16px; padding: 9px 12px; border-radius: 10px; border: 1px solid rgba(var(--arcade-gold-rgb), .45); background: transparent; color: var(--text); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; }
 .fx-askt img { width: 26px; height: 26px; border-radius: 50%; }
 .fx-askt span { flex: 1; } .fx-askt i { font-style: normal; color: var(--arcade-gold); }
+/* Tap an all-time chip for the games behind it. */
+.fx-chip.tap { cursor: pointer; }
+.fx-chip.on { border-color: rgba(var(--neon-cyan-rgb), .6); background: rgba(var(--neon-cyan-rgb), .08); }
+.fx-chipt { flex-basis: 100%; }
