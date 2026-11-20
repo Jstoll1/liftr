@@ -260,7 +260,7 @@
     }).join("");
     root.innerHTML = `
       <div class="fx-head"><span class="fx-k">FANTASY · ${esc(data.year)}</span><span class="fx-wk">${anyLive ? `<i class="fx-dot"></i>LIVE · ` : ""}WEEK ${esc(week)}</span></div>
-      ${data.take?.text ? `<div class="fx-take"><span class="fx-k2">THE CHIEF · WEEK ${esc(data.take.week)}</span><p>${esc(data.take.text)}</p></div>` : ""}
+      ${data.take?.text ? `<button type="button" class="fx-take-btn" data-fxtake="1"><img src="assets/images/chief/chief2-96.webp" alt=""><span class="fx-k2">WEEK ${esc(data.take.week)} RECAP</span><em>from the Chief</em><i>▸</i></button>` : ""}
       ${games ? `<div class="fx-mus">${games}</div>` : `<p class="fx-note">This week's matchups show once ESPN posts them.</p>`}
       ${tables()}
       ${historyHtml()}
@@ -270,6 +270,17 @@
   }
 
   root.addEventListener("click", (e) => {
+    if (e.target.closest("[data-fxtake]")) {
+      // The Chief's recap in a pop-up, so it never pushes the matchups down.
+      document.getElementById("fx-team")?.remove();
+      const m = document.createElement("div");
+      m.id = "fx-team"; m.className = "fx-team"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "The Chief's recap");
+      m.innerHTML = `<div class="fx-tcard"><div class="fx-thead"><img class="fx-badge" src="assets/images/chief/chief2-96.webp" alt=""><span class="fx-nm"><b>Week ${esc(data.take.week)} recap</b><small>from the Chief</small></span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><p class="fx-take-p">${esc(data.take.text)}</p></div>`;
+      m.addEventListener("click", (ev) => { if (ev.target === m || ev.target.closest("[data-fxx]")) m.remove(); });
+      document.body.appendChild(m);
+      try { window.noteUse?.("fantasy-recap"); } catch {}
+      return;
+    }
     const t = e.target.closest("[data-fxtab]");
     if (t) { tab = t.dataset.fxtab; card = null; if (tab === "both") loadPickem(); try { window.noteUse?.("fantasy-tab", tab); } catch {} return paint(); }
     const o = e.target.closest("[data-fxo]");

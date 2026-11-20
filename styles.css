@@ -10292,3 +10292,8 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-perf li b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Fantasy nav: a pixel flame in orange. */
 #nav-history-btn .nav-btn-icon { color: var(--neon-orange); filter: drop-shadow(0 0 3px rgba(var(--neon-orange-rgb), .55)); }
+.fx-take-btn { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(var(--arcade-gold-rgb), .35); background: rgba(var(--arcade-gold-rgb), .05); color: var(--text); font: inherit; cursor: pointer; text-align: left; }
+.fx-take-btn img { width: 22px; height: 22px; border-radius: 50%; }
+.fx-take-btn em { font-style: normal; font-size: 11px; color: var(--text-dim); }
+.fx-take-btn i { margin-left: auto; font-style: normal; color: var(--arcade-gold); }
+.fx-take-p { margin: 12px 0 0; font-size: 14px; line-height: 1.55; color: rgba(255, 255, 255, .88); }
