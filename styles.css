@@ -10323,3 +10323,8 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-mu:not(.open) .fx-nm small, .fx-mu:not(.open) .fx-tp { display: none; }
 .fx-mu:not(.open) { padding: 8px 2px; }
 .fx-mu:not(.open)::after { content: "▾"; display: block; text-align: center; margin-top: -2px; font-size: 9px; color: var(--text-dim); line-height: 1; }
+/* A long name shortens itself; its injury or bye tag always shows whole. */
+.fx-pn { display: flex; align-items: center; min-width: 0; overflow: visible !important; }
+.fx-pt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fx-pn u, .fx-pn s { flex: none; }
+.fx-lus .fx-lu:last-child li > .fx-pn { justify-content: flex-end; }
