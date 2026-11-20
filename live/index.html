@@ -1639,6 +1639,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     if (e.k === "pot-sort") return ["Sorted the pot table", e.d || ""];
     if (e.k === "announce-seen") return ["Saw the announcement", e.d || ""];
     if (e.k === "sim-open") return ["Opened the live simulator", ""];
+    if (e.k === "fantasy-insight") return ["Opened the numbers behind a fantasy insight", e.d || ""];
     if (e.k === "fantasy-team") return ["Opened a fantasy team page", e.d || ""];
     if (e.k === "fantasy-matchup") return ["Opened a fantasy matchup", e.d || ""];
     if (e.k === "fantasy-tab") return ["Switched the fantasy table to", String(e.d || "").replace(/^\w/, (c) => c.toUpperCase())];
