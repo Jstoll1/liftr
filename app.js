@@ -9538,12 +9538,18 @@ function liveNowHtml(games, live, mine) {
     const lead = k === "a" ? l.awayScore > l.homeScore : l.homeScore > l.awayScore;
     return `<span class="lvn-tm${mine[g.id]?.team === team ? " me" : ""}${lead ? " lead" : ""}"><img src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>${escapeCd(nm)}</b><em>${sc ?? 0}</em></span>`;
   };
+  // One game: its importance bars sit in the header's right corner. More:
+  // each row carries its own beside the points.
+  const one = games.length === 1;
   const rows = games.map((g) => {
     const l = live[g.id], sit = l.situation || {};
-    const play = String(sit.lastPlay || "").trim();
+    // The play in plain words: drop ESPN's leading clock and formation
+    // ("(10:33) No Huddle-Shotgun #1 J.Becht pass ..." -> "#1 J.Becht pass ...").
+    const play = String(sit.lastPlay || "").trim().replace(/^\(\d+:\d+\)\s*/, "").replace(/^(No Huddle-?\s*)?(Shotgun|Pistol|Under Center|Wildcat)?\s*/i, "").trim();
     const pid = sit.lastPlayTeamId;
     const plogo = pid ? `<img class="lvn-pl" src="${logoUrl(pid)}" alt="" loading="lazy" onerror="this.style.display='none'">` : "";
-    const ticker = play ? `<span class="lvn-tk${play.length > 44 ? " run" : ""}">${plogo}<span><span>${escapeCd(play)}</span>${play.length > 44 ? `<span aria-hidden="true">${escapeCd(play)}</span>` : ""}</span></span>` : `<span class="lvn-tk dim">${escapeCd(sit.downDistance || "Waiting on the next play")}</span>`;
+    // Still text, up to two lines: several games at once stay readable.
+    const ticker = play ? `<span class="lvn-tk">${plogo}<span>${escapeCd(play)}</span></span>` : `<span class="lvn-tk dim">${escapeCd(sit.downDistance || "Waiting on the next play")}</span>`;
     // Your points in play: what the pick scores if it ended now, out of
     // what it is worth (a losing lock shows its penalty).
     const pk = mine[g.id];
@@ -9569,9 +9575,11 @@ function liveNowHtml(games, live, mine) {
     const turnover = fresh && /intercept|fumble[^.]*recover|turnover on downs|\bsafety\b|blocked (punt|field goal|kick)/i.test(play) ? (/intercept/i.test(play) ? "INTERCEPTION" : /fumble/i.test(play) ? "FUMBLE" : /downs/i.test(play) ? "TURNOVER ON DOWNS" : /safety/i.test(play) ? "SAFETY" : "BLOCKED") : "";
     const rz = !!sit.isRedZone && !scored;
     const alert = scored ? `<span class="lvn-al score">${scored}</span>` : turnover ? `<span class="lvn-al turn">${turnover}</span>` : rz ? `<span class="lvn-al rz">RED ZONE</span>` : "";
-    return `<button type="button" class="lvn-row${fresh ? " fresh" : ""}${scored ? ` al-score${scored === "TOUCHDOWN" ? " td" : ""}` : turnover ? " al-turn" : rz ? " al-rz" : ""}" data-lvn="${g.id}"><span class="lvn-top">${bars}${side(g, l, "a")}<span class="lvn-mid"><span class="lvn-clk">${escapeCd(clock(l))}</span>${alert}</span>${side(g, l, "h")}</span><span class="lvn-bot">${ticker}${pts}</span></button>`;
+    return `<button type="button" class="lvn-row${fresh ? " fresh" : ""}${scored ? ` al-score${scored === "TOUCHDOWN" ? " td" : ""}` : turnover ? " al-turn" : rz ? " al-rz" : ""}" data-lvn="${g.id}"><span class="lvn-top">${side(g, l, "a")}<span class="lvn-mid"><span class="lvn-clk">${escapeCd(clock(l))}</span>${alert}</span>${side(g, l, "h")}</span><span class="lvn-bot">${ticker}${one ? "" : bars}${pts}</span></button>`;
   }).join("");
-  return `<i class="since-h lvn-h"><span class="lvn-dot"></span>LIVE NOW<em> · ${games.length} game${games.length === 1 ? "" : "s"}</em></i>${rows}`;
+  const g0 = games[0], gap0 = one ? gapOf(g0) : 0, lit0 = gap0 >= 0.15 ? 3 : gap0 >= 0.05 ? 2 : gap0 >= 0.01 ? 1 : 0;
+  const hBars = one ? `<span class="lvn-imp l${lit0}" title="Moves your chance to win the week by ${Math.round(gap0 * 100)} points"><i></i><i></i><i></i></span>` : "";
+  return `<i class="since-h lvn-h"><span class="lvn-dot"></span>LIVE NOW<em> · ${games.length} game${games.length === 1 ? "" : "s"}</em>${hBars}</i>${rows}`;
 }
 function renderSinceLine(ranked, cloudPicks, live) {
   const el = document.getElementById("since-line");

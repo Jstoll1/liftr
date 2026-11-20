@@ -10087,11 +10087,12 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 #since-line.lv-now-on .lvn-h { margin-bottom: 6px; }
 .lvn-h { display: flex; align-items: center; gap: 6px; }
 .lvn-h em { font-style: normal; color: var(--text-dim); }
+.lvn-h .lvn-imp { margin-left: auto; }
 .lvn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 6px var(--neon-cyan); animation: lvn-pulse 1.4s ease-in-out infinite; }
 @keyframes lvn-pulse { 50% { opacity: .35; } }
 .lvn-row { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 9px 10px; border: 0; border-top: 1px solid var(--card-border); border-radius: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; box-shadow: none; }
-.lvn-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
-.lvn-bot { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 21px; }
+.lvn-top { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.lvn-bot { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .lvn-bot .lvn-tk { flex: 1; border-top: 0; padding-top: 0; }
 .lvn-bot .lvn-pts { flex: none; }
 .lvn-pts { font-family: 'Press Start 2P', monospace; font-size: 9px; padding: 3px 6px; border-radius: 999px; border: 1px dashed currentColor; white-space: nowrap; }
@@ -10142,14 +10143,11 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 @keyframes lvn-turn { 50% { background: rgba(var(--neon-orange-rgb), .22); } }
 @media (prefers-reduced-motion: reduce) { .lvn-al, .lvn-row.al-score, .lvn-row.al-turn { animation: none; } }
 .lvn-clk { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-cyan); white-space: nowrap; }
-.lvn-tk { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; font-size: 11.5px; color: rgba(255, 255, 255, .8); white-space: nowrap; border-top: 1px solid rgba(255, 255, 255, .06); padding-top: 5px; }
+.lvn-tk { display: flex; align-items: flex-start; gap: 6px; min-width: 0; overflow: hidden; font-size: 11.5px; line-height: 1.4; color: rgba(255, 255, 255, .8); border-top: 1px solid rgba(255, 255, 255, .06); padding-top: 5px; }
 .lvn-tk.dim { color: var(--text-dim); }
 .lvn-pl { width: 14px; height: 14px; object-fit: contain; flex: none; }
-.lvn-tk > span { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.lvn-tk.run > span { display: flex; gap: 40px; text-overflow: clip; mask-image: linear-gradient(90deg, transparent, #000 6px, #000 calc(100% - 16px), transparent); }
-.lvn-tk.run > span > span { flex: none; animation: lvn-tick 16s linear infinite; }
-@keyframes lvn-tick { from { transform: translateX(0); } to { transform: translateX(calc(-100% - 40px)); } }
-@media (prefers-reduced-motion: reduce) { .lvn-tk.run > span > span { animation: none; } .lvn-tk.run > span > span + span { display: none; } }
+.lvn-tk > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-width: 0; overflow: hidden; }
+.lvn-tk .lvn-pl, .lvn-row.fresh .lvn-tk::before { margin-top: 2px; }
 
 /* ==== RETRO: fantasy (top of the History tab) ==== */
 .fx { margin: 10px 0; padding: 12px 10px 8px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--card-bg); }
