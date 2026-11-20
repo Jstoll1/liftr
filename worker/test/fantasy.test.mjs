@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildCurrentSeason, pullCurrentSeason, CURRENT_KEY, STATUS_KEY } from "../src/fantasy.js";
+import { buildCurrentSeason, pullCurrentSeason, CURRENT_KEY, STATUS_KEY, buildLiveWeek, inNflWindow } from "../src/fantasy.js";
 
 test("buildCurrentSeason ranks by wins then points and lists decided games", () => {
   const league = {
@@ -62,4 +62,35 @@ test("pullCurrentSeason: a failed pull is recorded", async () => {
   const st = JSON.parse(KV.m.get(STATUS_KEY));
   assert.equal(st.ok, false);
   assert.match(st.error, /500/);
+});
+
+test("buildLiveWeek: this week's matchups with starters in lineup order, bench apart, live totals", () => {
+  const p = (id, name, pos, slot, pts, team) => ({ lineupSlotId: slot, playerPoolEntry: { appliedStatTotal: pts, player: { id, fullName: name, defaultPositionId: pos, proTeamId: team } } });
+  const lw = buildLiveWeek({
+    status: { currentMatchupPeriod: 11 },
+    teams: [{ id: 1, owners: ["a"], name: "Burrow's Naberhood", abbrev: "JS", record: { overall: { wins: 6, losses: 4 } } }, { id: 2, owners: ["b"], location: "Team", nickname: "Two" }],
+    schedule: [
+      { id: 9, matchupPeriodId: 10, winner: "HOME", home: { teamId: 1, totalPoints: 100 }, away: { teamId: 2, totalPoints: 90 } },
+      { id: 10, matchupPeriodId: 11, winner: "UNDECIDED",
+        home: { teamId: 1, totalPointsLive: 42.5, rosterForCurrentScoringPeriod: { entries: [p(11, "Bench Guy", 3, 20, 9, 2), p(12, "Joe QB", 1, 0, 21.4, 4), p(13, "Kicker", 5, 17, 3, 12), p(14, "Wide One", 3, 4, 18.1, 15)] } },
+        away: { teamId: 2, totalPoints: 30 } },
+    ],
+  }, { a: "Jake", b: "Curt" });
+  assert.equal(lw.week, 11);
+  assert.equal(lw.matchups.length, 1);
+  const h = lw.matchups[0].home;
+  assert.equal(h.owner, "Jake");
+  assert.equal(h.points, 42.5);
+  assert.equal(h.record, "6-4");
+  assert.deepEqual(h.starters.map((x) => x.slot), ["QB", "WR", "K"]);
+  assert.equal(h.starters[0].nfl, "CIN");
+  assert.deepEqual(h.bench.map((x) => x.name), ["Bench Guy"]);
+  assert.equal(lw.matchups[0].away.name, "Team Two");
+  assert.equal(lw.matchups[0].final, false);
+});
+
+test("inNflWindow: Sunday afternoon and Monday night yes, Wednesday no", () => {
+  assert.equal(inNflWindow(Date.parse("2026-11-22T19:00:00Z")), true);  // Sun 2 PM ET
+  assert.equal(inNflWindow(Date.parse("2026-11-24T02:00:00Z")), true);  // Mon 9 PM ET
+  assert.equal(inNflWindow(Date.parse("2026-11-25T17:00:00Z")), false); // Wed noon ET
 });
