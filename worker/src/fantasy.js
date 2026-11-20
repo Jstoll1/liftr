@@ -8,6 +8,15 @@
 export const CURRENT_KEY = "history:current";
 export const STATUS_KEY = "history:current:status";
 const MAX_AGE = 6 * 3600 * 1000;
+// During NFL games (Eastern: Thursday 8 PM on, Sunday 1 PM on, Monday 8 PM
+// on, and the small hours after each) the live week refreshes every two
+// minutes; otherwise every three hours.
+export function inNflWindow(now = Date.now()) {
+  const et = new Date(new Date(now).toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const d = et.getDay(), h = et.getHours();
+  return (d === 4 && h >= 20) || (d === 0 && h >= 13) || (d === 1 && (h < 2 || h >= 20)) || (d === 5 && h < 2) || (d === 2 && h < 2);
+}
+export const freshFor = (now = Date.now()) => (inNflWindow(now) ? 2 * 60000 : 3 * 3600000);
 
 const r2 = (x) => Math.round(x * 100) / 100;
 
@@ -49,7 +58,47 @@ export function buildCurrentSeason(league, ownerMap, year, now = Date.now()) {
     closestGames: [...margins].sort((a, b) => a.margin - b.margin).slice(0, 3).map((x) => `${x.winner} over ${x.loser} by ${x.margin} (${x.score}) in ${year} week ${x.week}`),
   };
   return { year, exportedAt: new Date(now).toISOString(), regularSeasonWeeks: reg, weeksPlayed, standings, results, records,
+    currentScoringPeriod: Number(league.scoringPeriodId || league.status?.currentMatchupPeriod || 0) || null,
+    teams: Object.fromEntries((league.teams || []).map((t) => [ownerOf[t.id], { name: t.name || [t.location, t.nickname].filter(Boolean).join(" "), abbrev: t.abbrev || null, logo: t.logo || null }])),
     note: `Live ${year} season as of the pull time; ranked by wins then points for. Not final.` };
+}
+
+// ESPN's lineup slots and positions, and NFL team ids, for the live week.
+const SLOT = { 0: "QB", 2: "RB", 4: "WR", 6: "TE", 16: "D/ST", 17: "K", 23: "FLEX", 20: "BE", 21: "IR" };
+const POS = { 1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "D/ST" };
+const SLOT_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "D/ST", "K"];
+const NFL = { 1: "ATL", 2: "BUF", 3: "CHI", 4: "CIN", 5: "CLE", 6: "DAL", 7: "DEN", 8: "DET", 9: "GB", 10: "TEN", 11: "IND", 12: "KC", 13: "LV", 14: "LAR", 15: "MIA", 16: "MIN", 17: "NE", 18: "NO", 19: "NYG", 20: "NYJ", 21: "PHI", 22: "ARI", 23: "PIT", 24: "LAC", 25: "SF", 26: "SEA", 27: "TB", 28: "WSH", 29: "CAR", 30: "JAX", 33: "BAL", 34: "HOU" };
+
+// Pure: ESPN league JSON for one scoring period (mTeam + mMatchup +
+// mMatchupScore with scoringPeriodId) -> this week's matchups, each side
+// with its team name, logo, live total and lineup (starters, then bench).
+export function buildLiveWeek(league, ownerMap) {
+  const week = Number(league.status?.currentMatchupPeriod || league.scoringPeriodId || 0);
+  const team = {};
+  for (const t of league.teams || []) {
+    const owner = (t.owners || []).map((id) => ownerMap[id]).find(Boolean) || null;
+    team[t.id] = { owner, name: t.name || [t.location, t.nickname].filter(Boolean).join(" ") || owner, abbrev: t.abbrev || null, logo: t.logo || null,
+      record: t.record?.overall ? `${t.record.overall.wins}-${t.record.overall.losses}${t.record.overall.ties ? `-${t.record.overall.ties}` : ""}` : null };
+  }
+  const r2 = (x) => Math.round((Number(x) || 0) * 100) / 100;
+  const side = (s) => {
+    if (!s) return null;
+    const t = team[s.teamId] || {};
+    const entries = s.rosterForCurrentScoringPeriod?.entries || s.rosterForMatchupPeriod?.entries || [];
+    const players = entries.map((e) => {
+      const p = e.playerPoolEntry?.player || {};
+      const slot = SLOT[e.lineupSlotId] || "BE";
+      return { id: p.id || null, name: p.fullName || "Player", pos: POS[p.defaultPositionId] || slot, slot, pts: r2(e.playerPoolEntry?.appliedStatTotal),
+        nfl: NFL[p.proTeamId] || null, injury: p.injuryStatus && p.injuryStatus !== "ACTIVE" ? p.injuryStatus : null };
+    });
+    const starters = players.filter((x) => x.slot !== "BE" && x.slot !== "IR").sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot));
+    const bench = players.filter((x) => x.slot === "BE" || x.slot === "IR");
+    const live = s.totalPointsLive ?? s.totalPoints;
+    return { ...t, points: r2(live != null ? live : starters.reduce((n, x) => n + x.pts, 0)), starters, bench };
+  };
+  const matchups = (league.schedule || []).filter((m) => Number(m.matchupPeriodId) === week && m.home && m.away)
+    .map((m) => ({ id: m.id, home: side(m.home), away: side(m.away), final: m.winner && m.winner !== "UNDECIDED" }));
+  return { week, matchups };
 }
 
 export async function pullCurrentSeason(env, ownerMap, { force = false, now = Date.now() } = {}) {
@@ -71,7 +120,15 @@ export async function pullCurrentSeason(env, ownerMap, { force = false, now = Da
   let cur;
   try { cur = buildCurrentSeason(await res.json(), ownerMap, year, now); }
   catch (e) { await status({ ok: false, error: String(e.message || e), how }); throw e; }
+  // The live week: lineups and points for the current scoring period.
+  try {
+    const sp = cur.currentScoringPeriod;
+    if (sp) {
+      const wr = await fetch(`${url.split("?")[0]}?view=mTeam&view=mMatchup&view=mMatchupScore&scoringPeriodId=${sp}`, { headers: { Accept: "application/json" } });
+      if (wr.ok) cur.live = buildLiveWeek(await wr.json(), ownerMap);
+    }
+  } catch (e) { cur.liveError = String(e.message || e).slice(0, 120); }
   await env.LIFTR_KV.put(CURRENT_KEY, JSON.stringify(cur));
-  await status({ ok: true, how, weeksPlayed: cur.weeksPlayed });
+  await status({ ok: true, how, weeksPlayed: cur.weeksPlayed, live: !!cur.live });
   return { weeksPlayed: cur.weeksPlayed, how };
 }

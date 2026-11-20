@@ -23,7 +23,7 @@ const MINUTES_TO_COUNT = { 15: 2, 30: 3, 45: 4, 60: 6 };
 
 import { HISTORY } from "./history-data.js";
 import { MATCHUPS } from "./matchup-data.js";
-import { pullCurrentSeason, CURRENT_KEY } from "./fantasy.js";
+import { pullCurrentSeason, CURRENT_KEY, freshFor } from "./fantasy.js";
 import { ROAST_SYSTEM, cleanRoastStats } from "./roast.js";
 
 const app = {
@@ -293,6 +293,17 @@ const app = {
     }
     if (url.pathname === "/live") {
       return handleLive(corsHeaders, env);
+    }
+    // The fantasy page: the live season and this week's matchups. The league
+    // is public on ESPN, so this is too. Refreshed on read when stale (two
+    // minutes during NFL games, three hours otherwise).
+    if (url.pathname === "/fantasy" && request.method === "GET") {
+      let cur = await env.LIFTR_KV.get(CURRENT_KEY, "json");
+      if (!cur || Date.now() - Date.parse(cur.exportedAt) > freshFor()) {
+        try { await pullCurrentSeason(env, MATCHUPS.espnOwners, { force: true }); cur = await env.LIFTR_KV.get(CURRENT_KEY, "json"); } catch {}
+      }
+      if (!cur) return json({ error: "No fantasy season yet" }, 503, corsHeaders);
+      return json(cur, 200, { ...corsHeaders, "Cache-Control": "public, max-age=60" });
     }
     // Admin: pull the live fantasy season now instead of waiting for the cron.
     if (url.pathname === "/history-refresh") {
@@ -3908,7 +3919,15 @@ async function handleHistoryAsk(request, env, corsHeaders) {
 
   // Live season pulled by the cron; the bundled export is the fallback.
   let cur = MATCHUPS.currentSeason;
-  try { const live = await env.LIFTR_KV.get(CURRENT_KEY, "json"); if (live?.weeksPlayed >= (cur?.weeksPlayed || 0)) cur = live; } catch {}
+  try {
+    const live = await env.LIFTR_KV.get(CURRENT_KEY, "json");
+    if (live?.weeksPlayed >= (cur?.weeksPlayed || 0)) {
+      // This week's matchups as owner and score only: the lineups feed the
+      // fantasy page and would only bloat the prompt here.
+      const { live: lw, teams, ...rest } = live;
+      cur = { ...rest, ...(lw ? { thisWeek: { week: lw.week, matchups: lw.matchups.map((m) => ({ away: m.away?.owner, awayPoints: m.away?.points, home: m.home?.owner, homePoints: m.home?.points, final: m.final })) } } : {}) };
+    }
+  } catch {}
 
   try {
     const askOpenAI = () => openaiChat(env, "history-ask", {

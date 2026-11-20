@@ -333,15 +333,8 @@
   <!-- LEAGUE HISTORY SCREEN (archive rendered by history.js) -->
   <main id="history-screen" class="screen history-screen hidden">
     <div class="archive-main">
-    <section class="archive-hero" id="top">
-      <div>
-        <div class="hero-content">
-          <span class="eyebrow">BroChiefs Football League · Official Record</span>
-          <h1>League History</h1>
-          <span class="hero-years">2014–2025 · 12 completed seasons</span>
-          <p class="hero-copy">Twelve seasons have crowned twelve champions, and every title, finish and name is preserved here.</p>
-        </div>
-
+    <section id="fx" class="fx" aria-label="Fantasy league"></section>
+    <div class="fx-ask">
         <form id="archive-ask" class="archive-ask" autocomplete="off">
           <label class="archive-ask-label" for="archive-q">ASK CHIEF ANYTHING</label>
           <div class="archive-ask-line">
@@ -355,6 +348,19 @@
           <div id="archive-receipts" class="archive-receipts hidden" aria-label="Receipts"></div>
           <div id="archive-followups" class="archive-followups hidden" aria-label="Ask next"></div>
         </form>
+    </div>
+    <details class="hist-fold" id="hist-fold">
+      <summary><span>LEAGUE HISTORY</span><small>2014–2025 · 12 seasons</small><i aria-hidden="true">▾</i></summary>
+    <section class="archive-hero" id="top">
+      <div>
+        <div class="hero-content">
+          <span class="eyebrow">BroChiefs Football League · Official Record</span>
+          <h1>League History</h1>
+          <span class="hero-years">2014–2025 · 12 completed seasons</span>
+          <p class="hero-copy">Twelve seasons have crowned twelve champions, and every title, finish and name is preserved here.</p>
+        </div>
+
+
 
         <div class="hero-stat-grid" aria-label="League history summary">
           <div class="hero-stat"><strong>12</strong><span>Completed seasons</span></div>
@@ -416,6 +422,7 @@
     </section>
 
     <footer class="methodology"><strong>Record note</strong><p>Regular-season records, points for and points against come from ESPN season standings. Final standing, championship, runner-up and third-place finish come from ESPN league history. The active Record Book excludes former members. Former members remain part of season history and league-wide records. Raw scoring totals are not adjusted for scoring changes across eras.</p></footer>
+    </details>
   </div>
   </main>
 
