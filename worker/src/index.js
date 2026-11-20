@@ -306,7 +306,8 @@ const app = {
       }
       if (!cur) return json({ error: "No fantasy season yet" }, 503, corsHeaders);
       // The Chief's take on the week just finished: written once per week.
-      if (cur.weeksPlayed && (!cur.take || cur.take.week < cur.weeksPlayed) && env.OPENAI_API_KEY) {
+      // v2: the first takes mixed a season total up with a week's score.
+      if (cur.weeksPlayed && (!cur.take || cur.take.week < cur.weeksPlayed || cur.take.v !== 2) && env.OPENAI_API_KEY) {
         try { cur.take = await fantasyTake(env, cur); await env.LIFTR_KV.put(CURRENT_KEY, JSON.stringify(cur)); } catch {}
       }
       // All-time head to head (regular season, playoffs) for this week's pairings.
@@ -4928,8 +4929,13 @@ async function fantasyTake(env, cur) {
     body: JSON.stringify({
       model: env.OPENAI_MODEL || "gpt-4o-mini", temperature: 0.7, max_tokens: 220,
       messages: [
-        { role: "system", content: "You are the Chief, the voice of the BroChiefs friends' fantasy football league. Write a 3 or 4 sentence take on the week just finished: the top score, the closest game or upset, the biggest blowout, and who is rising or sinking in the standings. Plain words, playful, a little trash talk, owners by first name, real numbers only from the data. No headings, no lists, no emoji." },
-        { role: "user", content: JSON.stringify({ week: wk, games: week, standings: cur.standings }) },
+        { role: "system", content: "You are the Chief, the voice of the BroChiefs friends' fantasy football league. Write a 3 or 4 sentence take on the week just finished: the top single-week score, the closest game or upset, the biggest blowout (all from thisWeeksGames), and who is rising or sinking in the standings (records). Plain words, playful, a little trash talk, owners by first name, real numbers only from the data. No headings, no lists, no emoji." },
+        { role: "user", content: JSON.stringify({
+          week: wk,
+          thisWeeksGames: week.filter((x, i, l) => l.findIndex((y) => y.owner === x.opponent) > i || !l.some((y) => y.owner === x.opponent)).map((x) => { const o = week.find((y) => y.owner === x.opponent); return { [x.owner]: x.points, [x.opponent]: o?.points ?? null, winner: o && o.points > x.points ? x.opponent : x.owner, margin: o ? Math.round(Math.abs(x.points - o.points) * 10) / 10 : null }; }),
+          standingsAfterThisWeek: (cur.standings || []).map((r) => ({ rank: r.rank, owner: r.owner, record: `${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}`, seasonTotalPoints: r.pointsFor })),
+          note: "Weekly scores are in thisWeeksGames (one game, roughly 60 to 180 points). seasonTotalPoints is the whole season added up (over 1,000): never call it a week's score.",
+        }) },
       ],
     }),
   });
@@ -4937,7 +4943,7 @@ async function fantasyTake(env, cur) {
   const j = await res.json();
   const text = String(j?.choices?.[0]?.message?.content || "").trim();
   if (!text) throw new Error("empty take");
-  return { week: wk, text: text.slice(0, 900), at: Date.now() };
+  return { week: wk, v: 2, text: text.slice(0, 900), at: Date.now() };
 }
 
 // Pro trial: classic is the default, so only a pro visit carries a tag.
