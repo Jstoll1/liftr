@@ -53,7 +53,7 @@ export function historyContext(cur, archive) {
         const ended = same.map((x) => ({ ...x, end: finish(x.year, x.owner) }));
         const titles = ended.filter((x) => x.end === "won the title").length;
         const ex = ended.sort((a, b) => b.year - a.year)[0];
-        const why = { head: ["Year", "Owner", `After ${wk}`, "Finish"], rows: [{ me: true, c: ["Now", s.owner, `${s.wins}-${s.losses}`, "playing"] }, ...[...ended].sort((a, b) => b.year - a.year).map((x) => ({ c: [x.year, x.owner, `${x.wins}-${x.losses}`, x.end || "–"] }))] };
+        const why = { head: ["Year", "Owner", `After ${wk}`, "Finish"], rows: [{ me: true, c: ["Now", s.owner, `${s.wins}-${s.losses}`, "?"] }, ...[...ended].sort((a, b) => b.year - a.year).map((x) => ({ c: [x.year, x.owner, `${x.wins}-${x.losses}`, x.end || "–"] }))] };
         before.push({ why, owner: s.owner, kind: hot ? "hot" : "cold", record: `${s.wins}-${s.losses}`, times: same.length, titles,
           line: `${s.wins}-${s.losses} after ${wk}: ${same.length === 1 ? "done once before" : `done ${same.length} times before`}${hot ? `, ${titles ? `${titles} won the title` : "none won the title"}` : ""}. Last: ${ex.owner} in ${ex.year}${ex.end ? `, who ${ex.end}` : ""}.` });
       } else before.push({ owner: s.owner, kind: hot ? "hot" : "cold", record: `${s.wins}-${s.losses}`, times: 0, line: `${s.wins}-${s.losses} after ${wk}: never happened in BroChiefs history.` });
