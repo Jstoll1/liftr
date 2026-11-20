@@ -84,7 +84,7 @@ export const WEEK_CHAT_TOOLS = [
 // league (NFL, ESPN: rosters, waivers, the ship) share words like "win",
 // "this year" and "standings", so the words that only one league uses
 // decide, then this week's college teams, then the question before it.
-const FANTASY_WORDS = /\b(fantasy|espn|draft(ed|s)?|roster|waivers?|trade[ds]?|start\/sit|start or sit|bench(ed)?|lineup|keeper|auction|faab|flex|d\/?st|kicker|qb\d?|rb\d?|wr\d?|te\d?|ppr|points against|the ship|the chip|ring|playoffs?|bye week|nfl|touchdowns? scored by|matchup this week in fantasy|my team|his team|her team|fantasy team)\b/i;
+const FANTASY_WORDS = /\b(fantasy|espn|draft(ed|s)?|roster|waivers?|trade[ds]?|start\/sit|start or sit|bench(ed)?|lineup|keeper|auction|faab|flex|d\/?st|kicker|qb\d?|rb\d?|wr\d?|te\d?|ppr|points against|the ship|the chip|ring|playoffs?|bye week|nfl|touchdowns? scored by|matchup this week in fantasy|my team|his team|her team|fantasy team|outscor\w*|projected|projection|bench points|left on the bench|playoff odds|power rank\w*|all-play|bye)\b/i;
 const PICKEM_WORDS = /\b(pick'?em|picks?|picked|spread|cover(s|ed|ing)?|ats|straight up|\bsu\b|locks?|locked|tiebreaker|chalk( line)?|the pot|the board|slate|knocked out|eliminated|path to win|win%|win percent|chance to win the week|this week'?s (games|card)|week \d+|g\d+|lightning|mnf pot|hot hand|worst pick|pick of the week)\b/i;
 const NFL_TEAMS = /\b(bills|dolphins|patriots|jets|ravens|bengals|browns|steelers|texans|colts|jaguars|titans|broncos|chiefs|raiders|chargers|cowboys|giants|eagles|commanders|bears|lions|packers|vikings|falcons|panthers|saints|buccaneers|bucs|cardinals|rams|49ers|niners|seahawks)\b/i;
 export function leagueRoute(question, games = [], prev = null) {

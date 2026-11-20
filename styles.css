@@ -10275,3 +10275,20 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-ro s.sit { color: var(--neon-pink); border: 1px solid rgba(var(--neon-pink-rgb), .6); }
 .fx-ro li.gap span { color: var(--neon-pink); }
 .fx-tcard .fx-note b { color: var(--neon-green); }
+.fx-sw { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: 11px; color: rgba(255, 255, 255, .75); }
+.fx-sw small { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--arcade-gold); }
+.fx-sw span { display: flex; align-items: center; gap: 4px; min-width: 0; flex: 1; }
+.fx-sw span:last-child { justify-content: flex-end; }
+.fx-sw b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fx-sw em { font-style: normal; color: var(--text-dim); }
+.fx-sw i { font-style: normal; color: var(--text-dim); font-size: 10px; }
+.fx-hist { list-style: none; margin: 6px 0 0; padding: 0; }
+.fx-hist li { padding: 6px 0 6px 10px; font-size: 12px; line-height: 1.4; color: rgba(255, 255, 255, .8); border-bottom: 1px solid rgba(255, 255, 255, .05); box-shadow: inset 2px 0 0 var(--card-border); }
+.fx-hist li.hot { box-shadow: inset 2px 0 0 var(--neon-green); } .fx-hist li.cold { box-shadow: inset 2px 0 0 var(--neon-pink); } .fx-hist li.rec { box-shadow: inset 2px 0 0 var(--arcade-gold); }
+.fx-aw li.bust small { color: var(--neon-pink); }
+.fx-tabs button { font-size: 6px; }
+.fx-spark.odds { height: 50px; }
+.fx-perf li { grid-template-columns: 34px minmax(0, 1fr) auto; }
+.fx-perf li b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Fantasy nav: a pixel flame in orange. */
+#nav-history-btn .nav-btn-icon { color: var(--neon-orange); filter: drop-shadow(0 0 3px rgba(var(--neon-orange-rgb), .55)); }
