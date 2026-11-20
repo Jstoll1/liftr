@@ -1,4 +1,4 @@
-import { weekAskPrompt, parseWeekAsk, WEEK_CHAT_TOOLS, weekChatSystem, cleanChat } from "./weekask.js";
+import { weekAskPrompt, parseWeekAsk, WEEK_CHAT_TOOLS, weekChatSystem, cleanChat, leagueRoute, routeNote } from "./weekask.js";
 import { openaiChat } from "./costs.js";
 import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, lineSampleAdded, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
 import { expertRecord } from "./experts.js";
@@ -4844,9 +4844,15 @@ async function handleWeekChat(request, env, corsHeaders, url = new URL(request.u
   }
   const sid = String(body?.sid || "").replace(/[^a-z0-9]/gi, "").slice(0, 16) || null;
   const build = String(body?.build || "").replace(/\D/g, "").slice(0, 14) || null;
+  // Sort the question into a league first (the user turn being answered,
+  // with the question before it for follow-ups), and tell the Chief.
+  let lastUser = messages.length - 1; while (lastUser > 0 && messages[lastUser].role !== "user") lastUser--;
+  let prevUser = lastUser - 1; while (prevUser >= 0 && messages[prevUser].role !== "user") prevUser--;
+  const prevRoute = prevUser >= 0 ? leagueRoute(messages[prevUser].content, games).route : null;
+  const route = leagueRoute(messages[lastUser]?.content, games, prevRoute);
   let logId = typeof body?.logId === "string" && body.logId.startsWith(WCHAT_LOG) ? body.logId : null;
   if (messages[messages.length - 1].role === "user") {
-    logId = await weekChatLog(env, null, { at: Date.now(), asker, sid, build, q: String(messages[messages.length - 1].content).slice(0, 500), a: null, status: "asked", tools: [], turn: messages.filter((x) => x.role === "user").length });
+    logId = await weekChatLog(env, null, { at: Date.now(), asker, sid, build, q: String(messages[messages.length - 1].content).slice(0, 500), a: null, status: "asked", tools: [], route: route.route, turn: messages.filter((x) => x.role === "user").length });
   }
   const res = await openaiChat(env, "week-chat", {
     method: "POST",
@@ -4854,7 +4860,7 @@ async function handleWeekChat(request, env, corsHeaders, url = new URL(request.u
     body: JSON.stringify({
       model: env.OPENAI_MODEL_PLAN || "gpt-4o", temperature: 0.3, max_tokens: 500,
       tools: WEEK_CHAT_TOOLS, parallel_tool_calls: true,
-      messages: [{ role: "system", content: weekChatSystem({ asker, members, games }) }, ...messages],
+      messages: [{ role: "system", content: weekChatSystem({ asker, members, games }) }, ...messages.slice(0, lastUser), { role: "system", content: routeNote(route) }, ...messages.slice(lastUser)],
     }),
   });
   if (!res.ok) {

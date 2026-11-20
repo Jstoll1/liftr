@@ -79,6 +79,41 @@ export const WEEK_CHAT_TOOLS = [
   { type: "function", function: { name: "tiebreaker", description: "The tiebreaker game, its current or final total, and everyone's guesses (hidden before the first kickoff).", parameters: { type: "object", properties: {}, additionalProperties: false } } },
 ];
 
+// Which league a question is about, before the Chief answers. The pick'em
+// (this app: college picks, spreads, locks, the board) and the fantasy
+// league (NFL, ESPN: rosters, waivers, the ship) share words like "win",
+// "this year" and "standings", so the words that only one league uses
+// decide, then this week's college teams, then the question before it.
+const FANTASY_WORDS = /\b(fantasy|espn|draft(ed|s)?|roster|waivers?|trade[ds]?|start\/sit|start or sit|bench(ed)?|lineup|keeper|auction|faab|flex|d\/?st|kicker|qb\d?|rb\d?|wr\d?|te\d?|ppr|points against|the ship|the chip|ring|playoffs?|bye week|nfl|touchdowns? scored by|matchup this week in fantasy|my team|his team|her team|fantasy team)\b/i;
+const PICKEM_WORDS = /\b(pick'?em|picks?|picked|spread|cover(s|ed|ing)?|ats|straight up|\bsu\b|locks?|locked|tiebreaker|chalk( line)?|the pot|the board|slate|knocked out|eliminated|path to win|win%|win percent|chance to win the week|this week'?s (games|card)|week \d+|g\d+|lightning|mnf pot|hot hand|worst pick|pick of the week)\b/i;
+const NFL_TEAMS = /\b(bills|dolphins|patriots|jets|ravens|bengals|browns|steelers|texans|colts|jaguars|titans|broncos|chiefs|raiders|chargers|cowboys|giants|eagles|commanders|bears|lions|packers|vikings|falcons|panthers|saints|buccaneers|bucs|cardinals|rams|49ers|niners|seahawks)\b/i;
+export function leagueRoute(question, games = [], prev = null) {
+  const q = String(question || "");
+  const f = [], k = [];
+  const fm = q.match(new RegExp(FANTASY_WORDS.source, "gi")); if (fm) f.push(...fm);
+  const nm = q.match(new RegExp(NFL_TEAMS.source, "gi")); if (nm) f.push(...nm);
+  const pm = q.match(new RegExp(PICKEM_WORDS.source, "gi")); if (pm) k.push(...pm);
+  // A college team on this week's slate is a pick'em signal.
+  const low = q.toLowerCase();
+  for (const g of games || []) for (const t of [g.away, g.home, g.awayShort, g.homeShort]) {
+    const n = String(t || "").toLowerCase();
+    if (n.length >= 4 && low.includes(n) && !k.includes(t)) k.push(t);
+  }
+  const uniq = (a) => [...new Set(a.map((x) => String(x).toLowerCase()))];
+  const fs = uniq(f), ks = uniq(k);
+  let route = fs.length && ks.length ? (fs.length >= ks.length * 2 ? "fantasy" : ks.length >= fs.length * 2 ? "pickem" : "both")
+    : fs.length ? "fantasy" : ks.length ? "pickem" : (prev && prev !== "unclear" ? prev : "unclear");
+  return { route, signals: { fantasy: fs.slice(0, 6), pickem: ks.slice(0, 6) }, inherited: !fs.length && !ks.length && !!prev };
+}
+// The line the Chief gets with each question: what the router decided.
+export function routeNote(r) {
+  const why = [r.signals.fantasy.length ? `fantasy words: ${r.signals.fantasy.join(", ")}` : "", r.signals.pickem.length ? `pick'em words: ${r.signals.pickem.join(", ")}` : "", r.inherited ? "no league words, so it follows the question before it" : ""].filter(Boolean).join("; ");
+  if (r.route === "fantasy") return `Router: this question is about the FANTASY league (${why}). Answer from archive; do not answer from the pick'em tools unless it also asks about the pick'em.`;
+  if (r.route === "pickem") return `Router: this question is about the PICK'EM (${why}). Answer from the pick'em tools; do not use archive unless it asks about fantasy.`;
+  if (r.route === "both") return `Router: this question touches BOTH leagues (${why}). Answer the part for each league from its own tools, and label which is which.`;
+  return "Router: no league words in this question or the one before it. If the answer differs by league (titles, standings, odds, records, 'this year'), ask one short question back: 'The fantasy league or the pick'em?' Answer directly only when the question makes sense in one league alone.";
+}
+
 export function weekChatSystem(ctx) {
   const games = (ctx.games || []).map((g) => `G${g.id}: ${g.away} (${g.awayShort}) at ${g.home} (${g.homeShort}), ${g.favorite ? `${g.favorite} −${g.spread}` : "pick'em"}, ${g.status}${g.score ? ` ${g.score}` : ""}`).join("\n");
   return [
