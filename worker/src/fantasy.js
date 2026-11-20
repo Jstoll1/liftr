@@ -31,10 +31,11 @@ export function buildCurrentSeason(league, ownerMap, year, now = Date.now()) {
   const rec = {};
   for (const o of Object.values(ownerOf)) rec[o] = { owner: o, wins: 0, losses: 0, ties: 0, pointsFor: 0, pointsAgainst: 0 };
   const reg = league.settings?.scheduleSettings?.matchupPeriodCount || 13;
-  const results = [], scores = [], margins = [];
+  const results = [], scores = [], margins = [], remaining = [];
   let weeksPlayed = 0;
   for (const m of [...(league.schedule || [])].sort((a, b) => a.matchupPeriodId - b.matchupPeriodId)) {
-    if (!m.home || !m.away || m.winner === "UNDECIDED") continue;
+    if (!m.home || !m.away) continue;
+    if (m.winner === "UNDECIDED") { if (m.matchupPeriodId <= reg) remaining.push({ week: m.matchupPeriodId, home: ownerOf[m.home.teamId], away: ownerOf[m.away.teamId] }); continue; }
     const h = ownerOf[m.home.teamId], a = ownerOf[m.away.teamId];
     const hp = m.home.totalPoints ?? 0, ap = m.away.totalPoints ?? 0, wk = m.matchupPeriodId;
     weeksPlayed = Math.max(weeksPlayed, wk);
@@ -58,6 +59,9 @@ export function buildCurrentSeason(league, ownerMap, year, now = Date.now()) {
     closestGames: [...margins].sort((a, b) => a.margin - b.margin).slice(0, 3).map((x) => `${x.winner} over ${x.loser} by ${x.margin} (${x.score}) in ${year} week ${x.week}`),
   };
   return { year, exportedAt: new Date(now).toISOString(), regularSeasonWeeks: reg, weeksPlayed, standings, results, records,
+    weekly: scores.map((x) => ({ week: x.week, owner: x.owner, points: x.points, opponent: x.opponent })),
+    remaining,
+    playoffTeams: Number(league.settings?.scheduleSettings?.playoffTeamCount) || 6,
     currentScoringPeriod: Number(league.scoringPeriodId || league.status?.currentMatchupPeriod || 0) || null,
     teams: Object.fromEntries((league.teams || []).map((t) => [ownerOf[t.id], { name: t.name || [t.location, t.nickname].filter(Boolean).join(" "), abbrev: t.abbrev || null, logo: t.logo || null }])),
     note: `Live ${year} season as of the pull time; ranked by wins then points for. Not final.` };
@@ -68,6 +72,21 @@ const SLOT = { 0: "QB", 2: "RB", 4: "WR", 6: "TE", 16: "D/ST", 17: "K", 23: "FLE
 const POS = { 1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "D/ST" };
 const SLOT_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "D/ST", "K"];
 const NFL = { 1: "ATL", 2: "BUF", 3: "CHI", 4: "CIN", 5: "CLE", 6: "DAL", 7: "DEN", 8: "DET", 9: "GB", 10: "TEN", 11: "IND", 12: "KC", 13: "LV", 14: "LAR", 15: "MIA", 16: "MIN", 17: "NE", 18: "NO", 19: "NYG", 20: "NYJ", 21: "PHI", 22: "ARI", 23: "PIT", 24: "LAC", 25: "SF", 26: "SEA", 27: "TB", 28: "WSH", 29: "CAR", 30: "JAX", 33: "BAL", 34: "HOU" };
+
+// The most a lineup could have scored: fill the starting slots with the
+// highest scorers eligible for each, rarest slot first (QB, K, D/ST, TE,
+// then RB and WR, FLEX last). Greedy, which is exact for these slots.
+export function bestLineup(players, slots) {
+  const order = ["QB", "K", "D/ST", "TE", "RB", "WR", "FLEX"];
+  const left = [...players].sort((a, b) => b.pts - a.pts), used = new Set();
+  let total = 0;
+  for (const slot of [...slots].sort((a, b) => order.indexOf(a) - order.indexOf(b))) {
+    const fits = (x) => !used.has(x) && ((x.elig || []).length ? x.elig.includes(slot) : (slot === "FLEX" ? ["RB", "WR", "TE"].includes(x.pos) : x.pos === slot));
+    const pick = left.find(fits);
+    if (pick) { used.add(pick); total += pick.pts; }
+  }
+  return Math.round(total * 100) / 100;
+}
 
 // Pure: ESPN league JSON for one scoring period (mTeam + mMatchup +
 // mMatchupScore with scoringPeriodId) -> this week's matchups, each side
@@ -88,13 +107,17 @@ export function buildLiveWeek(league, ownerMap) {
     const players = entries.map((e) => {
       const p = e.playerPoolEntry?.player || {};
       const slot = SLOT[e.lineupSlotId] || "BE";
+      const sp = Number(league.scoringPeriodId || week);
+      const proj = (p.stats || []).find((x) => x.statSourceId === 1 && Number(x.scoringPeriodId) === sp)?.appliedTotal;
       return { id: p.id || null, name: p.fullName || "Player", pos: POS[p.defaultPositionId] || slot, slot, pts: r2(e.playerPoolEntry?.appliedStatTotal),
+        proj: Number.isFinite(proj) ? r2(proj) : null, elig: (p.eligibleSlots || []).map((x) => SLOT[x]).filter((x) => x && x !== "BE" && x !== "IR"),
         nfl: NFL[p.proTeamId] || null, injury: p.injuryStatus && p.injuryStatus !== "ACTIVE" ? p.injuryStatus : null };
     });
     const starters = players.filter((x) => x.slot !== "BE" && x.slot !== "IR").sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot));
     const bench = players.filter((x) => x.slot === "BE" || x.slot === "IR");
     const live = s.totalPointsLive ?? s.totalPoints;
-    return { ...t, points: r2(live != null ? live : starters.reduce((n, x) => n + x.pts, 0)), starters, bench };
+    const points = r2(live != null ? live : starters.reduce((n, x) => n + x.pts, 0));
+    return { ...t, points, starters, bench, best: bestLineup([...starters, ...bench.filter((x) => x.slot !== "IR")], starters.map((x) => x.slot)) };
   };
   const matchups = (league.schedule || []).filter((m) => Number(m.matchupPeriodId) === week && m.home && m.away)
     .map((m) => ({ id: m.id, home: side(m.home), away: side(m.away), final: m.winner && m.winner !== "UNDECIDED" }));
@@ -128,6 +151,20 @@ export async function pullCurrentSeason(env, ownerMap, { force = false, now = Da
       if (wr.ok) cur.live = buildLiveWeek(await wr.json(), ownerMap);
     }
   } catch (e) { cur.liveError = String(e.message || e).slice(0, 120); }
+  // Bench regret by week, kept across pulls: what each owner scored against
+  // the best lineup their roster allowed. The current week overwrites itself
+  // until it is decided, so the season total is final weeks plus this one.
+  try {
+    const prev = await env.LIFTR_KV.get(CURRENT_KEY, "json");
+    const regret = { ...(prev?.year === cur.year ? prev?.regret || {} : {}) };
+    if (cur.live?.matchups?.length) {
+      const wk = {};
+      for (const m of cur.live.matchups) for (const t of [m.home, m.away]) if (t?.owner && Number.isFinite(t.best)) wk[t.owner] = { points: t.points, best: t.best };
+      if (Object.keys(wk).length) regret[cur.live.week] = wk;
+    }
+    cur.regret = regret;
+    if (prev?.take && prev.year === cur.year) cur.take = prev.take;
+  } catch {}
   await env.LIFTR_KV.put(CURRENT_KEY, JSON.stringify(cur));
   await status({ ok: true, how, weeksPlayed: cur.weeksPlayed, live: !!cur.live });
   return { weeksPlayed: cur.weeksPlayed, how };

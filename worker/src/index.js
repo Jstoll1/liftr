@@ -24,6 +24,7 @@ const MINUTES_TO_COUNT = { 15: 2, 30: 3, 45: 4, 60: 6 };
 import { HISTORY } from "./history-data.js";
 import { MATCHUPS } from "./matchup-data.js";
 import { pullCurrentSeason, CURRENT_KEY, freshFor } from "./fantasy.js";
+import { fantasyStats } from "./fantasy-stats.js";
 import { ROAST_SYSTEM, cleanRoastStats } from "./roast.js";
 
 const app = {
@@ -303,7 +304,15 @@ const app = {
         try { await pullCurrentSeason(env, MATCHUPS.espnOwners, { force: true }); cur = await env.LIFTR_KV.get(CURRENT_KEY, "json"); } catch {}
       }
       if (!cur) return json({ error: "No fantasy season yet" }, 503, corsHeaders);
-      return json(cur, 200, { ...corsHeaders, "Cache-Control": "public, max-age=60" });
+      // The Chief's take on the week just finished: written once per week.
+      if (cur.weeksPlayed && (!cur.take || cur.take.week < cur.weeksPlayed) && env.OPENAI_API_KEY) {
+        try { cur.take = await fantasyTake(env, cur); await env.LIFTR_KV.put(CURRENT_KEY, JSON.stringify(cur)); } catch {}
+      }
+      // All-time head to head (regular season, playoffs) for this week's pairings.
+      const h2h = {};
+      for (const m of cur.live?.matchups || []) { const a = m.away?.owner, b = m.home?.owner; const x = a && b && MATCHUPS.headToHead?.[a]?.[b]; if (x) h2h[`${a}|${b}`] = x; }
+      let stats = null; try { stats = fantasyStats(cur); } catch {}
+      return json({ ...cur, h2h, stats }, 200, { ...corsHeaders, "Cache-Control": "public, max-age=60" });
     }
     // Admin: pull the live fantasy season now instead of waiting for the cron.
     if (url.pathname === "/history-refresh") {
@@ -3924,8 +3933,10 @@ async function handleHistoryAsk(request, env, corsHeaders) {
     if (live?.weeksPlayed >= (cur?.weeksPlayed || 0)) {
       // This week's matchups as owner and score only: the lineups feed the
       // fantasy page and would only bloat the prompt here.
-      const { live: lw, teams, ...rest } = live;
-      cur = { ...rest, ...(lw ? { thisWeek: { week: lw.week, matchups: lw.matchups.map((m) => ({ away: m.away?.owner, awayPoints: m.away?.points, home: m.home?.owner, homePoints: m.home?.points, final: m.final })) } } : {}) };
+      const { live: lw, teams, weekly: _wk, remaining: _rm, regret: _rg, ...rest } = live;
+      let st = null; try { st = fantasyStats(live); } catch {}
+      const analytics = st ? { playoffOdds: st.odds, allPlayAndLuck: st.allPlay, powerRankings: st.power.map((x) => ({ rank: x.rank, owner: x.owner, move: x.move })), lastWeekAwards: st.awards, benchPointsLeft: st.regret.map((x) => ({ owner: x.owner, season: x.season })), streaks: st.streak, meaning: "playoffOdds: chance to make the playoffs, get a bye and win the title, from simulating the rest of the season. allPlay: record if every team played every other team each week; luck = actual wins minus all-play expected wins. benchPointsLeft: points left on the bench against the best possible lineup." } : null;
+      cur = { ...rest, ...(analytics ? { analytics } : {}), ...(lw ? { thisWeek: { week: lw.week, matchups: lw.matchups.map((m) => ({ away: m.away?.owner, awayPoints: m.away?.points, home: m.home?.owner, homePoints: m.home?.points, final: m.final })) } } : {}) };
     }
   } catch {}
 
@@ -4902,6 +4913,30 @@ async function handleWeekChat(request, env, corsHeaders, url = new URL(request.u
     logId = await weekChatLog(env, logId, logId ? patch : { at: Date.now(), asker, sid, build, q: String(messages[u]?.content || "").slice(0, 500), turn: messages.filter((x) => x.role === "user").length, ...patch });
   }
   return json({ message: { role: "assistant", content: m.content || null, ...(calls.length ? { tool_calls: calls } : {}) }, logId }, 200, corsHeaders);
+}
+
+// The Chief's weekly take on the fantasy league: three or four lines on the
+// week just finished (top score, upset, blowout, who is surging or sinking),
+// from that week's results and the standings.
+async function fantasyTake(env, cur) {
+  const wk = cur.weeksPlayed;
+  const week = (cur.weekly || []).filter((x) => x.week === wk);
+  const res = await openaiChat(env, "fantasy-take", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+    body: JSON.stringify({
+      model: env.OPENAI_MODEL || "gpt-4o-mini", temperature: 0.7, max_tokens: 220,
+      messages: [
+        { role: "system", content: "You are the Chief, the voice of the BroChiefs friends' fantasy football league. Write a 3 or 4 sentence take on the week just finished: the top score, the closest game or upset, the biggest blowout, and who is rising or sinking in the standings. Plain words, playful, a little trash talk, owners by first name, real numbers only from the data. No headings, no lists, no emoji." },
+        { role: "user", content: JSON.stringify({ week: wk, games: week, standings: cur.standings }) },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(`take ${res.status}`);
+  const j = await res.json();
+  const text = String(j?.choices?.[0]?.message?.content || "").trim();
+  if (!text) throw new Error("empty take");
+  return { week: wk, text: text.slice(0, 900), at: Date.now() };
 }
 
 // Pro trial: classic is the default, so only a pro visit carries a tag.

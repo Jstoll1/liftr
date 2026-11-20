@@ -10187,6 +10187,48 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-rec, .fx-pf { text-align: right; font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff; }
 .fx-pf { color: rgba(255, 255, 255, .6); }
 .fx-note { margin: 8px 0 2px; font-size: 10.5px; color: var(--text-dim); }
+.fx-tp { font-size: 9.5px; color: var(--neon-cyan); white-space: nowrap; }
+.fx-wp { display: grid; grid-template-columns: 34px 1fr 34px; align-items: center; gap: 6px; margin-top: 7px; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); }
+.fx-wp b { font-weight: normal; } .fx-wp b:last-child { text-align: right; }
+.fx-wp span { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.fx-wp i { display: block; height: 100%; background: var(--neon-cyan); }
+.fx-h2h { margin: 8px 0 0; font-size: 11px; color: var(--text-dim); }
+.fx-lu li.tp b { color: var(--text-dim); } .fx-lu li.tp b small { font-family: inherit; font-size: inherit; }
+.fx-lu li.lv span { color: var(--neon-cyan); }
+.fx-take { margin: 0 0 10px; padding: 0 0 10px; border-bottom: 1px solid var(--card-border); }
+.fx-take p { margin: 6px 0 0; font-size: 12.5px; line-height: 1.45; color: rgba(255, 255, 255, .85); }
+.fx-k2 { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--arcade-gold); letter-spacing: .06em; }
+.fx-tabs { display: flex; gap: 4px; margin-top: 14px; }
+.fx-tabs button { flex: 1; padding: 7px 0; border-radius: 6px; border: 1px solid var(--card-border); background: transparent; color: var(--text-dim); font-family: 'Press Start 2P', monospace; font-size: 6.5px; cursor: pointer; }
+.fx-tabs button.on { border-color: var(--neon-cyan); color: var(--neon-cyan); background: rgba(var(--neon-cyan-rgb), .08); }
+.fx-sth { grid-template-columns: minmax(0, 1fr) 48px 50px 40px !important; white-space: nowrap; }
+.fx-sth span { white-space: nowrap; font-size: 6px; }
+.fx-st { grid-template-columns: 18px 26px minmax(0, 1fr) 48px 50px 40px !important; cursor: pointer; }
+.fx-st.cut { border-bottom: 1px dashed rgba(var(--neon-cyan-rgb), .5); }
+.fx-st.open { background: rgba(var(--neon-cyan-rgb), .05); }
+.fx-nm b.me { color: var(--neon-cyan); }
+.fx-c { text-align: right; font-family: 'Press Start 2P', monospace; font-size: 7.5px; color: #fff; white-space: nowrap; }
+.fx-c.dim { color: rgba(255, 255, 255, .55); } .fx-c.up { color: var(--neon-green); } .fx-c.dn { color: var(--neon-pink); } .fx-c.gold { color: var(--arcade-gold); }
+.fx-card { padding: 8px 0 12px; border-bottom: 1px solid var(--card-border); }
+.fx-spark { width: 100%; height: 70px; display: block; }
+.fx-spark polyline { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.fx-spark polyline.mine { stroke: var(--neon-cyan); } .fx-spark polyline.avg { stroke: rgba(255, 255, 255, .3); stroke-dasharray: 3 3; }
+.fx-spark circle { fill: var(--neon-cyan); }
+.fx-key { display: flex; gap: 14px; margin-top: 4px; font-size: 10px; color: var(--text-dim); }
+.fx-key i { display: inline-block; width: 12px; height: 2px; margin-right: 5px; vertical-align: middle; }
+.fx-key .k-me { background: var(--neon-cyan); } .fx-key .k-avg { background: rgba(255, 255, 255, .35); }
+.fx-facts { display: flex; flex-wrap: wrap; margin-top: 8px; }
+.fx-facts span { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1 1 30%; padding: 6px 0; border-left: 1px solid var(--card-border); }
+.fx-facts span:nth-child(3n+1) { border-left: 0; }
+.fx-facts small { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); }
+.fx-facts b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 10px; color: #fff; }
+.fx-facts b.up { color: var(--neon-green); } .fx-facts b.dn { color: var(--neon-pink); }
+.fx-facts em { font-style: normal; font-size: 9.5px; color: var(--text-dim); }
+.fx-sec { margin-top: 14px; }
+.fx-aw { list-style: none; margin: 6px 0 0; padding: 0; }
+.fx-aw li { display: grid; grid-template-columns: 92px auto minmax(0, 1fr); align-items: baseline; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, .05); font-size: 12px; }
+.fx-aw small { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); }
+.fx-aw span { color: rgba(255, 255, 255, .7); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fx-ask { margin: 0 12px; }
 .hist-fold { margin: 12px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--card-bg); }
 .hist-fold > summary { display: flex; align-items: center; gap: 8px; padding: 12px; cursor: pointer; list-style: none; }
