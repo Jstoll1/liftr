@@ -11895,8 +11895,7 @@ document.getElementById("sim-open")?.addEventListener("click", () => {
   const A = { id: "fantasy-page-2026", until: Date.parse("2027-01-15T00:00:00Z"), kicker: "NEW FEATURE", title: "Fantasy page", body: "Track this week's fantasy matchups, gain insights, and make history.", cta: "Take me there", go: () => document.getElementById("nav-history-btn")?.click() };
   const KEY = `brochiefs_announce_${A.id}`;
   const show = () => {
-    // Signed-in members only; wait for sign-in rather than skipping it.
-    try { if (localStorage.getItem(KEY) || Date.now() > A.until || window.__liveView || window.__adminEntry) return; if (!localStorage.getItem("brochiefs_me_v1")) return setTimeout(show, 5000); } catch { return; }
+    try { if (localStorage.getItem(KEY) || Date.now() > A.until || window.__liveView || window.__adminEntry) return; } catch { return; }
     if (document.getElementById("theme-poll") || document.querySelector(".modal-overlay:not(.hidden)")) return setTimeout(show, 4000);
     const m = document.createElement("div");
     m.id = "announce"; m.className = "ann-ov"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", A.title);
