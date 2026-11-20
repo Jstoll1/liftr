@@ -254,10 +254,10 @@
       const h = data.h2h?.[`${m.away?.owner}|${m.home?.owner}`];
       return `${mine(m) ? `<span class="fx-k2 fx-mine-k">YOUR MATCHUP</span>` : ""}<div class="fx-mu${isOpen ? " open" : ""}${m.final ? " final" : ""}${mine(m) ? " mine" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-expanded="${isOpen}">
         <div class="fx-row">${sideHtml(m.away, m.home, "a", oa)}<span class="fx-vs">${m.final ? "FINAL" : "VS"}</span>${sideHtml(m.home, m.away, "h", oh)}</div>
-        ${h ? `<p class="fx-h2h">${esc(h.regularSeason || "")}${h.championshipGames?.length ? ` · ${h.championshipGames.map((c) => `${esc(c.winner)} won the ${esc(c.year)} final`).join(", ")}` : ""}${h.lastMeeting ? ` · last: ${esc(String(h.lastMeeting).replace(/\s*\(regular season\)/, ""))}` : ""}</p>` : ""}
+        ${h ? `<p class="fx-h2h">${esc(h.regularSeason || "")}${h.playoffs ? ` · playoffs ${esc(String(h.playoffs).replace(/^(\S+) (\d+-\d+) \S+$/, "$2"))}` : ""}${h.championshipGames?.length ? ` · ${h.championshipGames.map((c) => `${esc(c.winner)} won the ${esc(c.year)} final`).join(", ")}` : ""}${h.lastMeeting ? ` · last: ${esc(String(h.lastMeeting).replace(/\s*\(regular season\)/, ""))}` : ""}</p>` : ""}
         ${swing(m)}
         ${wp != null ? `<div class="fx-wp" title="Win chance from live points and projections"><b>${pct(wp)}</b><span><i style="width:${(wp * 100).toFixed(1)}%"></i></span><b>${pct(1 - wp)}</b></div>` : ""}
-        ${isOpen ? `${h?.playoffs ? `<p class="fx-h2h">Playoffs: ${esc(h.playoffs)}</p>` : ""}<div class="fx-lus">${lineup(m.away)}${lineup(m.home)}</div><p class="fx-note">Grey number = projection for a player still to play.</p>` : ""}
+        ${isOpen ? `<div class="fx-lus">${lineup(m.away)}${lineup(m.home)}</div><p class="fx-note">Grey number = projection for a player still to play.</p>` : ""}
       </div>`;
     }).join("");
     root.innerHTML = `
