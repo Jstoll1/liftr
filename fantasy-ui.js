@@ -205,6 +205,9 @@
   const historyHtml = () => {
     const h = data.history; if (!h) return "";
     const rows = [...(h.before || []).map((x) => ({ o: x.owner, t: x.line, k: x.kind })), ...(h.record || []).map((x) => ({ o: x.owner, t: x.text, k: "rec" }))];
+    // One owner's lines together, record-breakers first.
+    const firstAt = {}; rows.forEach((r, i) => { if (!(r.o in firstAt)) firstAt[r.o] = r.k === "rec" ? -1 : i; else if (r.k === "rec") firstAt[r.o] = Math.min(firstAt[r.o], -1); });
+    rows.sort((a, b) => firstAt[a.o] - firstAt[b.o] || (a.o === b.o ? 0 : a.o.localeCompare(b.o)));
     if (!rows.length) return "";
     return `<div class="fx-sec"><span class="fx-k2">THIS HAS HAPPENED BEFORE</span><ul class="fx-hist">${rows.map((r) => `<li class="${esc(r.k)}">${owner(r.o)} ${esc(r.t)}</li>`).join("")}</ul></div>`;
   };
