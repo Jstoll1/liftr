@@ -1,8 +1,12 @@
-// Live fantasy season for the history chat. ESPN's league API needs the
-// league's espn_s2 and SWID cookies (Worker secrets ESPN_S2, ESPN_SWID,
-// ESPN_LEAGUE_ID). A cron pulls the current season into KV; the archive
-// reads it and falls back to the bundled export when it is missing.
+// Live fantasy season for the history chat. The league is public on ESPN,
+// so the league API answers with just the league id (Worker secret
+// ESPN_LEAGUE_ID); the espn_s2 and SWID cookies (ESPN_S2, ESPN_SWID) are
+// optional, used if set and dropped if ESPN turns them away. A cron pulls
+// the current season into KV; the archive reads it and falls back to the
+// bundled export when it is missing. Each pull's outcome is kept under
+// STATUS_KEY so a failing pull is visible.
 export const CURRENT_KEY = "history:current";
+export const STATUS_KEY = "history:current:status";
 const MAX_AGE = 6 * 3600 * 1000;
 
 const r2 = (x) => Math.round(x * 100) / 100;
@@ -49,18 +53,25 @@ export function buildCurrentSeason(league, ownerMap, year, now = Date.now()) {
 }
 
 export async function pullCurrentSeason(env, ownerMap, { force = false, now = Date.now() } = {}) {
-  if (!env.ESPN_S2 || !env.ESPN_SWID || !env.ESPN_LEAGUE_ID) return { skipped: "no ESPN fantasy secrets" };
+  if (!env.ESPN_LEAGUE_ID) return { skipped: "no ESPN_LEAGUE_ID" };
   if (!force) {
     const prev = await env.LIFTR_KV.get(CURRENT_KEY, "json");
     if (prev && now - Date.parse(prev.exportedAt) < MAX_AGE) return { skipped: "fresh" };
   }
   const year = new Date(now).getUTCFullYear();
   const qs = ["mTeam", "mMatchup", "mSettings"].map((v) => `view=${v}`).join("&");
-  const res = await fetch(`https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${year}/segments/0/leagues/${env.ESPN_LEAGUE_ID}?${qs}`, {
-    headers: { Cookie: `espn_s2=${env.ESPN_S2}; SWID=${env.ESPN_SWID}`, Accept: "application/json" },
-  });
-  if (!res.ok) throw new Error(`ESPN fantasy ${res.status}`);
-  const cur = buildCurrentSeason(await res.json(), ownerMap, year, now);
+  const url = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${year}/segments/0/leagues/${env.ESPN_LEAGUE_ID}?${qs}`;
+  const status = (x) => env.LIFTR_KV.put(STATUS_KEY, JSON.stringify({ at: now, ...x })).catch(() => {});
+  const get = (cookies) => fetch(url, { headers: { Accept: "application/json", ...(cookies ? { Cookie: `espn_s2=${env.ESPN_S2}; SWID=${env.ESPN_SWID}` } : {}) } });
+  const hasCookies = !!(env.ESPN_S2 && env.ESPN_SWID);
+  let res = await get(hasCookies), how = hasCookies ? "cookies" : "public";
+  // Stale cookies on a public league: ESPN refuses them, the plain read works.
+  if (!res.ok && hasCookies && (res.status === 401 || res.status === 403)) { res = await get(false); how = "public (saved cookies refused)"; }
+  if (!res.ok) { await status({ ok: false, error: `ESPN fantasy ${res.status}`, how }); throw new Error(`ESPN fantasy ${res.status}`); }
+  let cur;
+  try { cur = buildCurrentSeason(await res.json(), ownerMap, year, now); }
+  catch (e) { await status({ ok: false, error: String(e.message || e), how }); throw e; }
   await env.LIFTR_KV.put(CURRENT_KEY, JSON.stringify(cur));
-  return { weeksPlayed: cur.weeksPlayed };
+  await status({ ok: true, how, weeksPlayed: cur.weeksPlayed });
+  return { weeksPlayed: cur.weeksPlayed, how };
 }
