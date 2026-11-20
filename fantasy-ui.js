@@ -307,6 +307,15 @@
       const isOpen = open.has(m.id), oa = outlook(m.away), oh = outlook(m.home);
       const wp = m.final ? null : phi((oa.exp - oh.exp) / Math.sqrt(oa.sd ** 2 + oh.sd ** 2));
       const h = data.h2h?.[`${m.away?.owner}|${m.home?.owner}`];
+      // Closed: a small scorebug card, two owners and their scores, the
+      // leader bright, a thin win-chance bar. Open: the full matchup.
+      if (!isOpen) {
+        const row = (t, o) => `<span class="fx-cr${(t?.points || 0) > (o?.points || 0) ? " lead" : ""}${t?.owner === me() ? " me" : ""}">${badge(t)}<b>${esc(t?.owner || "")}</b><em>${pts(t?.points)}</em></span>`;
+        return `<div class="fx-card-mu${mine(m) ? " mine" : ""}${m.final ? " final" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-expanded="false" aria-label="${esc(m.away?.owner)} against ${esc(m.home?.owner)}">
+          ${mine(m) ? `<span class="fx-cmk">YOUR MATCHUP</span>` : m.final ? `<span class="fx-cmk dim">FINAL</span>` : ""}${row(m.away, m.home)}${row(m.home, m.away)}
+          ${wp != null ? `<span class="fx-cbar" title="Win chance: ${esc(m.away?.owner)} ${pct(wp)}"><i style="width:${(wp * 100).toFixed(1)}%"></i></span>` : ""}
+        </div>`;
+      }
       return `${mine(m) ? `<span class="fx-k2 fx-mine-k">YOUR MATCHUP</span>` : ""}<div class="fx-mu${isOpen ? " open" : ""}${m.final ? " final" : ""}${mine(m) ? " mine" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-expanded="${isOpen}">
         <div class="fx-row">${sideHtml(m.away, m.home, "a", oa)}<span class="fx-vs">${m.final ? "FINAL" : "VS"}</span>${sideHtml(m.home, m.away, "h", oh)}</div>
         ${isOpen ? `${h ? `<div class="fx-ctx"><small>ALL TIME</small><span>${h2hLine(h)}</span></div>` : ""}${swing(m)}${wp != null ? `<div class="fx-ctx"><small>WIN CHANCE</small><div class="fx-wp" title="From live points and projections for players still to play"><b>${pct(wp)}</b><span><i style="width:${(wp * 100).toFixed(1)}%"></i></span><b>${pct(1 - wp)}</b></div></div>` : ""}` : ""}

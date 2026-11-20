@@ -10346,3 +10346,25 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-ctx > span b { color: #fff; font-weight: 600; }
 .fx-ctx .fx-sw, .fx-ctx .fx-wp { margin: 0; }
 .fx-ctx .fx-sw { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+/* Matchups as a grid of small scorebug cards, two across like Scores; an
+   open matchup spans the full width. An odd last card centres. */
+.fx-mus { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fx-mus > .fx-mu, .fx-mus > .fx-mine-k { grid-column: 1 / -1; }
+.fx-mus > .fx-card-mu:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 4px); }
+.fx-card-mu { display: flex; flex-direction: column; gap: 5px; padding: 8px 9px 9px; border-radius: 10px; border: 1px solid var(--card-border); background: rgba(255, 255, 255, .025); cursor: pointer; min-width: 0; }
+.fx-card-mu.mine { border-color: rgba(var(--neon-cyan-rgb), .55); background: rgba(var(--neon-cyan-rgb), .06); }
+.fx-cmk { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .06em; color: var(--neon-cyan); }
+.fx-cmk.dim { color: var(--text-dim); }
+.fx-cr { display: flex; align-items: center; gap: 7px; min-width: 0; color: rgba(255, 255, 255, .55); }
+.fx-cr .fx-badge { width: 22px; height: 22px; font-size: 8px; }
+.fx-cr b { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fx-cr em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 11px; }
+.fx-cr.lead { color: #fff; }
+.fx-cr.me b { color: var(--neon-cyan); }
+.fx-cbar { display: block; height: 3px; margin-top: 2px; border-radius: 2px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+.fx-cbar i { display: block; height: 100%; background: var(--neon-cyan); }
+/* The YOUR MATCHUP / FINAL tag rides on the card's top edge, so the
+   cards in a row stay the same height. */
+.fx-card-mu { position: relative; }
+.fx-mus { row-gap: 12px; padding-top: 4px; }
+.fx-cmk { position: absolute; top: -5px; left: 9px; padding: 1px 5px; border-radius: 3px; background: var(--card-bg); line-height: 1.4; }
