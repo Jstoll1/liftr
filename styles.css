@@ -10172,7 +10172,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-mu.final .fx-vs { color: rgba(255, 255, 255, .42); }
 .fx-lus { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--card-border); }
 .fx-lu { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.fx-lu li { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto; align-items: center; gap: 5px; font-size: 11px; }
+.fx-lu li { display: grid; grid-template-columns: 30px 14px minmax(0, 1fr) auto; align-items: center; gap: 5px; font-size: 11px; }
 .fx-lu i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); }
 .fx-lu span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fx-lu u { text-decoration: none; margin-left: 3px; font-size: 9px; color: var(--neon-pink); }
@@ -10260,7 +10260,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-rh { display: grid; grid-template-columns: minmax(0, 1fr) 52px 40px; gap: 6px; padding-bottom: 4px; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); }
 .fx-rh span:not(:first-child) { text-align: right; }
 .fx-ro { list-style: none; margin: 0; padding: 0; }
-.fx-ro li { display: grid; grid-template-columns: 32px minmax(0, 1fr) 16px 52px 40px; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px solid rgba(255, 255, 255, .05); font-size: 12px; }
+.fx-ro li { display: grid; grid-template-columns: 32px 16px minmax(0, 1fr) 52px 40px; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px solid rgba(255, 255, 255, .05); font-size: 12px; }
 .fx-ro i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); }
 .fx-ro span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fx-ro u, .fx-lu u { text-decoration: none; margin-left: 5px; padding: 1px 4px; border-radius: 3px; font-family: 'Press Start 2P', monospace; font-size: 6px; vertical-align: 1px; color: #fff; background: var(--neon-pink); }

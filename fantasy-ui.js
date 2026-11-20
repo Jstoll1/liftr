@@ -18,7 +18,7 @@
   const pct = (x) => (x >= 0.995 ? "99%+" : x > 0 && x < 0.01 ? "<1%" : `${Math.round((x || 0) * 100)}%`);
   const me = () => (typeof currentManager !== "undefined" ? currentManager : null);
   const colour = (o) => (typeof A !== "undefined" && A.colors?.[o]) || "#8b8498";
-  const nflLogo = (ab) => (ab ? `<img class="fx-nfl" src="https://a.espncdn.com/i/teamlogos/nfl/500/${esc(ab.toLowerCase())}.png" alt="" loading="lazy" onerror="this.style.display='none'">` : "");
+  const nflLogo = (ab) => (ab ? `<img class="fx-nfl" src="https://a.espncdn.com/i/teamlogos/nfl/500/${esc(ab.toLowerCase())}.png" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : "");
   // No ESPN logo: the owner's pick'em avatar (their emoji or initial on
   // their pick'em colour), so a face is the same across both leagues.
   const pk = (o) => ({ c: (typeof accentFor === "function" && accentFor(o)) || colour(o), t: (typeof avatarOverrides !== "undefined" && avatarOverrides?.[o]) || String(o || "?")[0] });
@@ -73,7 +73,7 @@
     const tp = o && (o.left || o.now) ? `<span class="fx-tp">${o.now ? `${o.now} live` : ""}${o.now && o.left ? " · " : ""}${o.left ? `${o.left} to play` : ""}</span>` : "";
     return `<span class="fx-side ${k}${lead ? " lead" : ""}${t?.owner === me() ? " me" : ""}"><span class="fx-tlink" data-fxteam="${esc(t?.owner || "")}" role="button" aria-label="Open ${esc(t?.owner || "")}'s team">${badge(t)}</span><span class="fx-nm"><b>${esc(t?.owner || t?.name || "")}</b><small>${t?.record ? `${esc(t.record)} · ` : ""}${esc(t?.name || "")}</small>${tp}</span><em>${pts(t?.points)}</em></span>`;
   };
-  const lineup = (t) => `<ol class="fx-lu">${(t?.starters || []).map((p) => { const tp = toPlay(p), lv = live(p); return `<li class="${tp ? "tp" : ""}${lv ? " lv" : ""}"><i>${esc(p.slot)}</i><span>${esc(p.name)}${status(p)}</span>${nflLogo(p.nfl)}<b class="${p.pts > 0 ? "on" : ""}">${tp && p.proj != null ? `<small>${pts(p.proj)}</small>` : pts(p.pts)}</b></li>`; }).join("")}</ol>`;
+  const lineup = (t) => `<ol class="fx-lu">${(t?.starters || []).map((p) => { const tp = toPlay(p), lv = live(p); return `<li class="${tp ? "tp" : ""}${lv ? " lv" : ""}"><i>${esc(p.slot)}</i>${nflLogo(p.nfl) || "<span></span>"}<span>${esc(p.name)}${status(p)}</span><b class="${p.pts > 0 ? "on" : ""}">${tp && p.proj != null ? `<small>${pts(p.proj)}</small>` : pts(p.pts)}</b></li>`; }).join("")}</ol>`;
 
   const sparkline = (o) => {
     const wk = (data.weekly || []), mine = wk.filter((x) => x.owner === o).sort((a, b) => a.week - b.week);
@@ -130,9 +130,9 @@
     const { lineup, used } = optimal(r);
     const starting = (p) => p.slot !== "BE" && p.slot !== "IR";
     const row = (slot, p) => {
-      if (!p) return `<li class="gap"><i>${esc(slot)}</i><span>No one available</span><span></span><b></b><em></em></li>`;
+      if (!p) return `<li class="gap"><i>${esc(slot)}</i><span></span><span>No one available</span><b></b><em></em></li>`;
       const tag = used.has(p) && !starting(p) ? `<s class="go">START</s>` : !used.has(p) && starting(p) ? `<s class="sit">SIT</s>` : "";
-      return `<li class="${used.has(p) ? "" : "out"}"><i>${esc(slot)}</i><span>${esc(p.name)}${status(p)}${tag}</span>${nflLogo(p.nfl)}<b>${pts(p.season)}</b><em>${pts(p.avg)}</em></li>`;
+      return `<li class="${used.has(p) ? "" : "out"}"><i>${esc(slot)}</i>${nflLogo(p.nfl) || "<span></span>"}<span>${esc(p.name)}${status(p)}${tag}</span><b>${pts(p.season)}</b><em>${pts(p.avg)}</em></li>`;
     };
     const best = lineup.sort((a, b) => order.indexOf(a.slot) - order.indexOf(b.slot));
     const rest = r.filter((p) => !used.has(p)).sort((a, b) => (unavailable(a) - unavailable(b)) || b.avg - a.avg);
