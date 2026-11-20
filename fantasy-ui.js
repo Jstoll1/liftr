@@ -177,7 +177,7 @@
     </div>`;
     m.addEventListener("click", (e) => { if (e.target === m || e.target.closest("[data-fxx]")) m.remove(); });
     document.body.appendChild(m);
-    try { window.noteUse?.("fantasy-team"); } catch {}
+    try { window.noteUse?.("fantasy-team", o); } catch {}
   }
 
   // The players still to play who will decide a matchup: each side's
@@ -293,7 +293,7 @@
     const side = e.target.closest("[data-fxteam]");
     if (side) { e.stopPropagation(); return openTeam(side.dataset.fxteam); }
     const mu = e.target.closest("[data-fxmu]");
-    if (mu) { const id = Number(mu.dataset.fxmu); open.has(id) ? open.delete(id) : open.add(id); try { window.noteUse?.("fantasy-matchup"); } catch {} paint(); }
+    if (mu) { const id = Number(mu.dataset.fxmu); open.has(id) ? open.delete(id) : open.add(id); try { const mm = data.live?.matchups?.find((x) => x.id === id); window.noteUse?.("fantasy-matchup", mm ? `${mm.away?.owner} vs ${mm.home?.owner}` : ""); } catch {} paint(); }
   });
   root.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.closest("[data-fxmu],[data-fxo]")) { e.preventDefault(); e.target.click(); } });
 
