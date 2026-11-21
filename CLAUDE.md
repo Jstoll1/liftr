@@ -113,5 +113,11 @@ with the date and what broke, `checks` a good answer must pass). When a
 feature adds something members will ask about, add a test for it
 (`"source": "feature"`). When Jake pastes a pressure test report, grade
 every answer against its tool data, rank the problems with their cause,
-recommend fixes, and after the fixes ask for a rerun.
+recommend fixes, and after the fixes ask for a rerun. The same goes for a
+pasted "Brochiefs Chief test brief" (failures only): fix every failing
+test, regressions first; for each test give it `checks` that would have
+caught the bad answer (a flagged test arrives with none); never loosen a
+check just to pass unless the answer was actually right, and say so when
+you do. The score should only move up: if a fix trades one failure for
+another, say which and why.
 

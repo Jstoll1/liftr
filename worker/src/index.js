@@ -26,7 +26,7 @@ import { MATCHUPS } from "./matchup-data.js";
 import { pullCurrentSeason, CURRENT_KEY, freshFor } from "./fantasy.js";
 import { fantasyStats } from "./fantasy-stats.js";
 import { historyContext, careers, meetings } from "./fantasy-history.js";
-import { CASES_KEY, RUNS_KEY, addCase, cleanCase, mergeRun, runRecord } from "./chieftest.js";
+import { CASES_KEY, RUNS_KEY, addCase, cleanCase, mergeRun, runRecord, turned } from "./chieftest.js";
 import { ROAST_SYSTEM, cleanRoastStats } from "./roast.js";
 
 const app = {
@@ -5011,9 +5011,10 @@ async function handleChiefTest(request, env, corsHeaders, url) {
   }
   if (body?.action === "save-run") {
     const results = body.results && typeof body.results === "object" ? Object.fromEntries(Object.entries(body.results).slice(0, 200).map(([k, v]) => [String(k), !!v])) : {};
+    const t = turned(cases, results);
     cases = mergeRun(cases, results); await save();
-    runs = [runRecord(body), ...runs].slice(0, 60); await env.LIFTR_KV.put(RUNS_KEY, JSON.stringify(runs));
-    return json({ cases, runs }, 200, nc);
+    runs = [runRecord({ ...body, ...t }), ...runs].slice(0, 60); await env.LIFTR_KV.put(RUNS_KEY, JSON.stringify(runs));
+    return json({ cases, runs, ...t }, 200, nc);
   }
   return json({ error: "Unknown action" }, 400, corsHeaders);
 }

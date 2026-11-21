@@ -821,9 +821,14 @@
     progress(todo.length, todo.length, "");
     const passed = results.filter((r) => r.check.pass).length, failed = results.filter((r) => !r.check.pass).map((r) => r.c.id);
     let saved = "";
-    if (!set.local) { const st = `${GAMES.filter((g) => fins()[g.id]).length}/${GAMES.length} final${GAMES.some((g) => latestLive[g.id]?.state === "in") ? ", games live" : ""}`; const r = await ctApi("POST", { action: "save-run", results: Object.fromEntries(results.map((x) => [x.c.id, x.check.pass])), build: document.querySelector('meta[name="build"]')?.content || "", state: st, passed, total: results.length, failed }); saved = r ? "" : " (couldn't save the score)"; set.runs = r?.runs || set.runs; } else saved = " (not saved: no Live sign-in reached the test)";
+    if (!set.local) { const st = `${GAMES.filter((g) => fins()[g.id]).length}/${GAMES.length} final${GAMES.some((g) => latestLive[g.id]?.state === "in") ? ", games live" : ""}`; const r = await ctApi("POST", { action: "save-run", results: Object.fromEntries(results.map((x) => [x.c.id, x.check.pass])), build: document.querySelector('meta[name="build"]')?.content || "", state: st, passed, total: results.length, failed }); saved = r ? "" : " (couldn't save the score)"; set.runs = r?.runs || set.runs; set.turned = r ? { regressed: r.regressed || [], fixed: r.fixed || [] } : null; } else saved = " (not saved: no Live sign-in reached the test)";
     const trend = (set.runs || []).slice(0, 6).map((x) => `${x.passed}/${x.total}`).join(" ← ");
-    return { passed, total: results.length, failed, runs: set.runs || [], text: `SCORE ${passed}/${results.length}${saved}${trend ? `\nRecent runs: ${trend}` : ""}${failed.length ? `\nFailed checks: ${failed.join(", ")}` : ""}\n\n` + testReport(results) };
+    const tu = set.turned || { regressed: [], fixed: [] };
+    const head = `SCORE ${passed}/${results.length}${saved}${trend ? `\nRecent runs: ${trend}` : ""}${tu.regressed.length ? `\nREGRESSED (passed before, failing now): ${tu.regressed.join(", ")}` : ""}${tu.fixed.length ? `\nFixed since last run: ${tu.fixed.join(", ")}` : ""}${failed.length ? `\nFailed checks: ${failed.join(", ")}` : ""}`;
+    // The short version to paste: only what failed, regressions first.
+    const bad = results.filter((x) => !x.check.pass).sort((a, b) => tu.regressed.includes(b.c.id) - tu.regressed.includes(a.c.id));
+    const brief = `Brochiefs Chief test brief: ${head}\n` + (bad.length ? testReport(bad).split("\n").slice(1).join("\n") : "\nEverything passed.");
+    return { passed, total: results.length, failed, regressed: tu.regressed, fixed: tu.fixed, runs: set.runs || [], brief, text: `${head}\n\n` + testReport(results) };
   }
   // The data a fair run needs: this week's slate, everyone's picks and the
   // WIN% odds worked out from them (a run on a half-loaded page graded stale

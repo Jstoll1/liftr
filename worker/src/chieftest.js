@@ -55,7 +55,15 @@ export function mergeRun(cases, results, now = Date.now()) {
 }
 
 // One line per run for the trend: when, which build, the game state, the score.
+// Which tests turned: passing before and failing now (regressed), or
+// failing on their last run and passing now (fixed).
+export function turned(cases, results) {
+  const regressed = [], fixed = [];
+  for (const c of cases) { if (!(c.id in results) || !c.runs) continue; const was = c.streak > 0, now = !!results[c.id]; if (was && !now) regressed.push(c.id); if (!was && now) fixed.push(c.id); }
+  return { regressed, fixed };
+}
 export function runRecord(r, now = Date.now()) {
   const failed = (Array.isArray(r?.failed) ? r.failed : []).map(slug).slice(0, 40);
-  return { at: now, build: String(r?.build || "").replace(/\D/g, "").slice(0, 14), state: String(r?.state || "").slice(0, 40), passed: Math.max(0, Number(r?.passed) || 0), total: Math.max(0, Number(r?.total) || 0), failed };
+  const ids = (a) => (Array.isArray(a) ? a.map(slug).slice(0, 40) : []);
+  return { at: now, build: String(r?.build || "").replace(/\D/g, "").slice(0, 14), state: String(r?.state || "").slice(0, 40), passed: Math.max(0, Number(r?.passed) || 0), total: Math.max(0, Number(r?.total) || 0), failed, regressed: ids(r?.regressed), fixed: ids(r?.fixed) };
 }
