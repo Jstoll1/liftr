@@ -10491,6 +10491,12 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-tn-h u.hi { color: var(--neon-pink); background: rgba(var(--neon-pink-rgb), .12); border-color: rgba(var(--neon-pink-rgb), .5); }
 .fx-tn-n { font-size: 11.5px; line-height: 1.4; color: rgba(255, 255, 255, .72); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .fx-tn-n i { font-style: normal; color: var(--text-dim); font-size: 10px; }
+.fx-tn li:not(.open) .fx-tn-n { -webkit-line-clamp: 3; }
+.fx-tn-hl { font-weight: 600; color: rgba(255, 255, 255, .92); }
+.fx-tn-c { display: flex; gap: 4px; min-width: 0; font-size: 10.5px; color: var(--text-dim); white-space: nowrap; }
+.fx-tn-c span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.fx-tn-c i { flex: none; font-style: normal; }
+.fx-tn li.open .fx-tn-c { display: none; }
 .fx-tn-more { display: block; margin: 6px auto 0; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--card-border); background: transparent; color: var(--text-dim); font: 600 11px system-ui, sans-serif; }
 /* The league table's own header, so the board hands over cleanly. */
 .fx-sechd { display: flex; align-items: center; gap: 10px; margin: 20px 0 2px; }
