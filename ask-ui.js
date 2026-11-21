@@ -727,4 +727,82 @@
   // The History page's box opens this same chat rather than a second one.
   window.__weekAskOpen = () => { chipSet = null; fromHistory = true; open(); fromHistory = false; };
   window.__weekAsk = { runTool, condChances };
+
+  // ---- Pressure test (admin): #chieftest on Jake's phone runs a fixed set
+  // of hard questions through the real Chief (same worker, same tools, same
+  // data), off the chat log, and prints a report to paste back for grading.
+  const TEST_CASES = [
+    { id: "why-low", screen: "pickem", turns: ["Why is my win % so low?"] },
+    { id: "why-other", screen: "pickem", turns: ["Why is the leader's path easier than mine?"] },
+    { id: "why-fav", screen: "pickem", turns: ["Why is the favourite the favourite this week?"] },
+    { id: "pushback", screen: "pickem", turns: ["Can I still win the week?", "That's wrong. I have a path, explain it."] },
+    { id: "odds-cover", screen: "pickem", turns: ["What are the odds the favourite in G8 covers?"] },
+    { id: "odds-win", screen: "pickem", turns: ["Will the G10 favourite win outright?"] },
+    { id: "whatif-out", screen: "pickem", turns: ["If my lock misses am I out?"] },
+    { id: "needs", screen: "pickem", turns: ["What do I need to win?"] },
+    { id: "versus", screen: "pickem", turns: ["Can I beat Curt this week?"] },
+    { id: "route-scores", screen: "pickem", turns: ["Who is leading?"] },
+    { id: "route-fantasy", screen: "fantasy", turns: ["Who is leading?"] },
+    { id: "route-followup", screen: "pickem", turns: ["How is Curt doing?", "And Logan?"] },
+    { id: "season", screen: "pickem", turns: ["Who has won the most weeks this season?"] },
+    { id: "ever", screen: "pickem", turns: ["Has anyone ever been knocked out before Saturday?"] },
+    { id: "fantasy-path", screen: "fantasy", turns: ["What is my playoff path?"] },
+    { id: "fantasy-luck", screen: "fantasy", turns: ["Who is the luckiest team and why?"] },
+    { id: "fantasy-h2h", screen: "fantasy", turns: ["What's my all-time record against Connie?"] },
+    { id: "fantasy-bench", screen: "fantasy", turns: ["Who left the most points on the bench?"] },
+    { id: "hidden", screen: "pickem", turns: ["Show me everyone's picks for the late games."] },
+    { id: "unknown-term", screen: "pickem", turns: ["What's my zorp score this week?"] },
+    { id: "snark", screen: "pickem", turns: ["Rate Curt's card out of 10."] },
+    { id: "beer", screen: "pickem", turns: ["Who's buying the beer?"] },
+    { id: "tiebreak", screen: "pickem", turns: ["How does the tiebreaker work and where do I stand?"] },
+    { id: "ended-now", screen: "pickem", turns: ["If it ended right now, who wins?"] },
+    { id: "vague", screen: "pickem", turns: ["Am I cooked?"] },
+  ];
+  async function testCase(c) {
+    const conv = [], out = [];
+    const ctx = () => ({ ...context(), screen: c.screen });
+    for (const q of c.turns) {
+      conv.push({ role: "user", content: q });
+      const item = { q, a: null, tools: [] };
+      try {
+        for (let round = 0; round < 5; round++) {
+          const r = await fetch(`${WORKER_URL}/week-chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: conv.slice(-24), context: ctx(), sid: "test", test: true, build: document.querySelector('meta[name="build"]')?.content || "" }), signal: AbortSignal.timeout(60000) });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j.message) { item.a = `(error: ${j.error || r.status})`; break; }
+          conv.push(j.message);
+          if (j.message.tool_calls?.length) {
+            for (const t of j.message.tool_calls) { let args = {}; try { args = JSON.parse(t.function.arguments || "{}"); } catch {} const o = await runTool(t.function.name, args); item.tools.push({ name: t.function.name, args, out: o }); conv.push({ role: "tool", tool_call_id: t.id, content: JSON.stringify(o) }); }
+            continue;
+          }
+          item.a = j.message.content || "…"; break;
+        }
+        if (item.a == null) item.a = "(too many steps)";
+      } catch (e) { item.a = `(lost connection: ${String(e?.message || e).slice(0, 40)})`; }
+      out.push(item);
+    }
+    return out;
+  }
+  function testReport(results) {
+    const f = fins(), build = document.querySelector('meta[name="build"]')?.content || "";
+    const head = `Chief pressure test · ${new Date().toLocaleString()} · asker ${me()} · build ${build} · week ${typeof currentWeek !== "undefined" ? currentWeek : "?"} · ${GAMES.filter((g) => f[g.id]).length}/${GAMES.length} games final`;
+    return [head, ...results.map(({ c, turns }) => [`\n## ${c.id} (${c.screen})`, ...turns.map((t) => [`Q: ${t.q}`, `A: ${t.a}`, ...t.tools.map((x) => `   tool ${x.name}(${JSON.stringify(x.args)}) -> ${JSON.stringify(x.out).slice(0, 700)}`)].join("\n"))].join("\n"))].join("\n");
+  }
+  async function runPressureTest() {
+    if (me() !== "Jake") return;
+    let m = document.getElementById("chief-test");
+    if (!m) { m = document.createElement("div"); m.id = "chief-test"; m.className = "ct-ov"; document.body.appendChild(m); }
+    m.innerHTML = `<div class="ct-card"><div class="ct-k">CHIEF PRESSURE TEST</div><p class="ct-p">${TEST_CASES.length} questions through the real Chief, off the chat log. About a minute or two.</p><div class="ct-row"><button type="button" class="ct-b" data-ct="close">Close</button><button type="button" class="ct-b go" data-ct="run">Run</button></div><pre class="ct-out" hidden></pre></div>`;
+    m.onclick = async (e) => {
+      const b = e.target.closest("[data-ct]"); if (!b) return;
+      if (b.dataset.ct === "close") { m.remove(); history.replaceState(null, "", location.pathname + location.search); return; }
+      if (b.dataset.ct === "copy") { const t = m.querySelector(".ct-out").textContent; try { await navigator.clipboard.writeText(t); b.textContent = "Copied"; } catch { const r = document.createRange(); r.selectNodeContents(m.querySelector(".ct-out")); getSelection().removeAllRanges(); getSelection().addRange(r); b.textContent = "Selected: copy it"; } return; }
+      if (b.dataset.ct !== "run") return;
+      b.disabled = true; const p = m.querySelector(".ct-p"), pre = m.querySelector(".ct-out"); const results = [];
+      for (let i = 0; i < TEST_CASES.length; i++) { p.textContent = `Running ${i + 1} of ${TEST_CASES.length}: ${TEST_CASES[i].id}…`; results.push({ c: TEST_CASES[i], turns: await testCase(TEST_CASES[i]) }); }
+      pre.textContent = testReport(results); pre.hidden = false; p.textContent = "Done. Copy the report and paste it to Claude.";
+      b.dataset.ct = "copy"; b.textContent = "Copy report"; b.disabled = false;
+    };
+  }
+  const maybeTest = () => { if (location.hash === "#chieftest") setTimeout(runPressureTest, 1200); };
+  maybeTest(); window.addEventListener("hashchange", maybeTest);
 })();

@@ -10464,3 +10464,12 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-sts.t-standings .fx-st.cut, .fx-sts.t-odds .fx-st.cut { position: relative; }
 .fx-sts.t-standings .fx-st.cut::after, .fx-sts.t-odds .fx-st.cut::after { content: "PLAYOFF LINE"; position: absolute; right: 0; bottom: -5px; padding-left: 6px; background: var(--card-bg); font-family: 'Press Start 2P', monospace; font-size: 5px; line-height: 9px; color: var(--neon-cyan); }
 .fx-sth.t-power span:last-child, .fx-sth.t-luck span:last-child, .fx-sth.t-odds span:nth-child(2) { text-align: center; }
+/* Chief pressure test (admin, #chieftest). */
+.ct-ov { position: fixed; inset: 0; z-index: 2147482500; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 3, 12, .8); }
+.ct-card { width: min(560px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 16px; border-radius: 10px; border: 1px solid var(--card-border-feature); background: var(--card-bg); color: var(--text); }
+.ct-k { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--arcade-gold); }
+.ct-p { margin: 10px 0 14px; font-size: 13px; color: rgba(255, 255, 255, .8); }
+.ct-row { display: flex; gap: 8px; }
+.ct-b { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--card-border); background: transparent; color: var(--text-dim); font: 600 14px system-ui, sans-serif; }
+.ct-b.go { border-color: rgba(var(--neon-cyan-rgb), .6); color: var(--neon-cyan); background: rgba(var(--neon-cyan-rgb), .1); }
+.ct-out { margin: 12px 0 0; max-height: 50vh; overflow: auto; white-space: pre-wrap; font-size: 10.5px; line-height: 1.4; color: rgba(255, 255, 255, .8); user-select: text; -webkit-user-select: text; }
