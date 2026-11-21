@@ -511,6 +511,28 @@
       },
       "source": "feature",
       "note": "Nov 21: fantasy seeding follows divisions (winners take seeds 1-2); the Chief should explain the division rule"
+    },
+    {
+      "id": "out-says-why",
+      "screen": "pickem",
+      "turns": [
+        "I am really out already ??"
+      ],
+      "checks": {
+        "tools": [
+          "needs|edge"
+        ],
+        "must": [
+          "because|mirror|match|every|ceiling|at most|can't|cannot"
+        ],
+        "mustNot": [
+          "^Yes, you're out this week\\.[^.]*\\.$"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 21 (Jake): said out with only 'every game leaves you at 0%', no reason; needs now carries outBecause (who mirrors or beats every result left, or the point ceiling)"
     }
   ]
 }

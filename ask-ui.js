@@ -425,7 +425,10 @@
     needs({ member } = {}) {
       const who = memberOf(member || me()); if (!who) return { error: `No member ${member}. Members: ${MANAGERS.join(", ")}.` };
       const memo = base(); const d = memo?.detail?.[who]; if (!d) return { error: "Odds not loaded yet." };
-      return { ...hiddenNote(), member: who, chanceToWin: r3(d.pct), ...statusOf(d), swings: (d.games || []).slice(0, 5).map((x) => ({ game: gName(x.game), pick: `${short(x.game, x.pick.team)} ${x.pick.mode === "ATS" ? `${x.pick.team === x.game.favorite ? "−" : "+"}${x.game.spread}` : "to win"}${x.pick.lock ? " (lock)" : ""}`, chanceIfHits: r3(x.ifHit), chanceIfMisses: r3(x.ifMiss), likelyToHit: r3(x.pHit) })) };
+      // Out: say why in the same call (who mirrors or beats every result
+      // left, or the point ceiling), so the answer never stops at "you're out".
+      const why = d.alive === false ? (() => { const ob = outBecause(who); if (ob) return { outBecause: ob.why, blockedBy: ob.member }; const me0 = banked(who), lead = MANAGERS.map((n) => ({ n, b: banked(n) })).sort((x, y) => y.b.pts - x.b.pts)[0]; return { outBecause: `No mix of the open results puts ${who} first (checked exactly): ${who} has ${me0.pts} with at most ${me0.max} possible; ${lead.n} leads with ${lead.b.pts}, and every path that lifts ${who} lifts someone else at least as much.` }; })() : {};
+      return { ...hiddenNote(), member: who, chanceToWin: r3(d.pct), ...statusOf(d), ...why, swings: (d.games || []).slice(0, 5).map((x) => ({ game: gName(x.game), pick: `${short(x.game, x.pick.team)} ${x.pick.mode === "ATS" ? `${x.pick.team === x.game.favorite ? "−" : "+"}${x.game.spread}` : "to win"}${x.pick.lock ? " (lock)" : ""}`, chanceIfHits: r3(x.ifHit), chanceIfMisses: r3(x.ifMiss), likelyToHit: r3(x.pHit) })) };
     },
     picks(a = {}) {
       let game = a.game ?? a.game_id ?? a.gameId ?? a.id ?? (Array.isArray(a.games) ? a.games[0] : undefined);
