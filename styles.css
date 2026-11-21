@@ -10219,6 +10219,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-mhp i { font-style: normal; padding: 2px 5px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--card-bg); background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); }
 .fx-mhp strong { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 11px; letter-spacing: .06em; color: #fff; }
 .fx-mhp strong span { color: rgba(255, 255, 255, .5); } .fx-mhp strong span.hi { color: #fff; }
+.fx-mhp.tap { cursor: pointer; } .fx-mhp.on small { color: var(--neon-cyan); }
 .fx-mhp small { font-size: 10px; color: var(--text-dim); }
 .fx-rvs { display: grid; grid-template-columns: 1fr 26px 1fr; align-items: stretch; margin-top: 4px; }
 .fx-rv { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: 12px 8px 9px; border-radius: 8px; background: rgba(255, 255, 255, .03); font-size: 10px; color: var(--text-dim); }
