@@ -333,13 +333,39 @@
   const loadPickem = async () => { if (pickem || typeof fetchSeasonLedger !== "function") return; try { const weeks = await fetchSeasonLedger(); if (!weeks) return; const t = {}; for (const w of weeks) for (const r of w.rows || []) t[r.name] = (t[r.name] || 0) + (r.score || 0); const order = Object.entries(t).sort((a, b) => b[1] - a[1]); pickem = Object.fromEntries(order.map(([n, v], i) => [n, { pts: v, rank: i + 1 }])); paint(); } catch {} };
 
   // The playoff race: the last team in against the first team out.
+  const wpct = (r) => (r.wins || 0) + (r.ties || 0) / 2;
+  const tieRule = () => /H2H|HEAD/i.test(String(data.playoffTiebreak || "")) ? "HEAD TO HEAD DECIDES" : /POINT/i.test(String(data.playoffTiebreak || "")) ? "POINTS DECIDE" : "TIEBREAK DECIDES";
+  const stand = () => [...(data.standings || [])].sort((x, y) => (x.rank || 99) - (y.rank || 99));
   const bubble = (line) => {
-    const s = data.standings || [], a = s[line - 1], b = s[line];
+    const s = stand(), a = s[line - 1], b = s[line];
     if (!a || !b) return "";
-    const gap = a.wins - b.wins, left = Math.max(0, (data.regularSeasonWeeks || data.settings?.regularSeasonWeeks || 14) - (a.wins + a.losses + (a.ties || 0)));
-    const tag = gap === 0 ? "TIED · POINTS DECIDE" : `${gap} WIN${gap === 1 ? "" : "S"} APART`;
-    return `<div class="fx-race"><span class="fx-race-k">PLAYOFF RACE</span><span class="fx-race-t"><span class="in">${owner(a.owner)} <em>${a.wins}-${a.losses}</em></span><i>${tag}</i><span class="out">${owner(b.owner)} <em>${b.wins}-${b.losses}</em></span></span>${left ? `<small>${left} week${left === 1 ? "" : "s"} left</small>` : ""}</div>`;
+    const gap = wpct(a) - wpct(b), reg = data.regularSeasonWeeks || 14, left = Math.max(0, reg - ((a.wins || 0) + (a.losses || 0) + (a.ties || 0)));
+    const tag = gap === 0 ? `TIED · ${tieRule()}` : `${gap} WIN${gap === 1 ? "" : "S"} APART`;
+    return `<div class="fx-race" data-fxrace="1" role="button" tabindex="0" aria-haspopup="dialog"><span class="fx-race-k">PLAYOFF RACE</span><span class="fx-race-t"><span class="in">${owner(a.owner)} <em>${a.wins}-${a.losses}</em></span><i>${tag}</i><span class="out">${owner(b.owner)} <em>${b.wins}-${b.losses}</em></span></span><small>${left ? `${left} week${left === 1 ? "" : "s"} left` : "Final week"} ▸</small></div>`;
   };
+  // The race sheet: every team still in doubt, its odds, projected wins,
+  // and each game left with a win chance from season scoring.
+  const openRace = () => {
+    document.getElementById("fx-mupop")?.remove();
+    const st = data.stats || {}, line = st.playoffTeams || data.playoffTeams || 6, s = stand(), rem = data.remaining || [];
+    const ppg = (o) => st.teams?.[o]?.ppg || 0, sdv = 26;
+    const pWin = (a, b) => phi((ppg(a) - ppg(b)) / (sdv * Math.SQRT2));
+    const odds = (o) => st.odds?.[o]?.playoffs;
+    const live = s.filter((r, i) => { const p = odds(r.owner); return p == null ? Math.abs(i + 1 - line) <= 2 : p > 0.005 && p < 0.995; });
+    const rows = (live.length ? live : s.slice(Math.max(0, line - 3), line + 2)).map((r) => {
+      const games = rem.filter((g) => g.home === r.owner || g.away === r.owner).sort((x, y) => x.week - y.week).map((g) => { const o = g.home === r.owner ? g.away : g.home, orec = s.find((x) => x.owner === o); return { week: g.week, o, rec: orec ? `${orec.wins}-${orec.losses}` : "", p: pWin(r.owner, o) }; });
+      const proj = wpct(r) + games.reduce((n, g) => n + g.p, 0), i = s.indexOf(r);
+      return `<div class="fx-rc${i < line ? " in" : " out"}${r.owner === me() ? " me" : ""}"><div class="fx-rc-h"><span class="fx-rk">${r.rank || i + 1}</span><b class="fx-rc-n">${esc(r.owner)}</b><small>${r.wins}-${r.losses} · ${pts(r.pointsFor)} PF</small><span class="fx-rc-o">${odds(r.owner) == null ? "" : `<b>${pct(odds(r.owner))}</b><i>PLAYOFFS</i>`}</span></div>
+        <div class="fx-rc-p">Projected <b>${proj.toFixed(1)}</b> wins · ${pts(ppg(r.owner))} a game</div>
+        ${games.length ? `<ul class="fx-rc-g">${games.map((g) => `<li><i>WK ${g.week}</i><span>vs <b class="fx-rc-n">${esc(g.o)}</b> <small>${esc(g.rec)}</small></span><b class="${g.p >= 0.55 ? "up" : g.p <= 0.45 ? "dn" : ""}">${pct(g.p)}</b></li>`).join("")}</ul>` : ""}</div>`;
+    }).join("");
+    const m = document.createElement("div");
+    m.id = "fx-mupop"; m.className = "fx-team"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Playoff race");
+    m.innerHTML = `<div class="fx-tcard"><div class="fx-thead"><span class="fx-k2">PLAYOFF RACE · TOP ${line} IN</span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-popbody"><p class="fx-why-top">Teams still in doubt. Odds from 4,000 simulated finishes; game chances from points per game this season.${data.playoffTiebreak ? ` Ties go to ${/H2H|HEAD/i.test(data.playoffTiebreak) ? "head to head" : "points for"}.` : ""}</p>${rows}</div></div>`;
+    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest("[data-fxx]")) m.remove(); });
+    document.body.appendChild(m);
+  };
+
   const tables = () => {
     const st = data.stats || {}, line = st.playoffTeams || data.playoffTeams || 6;
     const row = (o, cells, i) => `<div class="fx-st${o === me() ? " me" : ""}${(tab === "standings" || tab === "odds") ? (i < line ? " in" : " out") : ""}${card === o ? " open" : ""}${i === line - 1 && (tab === "standings" || tab === "odds") ? " cut" : ""}" data-fxo="${esc(o)}" role="button" tabindex="0"><span class="fx-rk">${cells.rank}</span>${badge({ ...(data.teams?.[o] || {}), owner: o })}<span class="fx-nm">${owner(o)}<small>${esc(cells.sub || "")}</small></span>${cells.cols.map((c) => `<span class="fx-c${c.cls ? ` ${c.cls}` : ""}">${c.v}</span>`).join("")}</div>${card === o ? ownerCard(o) : ""}`;
@@ -515,10 +541,11 @@
     if (e.target.closest("[data-fxnewsall]")) { newsAll = !newsAll; return paint(); }
     const hx = e.target.closest("[data-fxh]");
     if (hx && !e.target.closest(".fx-why")) { histOpen = histOpen === hx.dataset.fxh ? null : hx.dataset.fxh; try { window.noteUse?.("fantasy-history", hx.dataset.fxh.split("|")[0]); } catch {} return paint(); }
+    if (e.target.closest("[data-fxrace]")) { try { window.noteUse?.("fantasy-race"); } catch {} return openRace(); }
     const mu = e.target.closest("[data-fxmu]");
     if (mu) { const id = Number(mu.dataset.fxmu); openMu(id); try { const mm = data.live?.matchups?.find((x) => x.id === id); window.noteUse?.("fantasy-matchup", mm ? `${mm.away?.owner} vs ${mm.home?.owner}` : ""); } catch {} paint(); }
   });
-  root.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.closest("[data-fxmu],[data-fxo],[data-fxh]")) { e.preventDefault(); e.target.click(); } });
+  root.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.closest("[data-fxmu],[data-fxo],[data-fxh],[data-fxrace]")) { e.preventDefault(); e.target.click(); } });
 
   // Swipe a fantasy pop-up down to close it: from the top of its scroll,
   // the card follows the finger and closes past 90px (as its ✕ would).

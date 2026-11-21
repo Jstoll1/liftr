@@ -64,6 +64,7 @@ export function buildCurrentSeason(league, ownerMap, year, now = Date.now()) {
     weekly: scores.map((x) => ({ week: x.week, owner: x.owner, points: x.points, opponent: x.opponent })),
     remaining,
     playoffTeams: Number(league.settings?.scheduleSettings?.playoffTeamCount) || 6,
+    playoffTiebreak: league.settings?.scheduleSettings?.playoffSeedingRule || null,
     currentScoringPeriod: Number(league.scoringPeriodId || league.status?.currentMatchupPeriod || 0) || null,
     teams: Object.fromEntries((league.teams || []).map((t) => [ownerOf[t.id], { name: t.name || [t.location, t.nickname].filter(Boolean).join(" "), abbrev: t.abbrev || null, logo: t.logo || null }])),
     note: `Live ${year} season as of the pull time; ranked by wins then points for. Not final.` };
