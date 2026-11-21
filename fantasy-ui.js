@@ -515,7 +515,7 @@
       if (m.final) { oL.final = oR.final = true; }
       return { id: m.id, card, mine: mine(m), full: `<div class="fx-mu open${m.final ? " final" : ""}${mine(m) ? " mine" : ""}" data-fxmu="${m.id}">
         <div class="fx-row">${sideHtml(L, Rt, "a", oL)}<span class="fx-vs">${m.final ? "FINAL" : "VS"}</span>${sideHtml(Rt, L, "h", oR)}</div>
-        ${h ? `<div class="fx-ctx"><span class="fx-chips">${h2hLine(h, m.id)}</span></div>` : ""}${swing({ ...m, away: L, home: Rt })}${wL != null ? `<div class="fx-ctx"><small>WIN CHANCE</small><div class="fx-wp" title="From live points and projections for players still to play"><b>${esc(L?.owner)} ${pct(wL)}</b><span><i style="width:${(wL * 100).toFixed(1)}%"></i></span><b>${pct(1 - wL)} ${esc(Rt?.owner)}</b></div></div>` : ""}
+        ${h?.regularSeason ? `<div class="fx-mhp">${allTime(h, L?.owner || true)}<small>all time, playoffs included</small></div>` : ""}${swing({ ...m, away: L, home: Rt })}${wL != null ? `<div class="fx-ctx"><small>WIN CHANCE</small><div class="fx-wp" title="From live points and projections for players still to play"><b>${esc(L?.owner)} ${pct(wL)}</b><span><i style="width:${(wL * 100).toFixed(1)}%"></i></span><b>${pct(1 - wL)} ${esc(Rt?.owner)}</b></div></div>` : ""}
         ${mirror(L, Rt)}<p class="fx-note fx-sdkey"><span>points / projection</span><span class="fx-k-live">green: playing</span><span><s class="fx-ball"></s>has the ball</span></p>
       </div>` };
     });

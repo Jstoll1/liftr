@@ -10215,6 +10215,11 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-sth.fx-dvh, .fx-sts.dv .fx-st { grid-template-columns: 18px 26px minmax(0, 1fr) 36px 28px 46px 34px !important; }
 .fx-sth.fx-dvh { grid-template-columns: minmax(0, 1fr) 36px 28px 46px 34px !important; margin-top: 14px; }
 .fx-sth.fx-dvh > span:first-child { text-align: left; color: var(--neon-purple); font-size: 7px; }
+.fx-mhp { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 10px 0 2px; }
+.fx-mhp i { font-style: normal; padding: 2px 5px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--card-bg); background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); }
+.fx-mhp strong { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 11px; letter-spacing: .06em; color: #fff; }
+.fx-mhp strong span { color: rgba(255, 255, 255, .5); } .fx-mhp strong span.hi { color: #fff; }
+.fx-mhp small { font-size: 10px; color: var(--text-dim); }
 .fx-dv { display: inline-block; margin-left: 6px; padding: 1px 3px; border-radius: 3px; vertical-align: 2px; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5px; color: var(--neon-cyan); border: 1px solid rgba(var(--neon-cyan-rgb), .45); }
 .fx-fire { font-style: normal; font-size: 9px; margin-left: 2px; }
 .fx-rk { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-dim); text-align: center; }
