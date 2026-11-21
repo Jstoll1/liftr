@@ -26,6 +26,7 @@ import { MATCHUPS } from "./matchup-data.js";
 import { pullCurrentSeason, CURRENT_KEY, freshFor } from "./fantasy.js";
 import { fantasyStats } from "./fantasy-stats.js";
 import { historyContext, careers, meetings } from "./fantasy-history.js";
+import { CASES_KEY, RUNS_KEY, addCase, cleanCase, mergeRun, runRecord } from "./chieftest.js";
 import { ROAST_SYSTEM, cleanRoastStats } from "./roast.js";
 
 const app = {
@@ -167,6 +168,9 @@ const app = {
     }
     if (url.pathname === "/season-roast") {
       return handleSeasonRoast(request, env, corsHeaders);
+    }
+    if (url.pathname === "/chief-test") {
+      return handleChiefTest(request, env, corsHeaders, url);
     }
     if (url.pathname === "/week-chat") {
       return handleWeekChat(request, env, corsHeaders, url);
@@ -4957,3 +4961,44 @@ async function fantasyTake(env, cur) {
 
 // Pro trial: classic is the default, so only a pro visit carries a tag.
 export function styleTag(body) { return body && body.st === "pro" ? { st: "pro" } : {}; }
+
+// The Chief pressure test's question set and run history (admin: Live's key
+// or a remembered device). The app runs the questions on Jake's phone and
+// sends back only pass/fail per question, never the answers.
+async function handleChiefTest(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Not configured" }, 500, corsHeaders);
+  if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+  const nc = { ...corsHeaders, "Cache-Control": "no-store" };
+  const read = async () => ({ cases: ((await env.LIFTR_KV.get(CASES_KEY, "json")) || []).map((c) => cleanCase(c)).filter(Boolean), runs: (await env.LIFTR_KV.get(RUNS_KEY, "json")) || [] });
+  if (request.method === "GET") return json(await read(), 200, nc);
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body; try { body = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); }
+  let { cases, runs } = await read();
+  const save = () => env.LIFTR_KV.put(CASES_KEY, JSON.stringify(cases.slice(0, 200)));
+  // The repo's chief-tests.json: add any test this set hasn't seen, by id,
+  // skipping ones removed on Live. Existing tests keep their streaks.
+  if (body?.action === "sync") {
+    const removed = new Set((await env.LIFTR_KV.get(`${CASES_KEY}:removed`, "json")) || []), have = new Set(cases.map((c) => c.id));
+    let n = 0;
+    for (const c of (Array.isArray(body.cases) ? body.cases : []).slice(0, 100)) { const x = cleanCase(c); if (!x || have.has(x.id) || removed.has(x.id)) continue; cases = [...cases, { ...x, added: Date.now(), streak: 0, runs: 0, fails: 0, retired: false }]; have.add(x.id); n++; }
+    if (n) await save();
+    return json({ cases, runs, added: n }, 200, nc);
+  }
+  if (body?.action === "add") {
+    const r = addCase(cases, body.case || {}); if (!r.added) return json({ error: "Empty question" }, 400, corsHeaders);
+    cases = r.cases; await save(); return json({ added: r.added, cases }, 200, nc);
+  }
+  if (body?.action === "update") {
+    const i = cases.findIndex((c) => c.id === body.id); if (i < 0) return json({ error: "No such test" }, 404, corsHeaders);
+    if (body.remove) { const gone = (await env.LIFTR_KV.get(`${CASES_KEY}:removed`, "json")) || []; await env.LIFTR_KV.put(`${CASES_KEY}:removed`, JSON.stringify([...new Set([...gone, cases[i].id])].slice(-200))); cases.splice(i, 1); } else cases[i] = cleanCase({ ...cases[i], ...(body.patch || {}), id: cases[i].id });
+    await save(); return json({ cases }, 200, nc);
+  }
+  if (body?.action === "save-run") {
+    const results = body.results && typeof body.results === "object" ? Object.fromEntries(Object.entries(body.results).slice(0, 200).map(([k, v]) => [String(k), !!v])) : {};
+    cases = mergeRun(cases, results); await save();
+    runs = [runRecord(body), ...runs].slice(0, 60); await env.LIFTR_KV.put(RUNS_KEY, JSON.stringify(runs));
+    return json({ cases, runs }, 200, nc);
+  }
+  return json({ error: "Unknown action" }, 400, corsHeaders);
+}
+

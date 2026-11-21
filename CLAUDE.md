@@ -104,3 +104,14 @@ text use `teamInline(name, espnId)` or `matchInline(game)` from app.js
 slot. Never print a bare team name in new UI. One logo per team per card:
 if the card's art or an earlier line already shows that team, the name
 stays plain text.
+
+## Pressure test the Chief
+`chief-tests.json` is the Chief's test set (run from Live's Ask Chief page:
+Pressure test, on Jake's phone). When a Chief fix ships, add the question
+that exposed it as a test in the same push (`"regression": true`, a `note`
+with the date and what broke, `checks` a good answer must pass). When a
+feature adds something members will ask about, add a test for it
+(`"source": "feature"`). When Jake pastes a pressure test report, grade
+every answer against its tool data, rank the problems with their cause,
+recommend fixes, and after the fixes ask for a rerun.
+

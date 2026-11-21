@@ -1387,6 +1387,19 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
 .chat-r:not(.open) .afr-d > i { display: none; }
 .chat-r { cursor: pointer; }
 .ct-link { margin-left: auto; margin-right: 8px; font-size: 12px; color: var(--cyan, #05d9e8); text-decoration: none; white-space: nowrap; }
+.ct-pan { padding: 10px 12px; }
+.ct-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; }
+.ct-head b { font-size: 11px; letter-spacing: .08em; }
+.ct-head span { color: var(--dim, #9a93b8); }
+.ct-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 18px; margin-left: auto; }
+.ct-bars i { width: 5px; background: var(--cyan, #05d9e8); border-radius: 1px; }
+.ct-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.ct-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid rgba(255, 255, 255, .06); font-size: 12px; }
+.ct-row.off { opacity: .5; }
+.ct-q { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ct-q em { font-style: normal; font-size: 10px; color: var(--gold, #ffd23f); }
+.ct-q small { color: var(--dim, #9a93b8); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ct-st { white-space: nowrap; color: var(--dim, #9a93b8); font-size: 11px; }
 </style>
 </head>
 <body>
@@ -2082,6 +2095,16 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     // Health: Worker failures, failed or slow ESPN and Worker calls, slow
     // loads and script errors, from the Worker itself and from phones.
     // BroChief Intelligence: every finished answer, grouped by chat, newest first.
+    // The Chief pressure test: score trend, then the question set (tap to
+    // retire, mark as regression, or remove). Runs happen in the app.
+    const ctPanel = () => {
+      const ct = st.ct; if (!ct) return "";
+      const runs = ct.runs || [], cases = ct.cases || [], last = runs[0];
+      const bars = runs.slice(0, 12).reverse().map((r) => `<i title="${esc(new Date(r.at).toLocaleString())} · ${r.passed}/${r.total}${r.state ? ` · ${esc(r.state)}` : ""}" style="height:${r.total ? Math.max(8, (r.passed / r.total) * 100) : 8}%"></i>`).join("");
+      const active = cases.filter((c) => !c.retired).length;
+      const rows = st.ctOpen ? `<div class="ct-list">${cases.map((c) => `<div class="ct-row${c.retired ? " off" : ""}"><span class="ct-q"><b>${esc(c.id)}</b>${c.regression ? " <em>regression</em>" : ""}${c.source !== "seed" ? ` <em>${esc(c.source)}</em>` : ""}<small>${esc(c.turns.join(" → "))}${c.note ? ` · ${esc(c.note)}` : ""}</small></span><span class="ct-st">${c.runs ? `${c.runs - c.fails}/${c.runs} · streak ${c.streak}` : "new"}</span><span class="chat-btns"><button type="button" class="afr-one" data-ctupd="${esc(c.id)}|retire">${c.retired ? "unretire" : "retire"}</button><button type="button" class="afr-one" data-ctupd="${esc(c.id)}|reg">${c.regression ? "−reg" : "+reg"}</button><button type="button" class="afr-one" data-ctupd="${esc(c.id)}|remove">✕</button></span></div>`).join("")}</div>` : "";
+      return `<section class="afr ct-pan"><div class="ct-head"><b>PRESSURE TEST</b><span>${last ? `last ${last.passed}/${last.total} · ${esc(afrDay(last.at))}${last.failed?.length ? ` · failed ${esc(last.failed.slice(0, 5).join(", "))}` : ""}` : "no runs yet"}</span><span class="ct-bars">${bars}</span><button type="button" class="afr-one" data-cttoggle="1">${st.ctOpen ? "hide" : `${active} active${cases.length > active ? `, ${cases.length - active} retired` : ""}`}</button></div>${rows}</section>`;
+    };
     const chatPanel = () => {
       if (!st.chats) return "";
       const rows = st.chats;
@@ -2091,7 +2114,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       const groups = [];
       const keep = st.biFilter === "others" ? (r) => r.asker !== "Jake" : st.biFilter === "flagged" ? (r) => r.flagged : () => true;
       for (const r of rows.filter(keep)) { const k = r.sid || r.id; let g = groups.find((x) => x.k === k); if (!g) groups.push(g = { k, rows: [] }); g.rows.push(r); }
-      return `<section class="afr chat">${head}${groups.length ? groups.slice(0, 40).map((g) => { const first = g.rows[g.rows.length - 1]; const other = first.asker !== "Jake"; return `<div class="afr-day${other ? " chat-other" : " chat-me"}">${other ? "🧠 " : ""}${esc(opsWho({ n: first.asker }) || first.asker || "not signed in")} · ${esc(afrDay(first.at))} ${esc(hm(first.at))}${g.rows.length > 1 ? ` · ${g.rows.length} questions` : ""}</div>${[...g.rows].reverse().map((r) => `<div data-chatx="${esc(r.id)}" class="afr-r chat-r${(st.chatX || new Set()).has(r.id) ? " open" : ""}${r.flagged ? " flagged" : ""}${r.unknownTerm ? " unk" : ""}${other ? " other" : " me"}"><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-d"><b class="chat-lq">${esc(r.q)}</b>${r.unknownTerm ? `<em class="chat-unk">❓ UNKNOWN TERM: ${esc(r.unknownTerm)} · add it to the glossary</em>` : ""}<span class="chat-la${r.status && r.status !== "answered" ? " miss" : ""}">${esc(r.a ?? (r.status === "asked" && Date.now() - r.at < 60000 ? "(answering…)" : "(no answer: they left before it finished)"))}</span>${r.flagged ? `<em class="chat-note">🚩 ${esc(r.note || "flagged")}</em>` : ""}${r.route ? `<em class="chat-route ${esc(r.route)}">${r.route === "pickem" ? "PICK'EM" : r.route === "fantasy" ? "FANTASY" : r.route === "both" ? "BOTH" : "ASKED WHICH"}</em>` : ""}${(r.tools || []).length ? `<i>${esc(r.tools.map((t) => t.name).join(" · "))}</i>` : ""}</span><span class="chat-btns"><button type="button" class="afr-one" data-chatflag="${esc(r.id)}" aria-pressed="${!!r.flagged}" aria-label="${r.flagged ? "Unflag" : "Flag as wrong"}">${r.flagged ? "unflag" : "🚩"}</button><button type="button" class="afr-one" data-chatone="${esc(r.id)}" aria-label="Copy this one">${st.copied === `chat:${r.id}` ? "✓" : "copy"}</button></span></div>`).join("")}`; }).join("") : `<p class="afr-none">Nobody has asked anything yet.</p>`}</section>`;
+      return `<section class="afr chat">${head}${groups.length ? groups.slice(0, 40).map((g) => { const first = g.rows[g.rows.length - 1]; const other = first.asker !== "Jake"; return `<div class="afr-day${other ? " chat-other" : " chat-me"}">${other ? "🧠 " : ""}${esc(opsWho({ n: first.asker }) || first.asker || "not signed in")} · ${esc(afrDay(first.at))} ${esc(hm(first.at))}${g.rows.length > 1 ? ` · ${g.rows.length} questions` : ""}</div>${[...g.rows].reverse().map((r) => `<div data-chatx="${esc(r.id)}" class="afr-r chat-r${(st.chatX || new Set()).has(r.id) ? " open" : ""}${r.flagged ? " flagged" : ""}${r.unknownTerm ? " unk" : ""}${other ? " other" : " me"}"><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-d"><b class="chat-lq">${esc(r.q)}</b>${r.unknownTerm ? `<em class="chat-unk">❓ UNKNOWN TERM: ${esc(r.unknownTerm)} · add it to the glossary</em>` : ""}<span class="chat-la${r.status && r.status !== "answered" ? " miss" : ""}">${esc(r.a ?? (r.status === "asked" && Date.now() - r.at < 60000 ? "(answering…)" : "(no answer: they left before it finished)"))}</span>${r.flagged ? `<em class="chat-note">🚩 ${esc(r.note || "flagged")}</em>` : ""}${r.route ? `<em class="chat-route ${esc(r.route)}">${r.route === "pickem" ? "PICK'EM" : r.route === "fantasy" ? "FANTASY" : r.route === "both" ? "BOTH" : "ASKED WHICH"}</em>` : ""}${(r.tools || []).length ? `<i>${esc(r.tools.map((t) => t.name).join(" · "))}</i>` : ""}</span><span class="chat-btns"><button type="button" class="afr-one" data-chattest="${esc(r.id)}" aria-label="Add this question to the pressure test" title="Add to the Chief pressure test">${(st.ctAdded || []).includes(r.id) ? "✓ test" : "+test"}</button><button type="button" class="afr-one" data-chatflag="${esc(r.id)}" aria-pressed="${!!r.flagged}" aria-label="${r.flagged ? "Unflag" : "Flag as wrong"}">${r.flagged ? "unflag" : "🚩"}</button><button type="button" class="afr-one" data-chatone="${esc(r.id)}" aria-label="Copy this one">${st.copied === `chat:${r.id}` ? "✓" : "copy"}</button></span></div>`).join("")}`; }).join("") : `<p class="afr-none">Nobody has asked anything yet.</p>`}</section>`;
     };
     const opsPanel = () => {
       if (!st.ops) return "";
@@ -2594,7 +2617,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       home: `${kpisNb}${timeline}${overview}${recCard("home")}${ucPanel}${feedHtml}${strips}`,
       activity: "",
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
-      bi: `<div class="pg-bar"><h1>Ask Chief</h1><a class="ct-link" href="../#chieftest" target="_blank" rel="noopener" title="Run 25 hard questions through the real Chief (off the log) and copy the report">Pressure test ↗</a><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${chiefMsgPanel()}${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
+      bi: `<div class="pg-bar"><h1>Ask Chief</h1><a class="ct-link" href="../#chieftest" target="_blank" rel="noopener" title="Run 25 hard questions through the real Chief (off the log) and copy the report">Pressure test ↗</a><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${chiefMsgPanel()}${ctPanel()}${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
       stats: `<div class="pg-bar"><h1>Stats</h1><span class="seg" role="group" aria-label="Range">${[["24h", "24 hours"], ["7d", "7 days"]].map(([r, l]) => `<button type="button" class="${(r === "7d") === (st.range === "7d") ? "on" : ""}" data-range="${r === "7d" ? "7d" : "24h"}">${l}</button>`).join("")}</span></div>${recCard("stats")}${recordsPanel}${flowPanel}${rail}`,
     }[st.page] || "";
     app.innerHTML = `
@@ -2792,6 +2815,21 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       st.sig = ""; render(); return;
     }
     if (b.dataset.chattoggle) { st.chatOpen = !st.chatOpen; store.set("brochiefs_live_chat_open", st.chatOpen ? "1" : ""); st.sig = ""; render(); return; }
+    if (b.dataset.chattest) {
+      const r = (st.chats || []).find((x) => x.id === b.dataset.chattest); if (!r || (st.ctAdded || []).includes(r.id)) return;
+      const follow = window.prompt("Add a follow-up turn? (optional, e.g. the pushback)", "");
+      if (follow === null) return;
+      try { const x = await fetch(`${WORKER}/chief-test?${auth()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "add", case: { turns: [r.q, follow].filter(Boolean), screen: r.route === "fantasy" ? "fantasy" : "pickem", source: "miss", note: r.note || `from ${r.asker || "a member"}, ${new Date(r.at).toLocaleDateString()}` } }) }); const j = await x.json().catch(() => ({})); if (!x.ok) { alert(j.error || "Couldn't add it."); return; } st.ct = { ...(st.ct || {}), cases: j.cases }; st.ctAdded = [...(st.ctAdded || []), r.id]; } catch { alert("No connection."); return; }
+      st.sig = ""; render(); return;
+    }
+    if (b.dataset.ctupd) {
+      const [id, what] = b.dataset.ctupd.split("|"), c = (st.ct?.cases || []).find((x) => x.id === id); if (!c) return;
+      if (what === "remove" && !confirm(`Remove the test "${id}"?`)) return;
+      const body = what === "remove" ? { action: "update", id, remove: true } : { action: "update", id, patch: what === "retire" ? { retired: !c.retired, streak: 0 } : { regression: !c.regression } };
+      try { const x = await fetch(`${WORKER}/chief-test?${auth()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); const j = await x.json().catch(() => ({})); if (x.ok) st.ct = { ...(st.ct || {}), cases: j.cases }; } catch {}
+      st.sig = ""; render(); return;
+    }
+    if (b.dataset.cttoggle) { st.ctOpen = !st.ctOpen; st.sig = ""; render(); return; }
     if (b.dataset.chatflag) {
       const r = (st.chats || []).find((x) => x.id === b.dataset.chatflag); if (!r) return;
       const on = !r.flagged;
@@ -2946,6 +2984,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
   const chatLog = (rows) => rows.map((c) => `${new Date(c.at).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} · ${c.asker || "not signed in"}${c.build ? ` · build ${c.build}` : ""}${c.flagged ? `\nFLAGGED${c.note ? `: ${c.note}` : ""}` : ""}${c.unknownTerm ? `\nUNKNOWN TERM: ${c.unknownTerm}` : ""}\nQ: ${c.q}\nA: ${c.a ?? "(no answer)"}${c.status && c.status !== "answered" ? ` [${c.status}]` : ""}${(c.tools || []).map((t) => `\n   tool ${t.name}(${t.args}) -> ${t.out}`).join("")}`).join("\n\n");
   async function loadChats() {
     try { const x = await fetch(`${WORKER}/week-chat?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.chats = Array.isArray(j.chats) ? j.chats : []; st.sig = ""; render(); } } catch {}
+    try { const x = await fetch(`${WORKER}/chief-test?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { st.ct = await x.json(); st.sig = ""; render(); } } catch {}
   }
   // NFL holding page: who reached the under construction sign.
   async function loadUc() {

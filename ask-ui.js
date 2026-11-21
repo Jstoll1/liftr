@@ -731,33 +731,12 @@
   // ---- Pressure test (admin): #chieftest on Jake's phone runs a fixed set
   // of hard questions through the real Chief (same worker, same tools, same
   // data), off the chat log, and prints a report to paste back for grading.
-  const TEST_CASES = [
-    { id: "why-low", screen: "pickem", turns: ["Why is my win % so low?"] },
-    { id: "why-other", screen: "pickem", turns: ["Why is the leader's path easier than mine?"] },
-    { id: "why-fav", screen: "pickem", turns: ["Why is the favourite the favourite this week?"] },
-    { id: "pushback", screen: "pickem", turns: ["Can I still win the week?", "That's wrong. I have a path, explain it."] },
-    { id: "odds-cover", screen: "pickem", turns: ["What are the odds the favourite in G8 covers?"] },
-    { id: "odds-win", screen: "pickem", turns: ["Will the G10 favourite win outright?"] },
-    { id: "whatif-out", screen: "pickem", turns: ["If my lock misses am I out?"] },
-    { id: "needs", screen: "pickem", turns: ["What do I need to win?"] },
-    { id: "versus", screen: "pickem", turns: ["Can I beat Curt this week?"] },
-    { id: "route-scores", screen: "pickem", turns: ["Who is leading?"] },
-    { id: "route-fantasy", screen: "fantasy", turns: ["Who is leading?"] },
-    { id: "route-followup", screen: "pickem", turns: ["How is Curt doing?", "And Logan?"] },
-    { id: "season", screen: "pickem", turns: ["Who has won the most weeks this season?"] },
-    { id: "ever", screen: "pickem", turns: ["Has anyone ever been knocked out before Saturday?"] },
-    { id: "fantasy-path", screen: "fantasy", turns: ["What is my playoff path?"] },
-    { id: "fantasy-luck", screen: "fantasy", turns: ["Who is the luckiest team and why?"] },
-    { id: "fantasy-h2h", screen: "fantasy", turns: ["What's my all-time record against Connie?"] },
-    { id: "fantasy-bench", screen: "fantasy", turns: ["Who left the most points on the bench?"] },
-    { id: "hidden", screen: "pickem", turns: ["Show me everyone's picks for the late games."] },
-    { id: "unknown-term", screen: "pickem", turns: ["What's my zorp score this week?"] },
-    { id: "snark", screen: "pickem", turns: ["Rate Curt's card out of 10."] },
-    { id: "beer", screen: "pickem", turns: ["Who's buying the beer?"] },
-    { id: "tiebreak", screen: "pickem", turns: ["How does the tiebreaker work and where do I stand?"] },
-    { id: "ended-now", screen: "pickem", turns: ["If it ended right now, who wins?"] },
-    { id: "vague", screen: "pickem", turns: ["Am I cooked?"] },
-  ];
+  // The question set lives in chief-tests.json (repo, like fixes.json): each
+  // Chief fix adds its regression test there and each feature its new test.
+  // The worker keeps the running set with streaks; a run adds any test from
+  // the file it hasn't seen (and never one removed on Live).
+  let SEED_CASES = [];
+  const loadSeeds = async () => { try { const r = await fetch(`chief-tests.json?t=${Date.now()}`, { cache: "no-store" }); if (r.ok) SEED_CASES = (await r.json()).tests || []; } catch {} return SEED_CASES; };
   async function testCase(c) {
     const conv = [], out = [];
     const ctx = () => ({ ...context(), screen: c.screen });
@@ -782,25 +761,54 @@
     }
     return out;
   }
+  // Live's remembered-device token on this phone (same site), for the stored set.
+  const ctDevice = () => { try { return localStorage.getItem("brochiefs_live_device") || ""; } catch { return ""; } };
+  async function ctApi(method, body) {
+    const d = ctDevice(); if (!d) return null;
+    try { const r = await fetch(`${WORKER_URL}/chief-test?device=${encodeURIComponent(d)}&t=${Date.now()}`, { method, cache: "no-store", ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}) }); return r.ok ? await r.json() : null; } catch { return null; }
+  }
+  async function loadSet() {
+    await loadSeeds();
+    const j = await ctApi("POST", { action: "sync", cases: SEED_CASES }); if (!j) return null;
+    return j.cases.length ? j : null;
+  }
+  // Each case's checks against what the Chief did: the tools it called (any
+  // of a|b), text it must and must not say, and no "which league" when the
+  // screen decides it.
+  function grade(c, turns) {
+    const ck = c.checks || {}, tools = turns.flatMap((t) => t.tools.map((x) => x.name)), text = turns.map((t) => t.a || "").join("\n"), why = [];
+    for (const t of ck.tools || []) if (!t.split("|").some((n) => tools.includes(n))) why.push(`didn't call ${t}`);
+    for (const r of ck.must || []) { try { if (!new RegExp(r, "i").test(text)) why.push(`missing /${r}/`); } catch {} }
+    for (const r of ck.mustNot || []) { try { if (new RegExp(r, "i").test(text)) why.push(`said /${r}/`); } catch {} }
+    if (ck.noAsk && /WHICH_LEAGUE|fantasy league or the pick/i.test(text)) why.push("asked which league");
+    if (turns.some((t) => /^\((error|lost connection|too many steps)/.test(t.a || ""))) why.push("no answer");
+    return { pass: !why.length, why };
+  }
   function testReport(results) {
     const f = fins(), build = document.querySelector('meta[name="build"]')?.content || "";
     const head = `Chief pressure test · ${new Date().toLocaleString()} · asker ${me()} · build ${build} · week ${typeof currentWeek !== "undefined" ? currentWeek : "?"} · ${GAMES.filter((g) => f[g.id]).length}/${GAMES.length} games final`;
-    return [head, ...results.map(({ c, turns }) => [`\n## ${c.id} (${c.screen})`, ...turns.map((t) => [`Q: ${t.q}`, `A: ${t.a}`, ...t.tools.map((x) => `   tool ${x.name}(${JSON.stringify(x.args)}) -> ${JSON.stringify(x.out).slice(0, 700)}`)].join("\n"))].join("\n"))].join("\n");
+    return [head, ...results.map(({ c, turns, check }) => [`\n## ${c.id} (${c.screen}) ${check ? (check.pass ? "PASS" : `FAIL: ${check.why.join("; ")}`) : ""}${c.regression ? " [regression]" : ""}`, ...turns.map((t) => [`Q: ${t.q}`, `A: ${t.a}`, ...t.tools.map((x) => `   tool ${x.name}(${JSON.stringify(x.args)}) -> ${JSON.stringify(x.out).slice(0, 700)}`)].join("\n"))].join("\n"))].join("\n");
   }
   async function runPressureTest() {
     if (me() !== "Jake") return;
     let m = document.getElementById("chief-test");
     if (!m) { m = document.createElement("div"); m.id = "chief-test"; m.className = "ct-ov"; document.body.appendChild(m); }
-    m.innerHTML = `<div class="ct-card"><div class="ct-k">CHIEF PRESSURE TEST</div><p class="ct-p">${TEST_CASES.length} questions through the real Chief, off the chat log. About a minute or two.</p><div class="ct-row"><button type="button" class="ct-b" data-ct="close">Close</button><button type="button" class="ct-b go" data-ct="run">Run</button></div><pre class="ct-out" hidden></pre></div>`;
+    m.innerHTML = `<div class="ct-card"><div class="ct-k">CHIEF PRESSURE TEST</div><p class="ct-p">The question set through the real Chief, off the chat log. About a minute or two.</p><label class="ct-l"><input type="checkbox" id="ct-ret"> Include retired tests (the quarterly check)</label><div class="ct-row"><button type="button" class="ct-b" data-ct="close">Close</button><button type="button" class="ct-b go" data-ct="run">Run</button></div><pre class="ct-out" hidden></pre></div>`;
     m.onclick = async (e) => {
       const b = e.target.closest("[data-ct]"); if (!b) return;
       if (b.dataset.ct === "close") { m.remove(); history.replaceState(null, "", location.pathname + location.search); return; }
       if (b.dataset.ct === "copy") { const t = m.querySelector(".ct-out").textContent; try { await navigator.clipboard.writeText(t); b.textContent = "Copied"; } catch { const r = document.createRange(); r.selectNodeContents(m.querySelector(".ct-out")); getSelection().removeAllRanges(); getSelection().addRange(r); b.textContent = "Selected: copy it"; } return; }
       if (b.dataset.ct !== "run") return;
       b.disabled = true; const p = m.querySelector(".ct-p"), pre = m.querySelector(".ct-out"); const results = [];
-      for (let i = 0; i < TEST_CASES.length; i++) { p.textContent = `Running ${i + 1} of ${TEST_CASES.length}: ${TEST_CASES[i].id}…`; results.push({ c: TEST_CASES[i], turns: await testCase(TEST_CASES[i]) }); }
-      pre.textContent = testReport(results); pre.hidden = false; p.textContent = "Done. Copy the report and paste it to Claude.";
-      b.dataset.ct = "copy"; b.textContent = "Copy report"; b.disabled = false;
+      const set = (await loadSet()) || { cases: (SEED_CASES.length ? SEED_CASES : await loadSeeds()).map((c) => ({ source: "seed", ...c })), runs: [], local: true };
+      const all = m.querySelector("#ct-ret")?.checked, todo = set.cases.filter((c) => all || !c.retired);
+      for (let i = 0; i < todo.length; i++) { p.textContent = `Running ${i + 1} of ${todo.length}: ${todo[i].id}…`; const turns = await testCase(todo[i]); results.push({ c: todo[i], turns, check: grade(todo[i], turns) }); }
+      const passed = results.filter((r) => r.check.pass).length, failed = results.filter((r) => !r.check.pass).map((r) => r.c.id);
+      let saved = "";
+      if (!set.local) { const st = `${GAMES.filter((g) => fins()[g.id]).length}/${GAMES.length} final${GAMES.some((g) => latestLive[g.id]?.state === "in") ? ", games live" : ""}`; const r = await ctApi("POST", { action: "save-run", results: Object.fromEntries(results.map((x) => [x.c.id, x.check.pass])), build: document.querySelector('meta[name="build"]')?.content || "", state: st, passed, total: results.length, failed }); saved = r ? "" : " (couldn't save the score)"; set.runs = r?.runs || set.runs; } else saved = " (not saved: open Live on this phone once and tick Remember this device)";
+      const trend = (set.runs || []).slice(0, 6).map((x) => `${x.passed}/${x.total}`).join(" ← ");
+      pre.textContent = `SCORE ${passed}/${results.length}${saved}${trend ? `\nRecent runs: ${trend}` : ""}${failed.length ? `\nFailed checks: ${failed.join(", ")}` : ""}\n\n` + testReport(results); pre.hidden = false; p.textContent = "Done. Copy the report and paste it to Claude."; b.dataset.ct = "copy"; b.textContent = "Copy report"; b.disabled = false; return;
+
     };
   }
   const maybeTest = () => { if (location.hash === "#chieftest") setTimeout(runPressureTest, 1200); };
