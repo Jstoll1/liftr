@@ -310,6 +310,9 @@
     const bust = done.sort((a, b) => (a.pts - a.proj) - (b.pts - b.proj))[0];
     return `<div class="fx-sec"><span class="fx-k2">TOP PERFORMERS · WEEK ${esc(data.live.week)}</span><ul class="fx-aw fx-perf">${top.map((p, i) => `<li><small>${i + 1}</small><b>${esc(p.name)}</b><span>${nflLogo(p.nfl)} ${pts(p.pts)} · ${esc(p.owner)}</span></li>`).join("")}${bust && bust.pts < bust.proj - 5 ? `<li class="bust"><small>BUST</small><b>${esc(bust.name)}</b><span>${pts(bust.pts)} of ${pts(bust.proj)} projected · ${esc(bust.owner)}</span></li>` : ""}</ul></div>`;
   };
+  // An achievement row: the headline (record or pace) big, the context under it.
+  const achCut = (t) => { const m = String(t).match(/^(.*?)(?::\s|\s\(|,\s)(.*)$/); return m ? [m[1], m[2].replace(/\)$/, "")] : [String(t), ""]; };
+  const achHead = (t) => achCut(t)[0], achRest = (t) => { const r = achCut(t)[1]; return r ? r[0].toUpperCase() + r.slice(1) : ""; };
   // Twelve years of BroChiefs history against this season.
   const historyHtml = () => {
     const h = data.history; if (!h) return "";
@@ -318,17 +321,25 @@
     const firstAt = {}; rows.forEach((r, i) => { if (!(r.o in firstAt)) firstAt[r.o] = r.k === "rec" ? -1 : i; else if (r.k === "rec") firstAt[r.o] = Math.min(firstAt[r.o], -1); });
     rows.sort((a, b) => firstAt[a.o] - firstAt[b.o] || (a.o === b.o ? 0 : a.o.localeCompare(b.o)));
     if (!rows.length) return "";
-    return `<div class="fx-sec"><span class="fx-k2">AGAINST HISTORY</span><ul class="fx-hist">${rows.map((r, i) => { const id = `${r.o}|${r.t}`; const on = histOpen === id; return `<li class="${esc(r.k)}${r.why ? " tap" : ""}${on ? " open" : ""}"${r.why ? ` data-fxh="${esc(id)}" role="button" tabindex="0" aria-expanded="${on}"` : ""}><span>${owner(r.o)} ${esc(r.t)}</span>${on && r.why ? tbl(r.why.head.map(esc), r.why.rows.map((x) => ({ me: x.me, c: x.c.map((v) => esc(v)) }))) : ""}</li>`; }).join("")}</ul></div>`;
+    return `<div class="fx-sec"><span class="fx-k2">AGAINST HISTORY</span><ul class="fx-hist">${rows.map((r, i) => { const id = `${r.o}|${r.t}`; const on = histOpen === id; return `<li class="${esc(r.k)}${r.why ? " tap" : ""}${on ? " open" : ""}"${r.why ? ` data-fxh="${esc(id)}" role="button" tabindex="0" aria-expanded="${on}"` : ""}><span class="fx-ach"><i aria-hidden="true">${{ rec: "★", hot: "▲", cold: "▼" }[r.k] || "◆"}</i><span class="fx-ach-m"><span class="fx-ach-h">${owner(r.o)} <b>${esc(achHead(r.t))}</b></span>${achRest(r.t) ? `<small>${esc(achRest(r.t))}</small>` : ""}</span></span>${on && r.why ? tbl(r.why.head.map(esc), r.why.rows.map((x) => ({ me: x.me, c: x.c.map((v) => esc(v)) }))) : ""}</li>`; }).join("")}</ul></div>`;
   };
   // Both leagues: fantasy place next to pick'em place this season.
   let pickem = null;
   const loadPickem = async () => { if (pickem || typeof fetchSeasonLedger !== "function") return; try { const weeks = await fetchSeasonLedger(); if (!weeks) return; const t = {}; for (const w of weeks) for (const r of w.rows || []) t[r.name] = (t[r.name] || 0) + (r.score || 0); const order = Object.entries(t).sort((a, b) => b[1] - a[1]); pickem = Object.fromEntries(order.map(([n, v], i) => [n, { pts: v, rank: i + 1 }])); paint(); } catch {} };
 
+  // The playoff race: the last team in against the first team out.
+  const bubble = (line) => {
+    const s = data.standings || [], a = s[line - 1], b = s[line];
+    if (!a || !b) return "";
+    const gap = a.wins - b.wins, left = Math.max(0, (data.regularSeasonWeeks || data.settings?.regularSeasonWeeks || 14) - (a.wins + a.losses + (a.ties || 0)));
+    const tag = gap === 0 ? "TIED · POINTS DECIDE" : `${gap} WIN${gap === 1 ? "" : "S"} APART`;
+    return `<div class="fx-race"><span class="fx-race-k">PLAYOFF RACE</span><span class="fx-race-t"><span class="in">${owner(a.owner)} <em>${a.wins}-${a.losses}</em></span><i>${tag}</i><span class="out">${owner(b.owner)} <em>${b.wins}-${b.losses}</em></span></span>${left ? `<small>${left} week${left === 1 ? "" : "s"} left</small>` : ""}</div>`;
+  };
   const tables = () => {
     const st = data.stats || {}, line = st.playoffTeams || data.playoffTeams || 6;
-    const row = (o, cells, i) => `<div class="fx-st${o === me() ? " me" : ""}${card === o ? " open" : ""}${i === line - 1 && (tab === "standings" || tab === "odds") ? " cut" : ""}" data-fxo="${esc(o)}" role="button" tabindex="0"><span class="fx-rk">${cells.rank}</span>${badge({ ...(data.teams?.[o] || {}), owner: o })}<span class="fx-nm">${owner(o)}<small>${esc(cells.sub || "")}</small></span>${cells.cols.map((c) => `<span class="fx-c${c.cls ? ` ${c.cls}` : ""}">${c.v}</span>`).join("")}</div>${card === o ? ownerCard(o) : ""}`;
+    const row = (o, cells, i) => `<div class="fx-st${o === me() ? " me" : ""}${(tab === "standings" || tab === "odds") ? (i < line ? " in" : " out") : ""}${card === o ? " open" : ""}${i === line - 1 && (tab === "standings" || tab === "odds") ? " cut" : ""}" data-fxo="${esc(o)}" role="button" tabindex="0"><span class="fx-rk">${cells.rank}</span>${badge({ ...(data.teams?.[o] || {}), owner: o })}<span class="fx-nm">${owner(o)}<small>${esc(cells.sub || "")}</small></span>${cells.cols.map((c) => `<span class="fx-c${c.cls ? ` ${c.cls}` : ""}">${c.v}</span>`).join("")}</div>${card === o ? ownerCard(o) : ""}`;
     const sets = {
-      standings: { head: ["W-L", "PF", "STRK"], rows: (data.standings || []).map((r, i) => row(r.owner, { rank: r.rank, sub: data.teams?.[r.owner]?.name, cols: [{ v: `${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}` }, { v: pts(r.pointsFor), cls: "dim" }, { v: esc(st.streak?.[r.owner] || "–"), cls: /^W/.test(st.streak?.[r.owner]) ? "up" : /^L/.test(st.streak?.[r.owner]) ? "dn" : "" }] }, i)) },
+      standings: { head: ["W-L", "PF", "STRK"], rows: (data.standings || []).map((r, i) => row(r.owner, { rank: r.rank, sub: data.teams?.[r.owner]?.name, cols: [{ v: `${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}` }, { v: pts(r.pointsFor), cls: "pf" }, { v: `${esc(st.streak?.[r.owner] || "–")}${/^W([4-9]|\d\d)/.test(st.streak?.[r.owner] || "") ? '<i class="fx-fire" aria-label="hot streak">🔥</i>' : ""}`, cls: /^W/.test(st.streak?.[r.owner]) ? "up" : /^L/.test(st.streak?.[r.owner]) ? "dn" : "" }] }, i)) },
       // Power: one bar per team (its power score against the best), the move beside it.
       power: { head: ["POWER"], rows: (st.power || []).map((r, i, all) => { const top = Math.max(...all.map((x) => x.power || 0)) || 1, ap = st.allPlay?.[r.owner]; return row(r.owner, { rank: r.rank, sub: `${pts(st.teams?.[r.owner]?.ppg)} a game${ap ? ` · beats ${pct(ap.apPct)} of teams` : ""}`, cols: [{ cls: "viz", v: `<span class="fx-bar"><i style="width:${Math.max(4, (r.power / top) * 100).toFixed(0)}%"></i></span><em class="${r.move > 0 ? "up" : r.move < 0 ? "dn" : "dim"}">${r.move > 0 ? `▲${r.move}` : r.move < 0 ? `▼${-r.move}` : "–"}</em>` }] }, i); }) },
       // Odds: the playoff chance as a bar (IN once it is a lock), the title chance in gold.
@@ -340,7 +351,7 @@
     const set = sets[tab];
     const why = { standings: `Top ${line} make the playoffs.`, power: "Who's playing best right now: points, record against the whole league each week, and the last three weeks.", odds: `Chances from 4,000 simulated finishes of the season. Top ${line} make the playoffs.`, luck: "Real record against the record your points deserve. Plus means more wins than the scoring earned.", both: "Fantasy place next to pick'em place this season, best combined first." }[tab];
     return `<div class="fx-sechd"><span>LEAGUE TABLE</span></div><div class="fx-tabs" role="tablist">${[["standings", "STANDINGS"], ["power", "POWER"], ["odds", "ODDS"], ["luck", "LUCK"], ["both", "BOTH"]].map(([k, l]) => `<button type="button" role="tab" aria-selected="${tab === k}" class="${tab === k ? "on" : ""}" data-fxtab="${k}">${l}</button>`).join("")}</div>
-      <p class="fx-why-top">${esc(why)}</p>
+      <p class="fx-why-top"><b>${{ standings: "STANDINGS", power: "POWER", odds: "ODDS", luck: "LUCK", both: "BOTH LEAGUES" }[tab]}</b> ${esc(why)}</p>${tab === "standings" ? bubble(line) : ""}
       <div class="fx-sth t-${tab}"><span></span>${set.head.map((h) => `<span>${h}</span>`).join("")}</div>
       <div class="fx-sts t-${tab}">${set.rows.join("")}</div><p class="fx-note">Tap an owner for their team.</p>`;
   };
