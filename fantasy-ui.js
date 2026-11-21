@@ -374,10 +374,13 @@
   function teamNewsHtml() {
     if (!teamNews?.players) { loadTeamNews(); return ""; }
     const fresh = (n) => n && n.at && Date.now() - n.at < 3 * 86400000;
-    const items = teamNews.players.map((p) => { const starter = !/^(BE|IR)$/.test(p.slot), sev = SEV[p.injury] || 0, n = (p.news || []).find(fresh); return { p, n, starter, score: (starter ? 10 : 0) + sev * 3 + (n ? 2 : 0) }; })
+    // ESPN's live injury (status and its own short note) wins over the
+    // fantasy roster's tag, which can be hours old.
+    const code = (x) => { const t = String(x || "").toLowerCase(); return /reserve|^ir$/.test(t) ? "INJURY_RESERVE" : /^out/.test(t) ? "OUT" : /doubt/.test(t) ? "DOUBTFUL" : /question/.test(t) ? "QUESTIONABLE" : /suspen/.test(t) ? "SUSPENSION" : /day.to.day/.test(t) ? "DAY_TO_DAY" : /probable/.test(t) ? "PROBABLE" : null; };
+    const items = teamNews.players.map((p) => { const st = code(p.espnInjury?.status) || p.injury; const starter = !/^(BE|IR)$/.test(p.slot), sev = SEV[st] || 0, n = (p.news || []).find(fresh) || (p.espnInjury?.note ? { headline: p.espnInjury.note, at: p.espnInjury.at, link: null } : null); return { p: { ...p, injury: st }, n, starter, score: (starter ? 10 : 0) + sev * 3 + (n ? 2 : 0) }; })
       .filter((x) => x.p.injury || x.n).sort((a, b) => b.score - a.score || (b.n?.at || 0) - (a.n?.at || 0));
     const shown = newsAll ? items : items.slice(0, 5);
-    const row = ({ p, n, starter }) => `<li${n?.link ? ` data-fxnews="${esc(n.link)}" role="link" tabindex="0"` : ""}>${nflLogo(p.nfl)}<span class="fx-tn-m"><span class="fx-tn-h"><b>${esc(p.name)}</b><small>${esc(p.pos || "")}${starter ? "" : " · bench"}</small>${p.injury ? `<u class="sev${SEV[p.injury] >= 3 ? " hi" : ""}">${statusTxt(p.injury)}</u>` : ""}</span>${n ? `<span class="fx-tn-n">${esc(n.headline)} <i>${ago(n.at)}</i></span>` : ""}</span></li>`;
+    const row = ({ p, n, starter }) => `<li${n?.link ? ` data-fxnews="${esc(n.link)}" role="link" tabindex="0"` : ""}>${nflLogo(p.nfl)}<span class="fx-tn-m"><span class="fx-tn-h"><b>${esc(p.name)}</b><small>${esc(p.pos || "")}${starter ? "" : " · bench"}</small>${p.injury ? `<u class="sev${SEV[p.injury] >= 3 ? " hi" : ""}">${statusTxt(p.injury)}</u>` : ""}</span>${n ? `<span class="fx-tn-n">${esc(n.headline)}${n.at ? ` <i>${ago(n.at)}</i>` : ""}</span>` : ""}</span></li>`;
     return `<div class="fx-sechd"><span>YOUR TEAM · UPDATES</span></div>${items.length ? `<ul class="fx-tn">${shown.map(row).join("")}</ul>${items.length > 5 ? `<button type="button" class="fx-tn-more" data-fxnewsall="1">${newsAll ? "Show fewer" : `Show all ${items.length}`}</button>` : ""}` : `<p class="fx-note">No injuries or news on your roster in the last three days.</p>`}`;
   }
   const fxSeen = {}; // matchup id -> last painted leader and scores

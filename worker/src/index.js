@@ -311,31 +311,34 @@ const app = {
       const owner = String(url.searchParams.get("owner") || "");
       const roster = cur?.rosters?.[owner];
       if (!roster) return json({ error: "No such team" }, 404, corsHeaders);
+      // Per player, from ESPN's athlete record: the current injury (status,
+      // type, return date, and ESPN's own short note, e.g. "limited in
+      // practice Thursday, listed doubtful"), then any story tagged with
+      // the player. Cached 20 minutes per player. ?debug=1 adds what each
+      // source answered, to check the sources from a browser.
+      const debug = url.searchParams.get("debug") === "1";
       const players = await Promise.all(roster.slice(0, 20).map(async (p) => {
-        let news = [];
-        if (p.id) {
-          const key = `fxnews2:${p.id}`;
-          news = await env.LIFTR_KV.get(key, "json");
-          if (!news) {
-            news = [];
-            // Only stories ESPN tags with this player: the general feed
-            // ignores a player filter (Nov 21: one Titans story on every row),
-            // so every article is checked for the player's own athlete tag.
-            const mine = (a) => (a.categories || []).some((c) => String(c.athleteId ?? c.athlete?.id ?? "") === String(p.id)) || String(a.athleteId ?? "") === String(p.id) || (Array.isArray(a.athletes) && a.athletes.some((x) => String(x.id ?? x) === String(p.id)));
-            for (const src of [`https://site.api.espn.com/apis/fantasy/v2/games/ffl/news/players?limit=10&playerId=${encodeURIComponent(p.id)}`, `https://site.web.api.espn.com/apis/v2/sports/football/nfl/athletes/${encodeURIComponent(p.id)}/news?limit=10`]) {
-              try {
-                const r = await fetch(src, { signal: AbortSignal.timeout(5000) });
-                if (!r.ok) continue;
-                const j = await r.json();
-                const list = j.feed || j.articles || j.news || [];
-                news = list.filter(mine).slice(0, 3).map((a) => ({ headline: String(a.headline || a.title || "").slice(0, 160), blurb: String(a.description || a.story || "").replace(/<[^>]+>/g, "").slice(0, 240), at: Date.parse(a.published || a.lastModified || "") || null, link: a.links?.web?.href || a.link || null })).filter((a) => a.headline);
-                if (news.length) break;
-              } catch {}
-            }
-            await env.LIFTR_KV.put(key, JSON.stringify(news), { expirationTtl: 1200 });
+        if (!p.id) return { ...p, news: [] };
+        const key = `fxnews3:${p.id}`;
+        let hit = debug ? null : await env.LIFTR_KV.get(key, "json");
+        if (!hit) {
+          const dbg = [];
+          const get = async (src) => { try { const r = await fetch(src, { signal: AbortSignal.timeout(5000) }); dbg.push(`${new URL(src).pathname.split("/").slice(-3).join("/")} ${r.status}`); return r.ok ? await r.json() : null; } catch (e) { dbg.push(`${src.slice(0, 60)} ${String(e?.message || e).slice(0, 40)}`); return null; } };
+          let injury = null, news = [];
+          const ath = await get(`https://site.web.api.espn.com/apis/common/v3/sports/football/nfl/athletes/${encodeURIComponent(p.id)}`);
+          const a = ath?.athlete || ath;
+          const inj = (a?.injuries || [])[0];
+          if (inj) injury = { status: String(inj.status || inj.type?.description || "").slice(0, 30), note: String(inj.shortComment || inj.longComment || "").slice(0, 400), long: String(inj.longComment || "").slice(0, 600), at: Date.parse(inj.date || "") || null, type: inj.details?.type || inj.type?.name || null, returnDate: inj.details?.returnDate || null };
+          const mine = (x) => (x.categories || []).some((c) => String(c.athleteId ?? c.athlete?.id ?? "") === String(p.id));
+          for (const src of [`https://site.api.espn.com/apis/fantasy/v2/games/ffl/news/players?limit=10&playerId=${encodeURIComponent(p.id)}`, `https://site.api.espn.com/apis/site/v2/sports/football/nfl/news?athletes=${encodeURIComponent(p.id)}&limit=10`]) {
+            const j = await get(src); const list = j?.feed || j?.articles || [];
+            news = list.filter(mine).slice(0, 3).map((x) => ({ headline: String(x.headline || "").slice(0, 160), at: Date.parse(x.published || x.lastModified || "") || null, link: x.links?.web?.href || null })).filter((x) => x.headline);
+            if (news.length) break;
           }
+          hit = { injury, news, ...(debug ? { dbg } : {}) };
+          if (!debug) await env.LIFTR_KV.put(key, JSON.stringify(hit), { expirationTtl: 1200 });
         }
-        return { id: p.id, name: p.name, pos: p.pos, nfl: p.nfl, slot: p.slot, injury: p.injury, news };
+        return { id: p.id, name: p.name, pos: p.pos, nfl: p.nfl, slot: p.slot, injury: p.injury, espnInjury: hit.injury, news: hit.news, ...(hit.dbg ? { dbg: hit.dbg } : {}) };
       }));
       return json({ owner, at: Date.now(), players }, 200, { ...corsHeaders, "Cache-Control": "public, max-age=300" });
     }
