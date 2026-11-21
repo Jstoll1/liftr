@@ -10354,36 +10354,85 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-ctx > span b { color: #fff; font-weight: 600; }
 .fx-ctx .fx-sw, .fx-ctx .fx-wp { margin: 0; }
 .fx-ctx .fx-sw { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
-/* Matchups as a grid of small scorebug cards, two across like Scores; an
-   open matchup spans the full width. An odd last card centres. */
-.fx-mus { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* ==== Fantasy matchup cards: an arcade battle board ====
+   Two across; your matchup spans the top as the main event (the one card
+   that glows). Each card's loudness follows its state: zero (nothing
+   scored) stays quiet, tie stays neutral, close gets more contrast, clear
+   lights the leader's side. An odd last card centres. */
+.fx-mus { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 8px; padding-top: 4px; }
 .fx-mus > .fx-mu, .fx-mus > .fx-mine-k { grid-column: 1 / -1; }
-.fx-card-mu.on { border-color: rgba(var(--neon-cyan-rgb), .55); }
-/* Your matchup spans the top, mirrored (you left, them right), so the rest
-   pair up below; a lone last card still centres. */
-.fx-mus > .fx-card-mu.mine { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; padding: 10px 12px; }
-.fx-card-mu.mine .fx-cr + .fx-cr { flex-direction: row-reverse; text-align: right; }
-.fx-card-mu.mine .fx-cbar { grid-column: 1 / -1; margin-top: 6px; }
 .fx-mus:not(:has(> .fx-card-mu.mine)) > .fx-card-mu:nth-last-child(1 of .fx-card-mu):nth-child(odd of .fx-card-mu),
 .fx-mus:has(> .fx-card-mu.mine) > .fx-card-mu:nth-last-child(1 of .fx-card-mu):nth-child(even of .fx-card-mu) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 4px); }
-.fx-card-mu { display: flex; flex-direction: column; gap: 5px; padding: 8px 9px 9px; border-radius: 10px; border: 1px solid var(--card-border); background: rgba(255, 255, 255, .025); cursor: pointer; min-width: 0; }
-.fx-card-mu.mine { border-color: rgba(var(--neon-cyan-rgb), .55); background: rgba(var(--neon-cyan-rgb), .06); }
-.fx-cmk { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .06em; color: var(--neon-cyan); }
+.fx-card-mu { position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 10px 10px 9px; border-radius: 10px; cursor: pointer; overflow: hidden;
+  border: 1px solid var(--card-border);
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, .022) 0 2px, transparent 2px 9px),
+    linear-gradient(160deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, .22));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+  transition: border-color .2s, transform .12s; }
+/* A thin lit edge along the top: cyan on the leader's side of a live card. */
+.fx-card-mu::after { content: ""; position: absolute; left: 10px; right: 10px; top: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .14), transparent); }
+.fx-card-mu.close::after { background: linear-gradient(90deg, transparent, rgba(var(--neon-cyan-rgb), .55), rgba(var(--neon-purple-rgb), .55), transparent); }
+.fx-card-mu.clear::after { background: linear-gradient(90deg, transparent, rgba(var(--neon-cyan-rgb), .5), transparent); }
+.fx-card-mu:active { transform: scale(.985); border-color: rgba(var(--neon-cyan-rgb), .45); }
+@media (hover: hover) { .fx-card-mu:hover { border-color: rgba(var(--neon-cyan-rgb), .35); } }
+.fx-card-mu.on { border-color: rgba(var(--neon-cyan-rgb), .55); }
+/* The tag on the top edge: YOUR MATCHUP in a cyan-to-purple plate, FINAL plain. */
+.fx-cmk { position: absolute; top: -1px; left: 10px; z-index: 1; padding: 3px 7px 2px; border-radius: 0 0 5px 5px; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .1em; line-height: 1.4; color: var(--neon-cyan); background: var(--card-bg); }
 .fx-cmk.dim { color: var(--text-dim); }
-.fx-cr { display: flex; align-items: center; gap: 7px; min-width: 0; color: rgba(255, 255, 255, .55); }
-.fx-cr .fx-badge { width: 22px; height: 22px; font-size: 8px; }
-.fx-cr b { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fx-cr em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 11px; }
-.fx-cr.lead { color: #fff; }
+/* Rows: name secondary, score the strongest thing on the card. */
+.fx-cr { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 2px 0; color: var(--text-dim); }
+.fx-cr .fx-badge { width: 22px; height: 22px; font-size: 8px; flex: none; }
+.fx-cr b { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; letter-spacing: .01em; color: rgba(255, 255, 255, .6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fx-cr em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 12px; min-width: 4.5ch; text-align: right; color: rgba(255, 255, 255, .42); font-variant-numeric: tabular-nums; }
+.fx-cr.lead b { color: #fff; }
+.fx-cr.lead em { color: #fff; }
+.fx-card-mu.clear .fx-cr.lead em { text-shadow: 0 0 8px rgba(var(--neon-cyan-rgb), .45); }
+.fx-card-mu.clear .fx-cr.lead::before { content: ""; position: absolute; left: -10px; top: 3px; bottom: 3px; width: 2px; border-radius: 0 2px 2px 0; background: var(--neon-cyan); }
+.fx-card-mu.zero .fx-cr em, .fx-card-mu.tie .fx-cr em { color: rgba(255, 255, 255, .62); }
+.fx-card-mu.zero .fx-cr b { color: rgba(255, 255, 255, .55); }
 .fx-cr.me b { color: var(--neon-cyan); }
-.fx-cbar { display: flex; height: 4px; margin-top: 2px; border-radius: 2px; background: var(--neon-purple); overflow: hidden; }
-.fx-cbar i { display: block; height: 100%; background: var(--neon-cyan); border-right: 2px solid var(--card-bg); }
-.fx-cr small { font-size: 10px; color: var(--text-dim); white-space: nowrap; margin-left: -3px; min-width: 4.4ch; text-align: right; font-variant-numeric: tabular-nums; }
-/* The YOUR MATCHUP / FINAL tag rides on the card's top edge, so the
-   cards in a row stay the same height. */
-.fx-card-mu { position: relative; }
-.fx-mus { row-gap: 12px; padding-top: 4px; }
-.fx-cmk { position: absolute; top: -5px; left: 9px; padding: 1px 5px; border-radius: 3px; background: var(--card-bg); line-height: 1.4; }
+/* Battle meter: each side's share of the points, cyan against purple,
+   segmented, a bright divider where they meet; an empty track at 0-0. */
+.fx-meter { position: relative; display: flex; height: 6px; margin-top: 3px; border-radius: 2px; background: rgba(255, 255, 255, .06); overflow: hidden;
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 8.5px); mask: repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 8.5px); }
+.fx-meter i { display: block; height: 100%; transition: width .6s cubic-bezier(.2, .8, .2, 1); }
+.fx-meter i.a { background: linear-gradient(180deg, rgba(255, 255, 255, .35), rgba(255, 255, 255, 0) 55%), var(--neon-cyan); }
+.fx-meter i.b { background: linear-gradient(180deg, rgba(255, 255, 255, .3), rgba(255, 255, 255, 0) 55%), var(--neon-purple); }
+.fx-meter s { position: absolute; top: -1px; bottom: -1px; width: 2px; margin-left: -1px; background: #fff; text-decoration: none; transition: left .6s cubic-bezier(.2, .8, .2, 1); }
+.fx-meter.tie i.a, .fx-meter.tie i.b { opacity: .7; }
+.fx-meter.clear i { opacity: .95; }
+/* The main event: your matchup, head to head. */
+.fx-mus > .fx-card-mu.mine { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 10px; padding: 16px 12px 11px;
+  border-color: rgba(var(--neon-cyan-rgb), .55);
+  background:
+    repeating-linear-gradient(120deg, rgba(255, 255, 255, .03) 0 3px, transparent 3px 14px),
+    linear-gradient(100deg, rgba(var(--neon-cyan-rgb), .16), rgba(var(--neon-cyan-rgb), .03) 42%, rgba(var(--neon-purple-rgb), .03) 58%, rgba(var(--neon-purple-rgb), .16));
+  box-shadow: 0 0 18px rgba(var(--neon-cyan-rgb), .14), inset 0 1px 0 rgba(255, 255, 255, .08); }
+/* Corner highlights. */
+.fx-card-mu.mine::before { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 10px;
+  background: linear-gradient(var(--neon-cyan), var(--neon-cyan)) left 0 top 0 / 14px 2px no-repeat, linear-gradient(var(--neon-cyan), var(--neon-cyan)) left 0 top 0 / 2px 14px no-repeat,
+    linear-gradient(var(--neon-purple), var(--neon-purple)) right 0 bottom 0 / 14px 2px no-repeat, linear-gradient(var(--neon-purple), var(--neon-purple)) right 0 bottom 0 / 2px 14px no-repeat; }
+.fx-card-mu.mine::after { display: none; }
+.fx-card-mu.mine .fx-cmk { top: 0; padding: 3px 8px 3px; color: var(--card-bg); background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); }
+.fx-card-mu.mine .fx-cr { flex-direction: column; align-items: flex-start; gap: 4px; }
+.fx-card-mu.mine .fx-cr + .fx-vs + .fx-cr { align-items: flex-end; text-align: right; }
+.fx-card-mu.mine .fx-cr .fx-badge { position: absolute; top: 2px; }
+.fx-card-mu.mine .fx-cr:first-of-type .fx-badge { left: 0; } .fx-card-mu.mine .fx-cr + .fx-vs + .fx-cr .fx-badge { right: 0; }
+.fx-card-mu.mine .fx-cr b { padding: 0 30px; max-width: 100%; font-size: 12.5px; }
+.fx-card-mu.mine .fx-cr:first-of-type b { padding: 0 0 0 30px; } .fx-card-mu.mine .fx-cr + .fx-vs + .fx-cr b { padding: 0 30px 0 0; }
+.fx-card-mu.mine .fx-cr em { font-size: 22px; min-width: 0; line-height: 1.1; margin-top: 4px; }
+.fx-card-mu.mine .fx-cr.lead em { text-shadow: 0 0 10px rgba(var(--neon-cyan-rgb), .5); }
+.fx-card-mu.mine .fx-cr.lead::before { display: none; }
+.fx-vs { align-self: center; padding: 4px 6px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .08em; color: #fff;
+  background: linear-gradient(135deg, rgba(var(--neon-cyan-rgb), .35), rgba(var(--neon-purple-rgb), .45)); border: 1px solid rgba(255, 255, 255, .18); transform: skewX(-8deg); }
+.fx-card-mu.mine .fx-meter { grid-column: 1 / -1; height: 8px; margin-top: 10px; }
+/* Motion: a score that moved pops, a lead that changed hands flashes once. */
+.fx-sc.bump { animation: fx-bump .5s ease-out 1; }
+@keyframes fx-bump { 0% { transform: scale(1.25); color: var(--neon-cyan); } 100% { transform: none; } }
+.fx-card-mu.took { animation: fx-took 1.2s ease-out 1; }
+@keyframes fx-took { 0%, 30% { border-color: var(--neon-cyan); box-shadow: 0 0 16px rgba(var(--neon-cyan-rgb), .35); } 100% { } }
+@media (prefers-reduced-motion: reduce) { .fx-sc.bump, .fx-card-mu.took { animation: none; } .fx-meter i, .fx-meter s { transition: none; } .fx-card-mu:active { transform: none; } }
 /* A tapped matchup opens its breakdown in a pop-up; the card frame is the pop-up's. */
 .fx-mucard .fx-thead { align-items: center; }
 .fx-mucard .fx-thead .fx-k2 { margin: 0; }
