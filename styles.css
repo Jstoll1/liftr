@@ -10095,7 +10095,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .lvn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 6px var(--neon-cyan); animation: lvn-pulse 1.4s ease-in-out infinite; }
 @keyframes lvn-pulse { 50% { opacity: .35; } }
 .lvn-row { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 9px 10px; border: 0; border-top: 1px solid var(--card-border); border-radius: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; box-shadow: none; }
-.lvn-top { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.lvn-top { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 4px 12px; }
 .lvn-bot { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .lvn-bot .lvn-tk { flex: 1; border-top: 0; padding-top: 0; }
 .lvn-bot .lvn-pts { flex: none; }
@@ -10112,12 +10112,12 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .lvn-row.fresh .lvn-tk::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 5px var(--neon-cyan); }
 @keyframes lvn-fresh { 0%, 25% { background: rgba(var(--neon-cyan-rgb), .16); box-shadow: inset 3px 0 0 var(--neon-cyan); } 100% { background: transparent; box-shadow: inset 3px 0 0 transparent; } }
 @media (prefers-reduced-motion: reduce) { .lvn-row.fresh { animation: none; box-shadow: inset 3px 0 0 var(--neon-cyan); } }
-.lvn-tm { display: flex; align-items: center; gap: 6px; min-width: 0; color: rgba(255, 255, 255, .7); }
-.lvn-tm:last-child { flex-direction: row-reverse; text-align: right; }
+.lvn-tm { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; color: rgba(255, 255, 255, .7); }
+.lvn-tm:last-child { flex-direction: row-reverse; justify-content: flex-end; text-align: right; }
 .lvn-tm img { width: 20px; height: 20px; object-fit: contain; flex: none; }
 .lvn-tm b { font-size: 12px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lvn-tm em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 11px; margin-left: auto; color: rgba(255, 255, 255, .45); }
-.lvn-tm:last-child em { margin-left: 0; margin-right: auto; }
+.lvn-tm em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 11px; margin-left: 4px; color: rgba(255, 255, 255, .45); }
+.lvn-tm:last-child em { margin-left: 0; margin-right: 4px; }
 .lvn-tm.lead, .lvn-tm.lead em { color: #fff; }
 .lvn-tm.me b { color: var(--neon-cyan); }
 .lvn-mid { display: flex; flex-direction: column; align-items: center; gap: 4px; }
