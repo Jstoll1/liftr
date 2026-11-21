@@ -143,9 +143,10 @@
       ],
       "checks": {
         "tools": [
-          "needs"
+          "needs|scenarios"
         ]
-      }
+      },
+      "note": "scenarios answers this well too (Nov 21 run)"
     },
     {
       "source": "seed",
@@ -312,7 +313,7 @@
         ]
       },
       "regression": true,
-      "note": "Nov 21: picks tool got game_id and returned 'No game undefined'"
+      "note": "Nov 21: picks tool got game_id and returned 'No game undefined'; Nov 21 run 2: still failed with gameId, now any spelling works and a tool error fails the test"
     },
     {
       "source": "seed",
@@ -343,7 +344,7 @@
         ]
       },
       "regression": true,
-      "note": "Nov 21: rated a card 0/10 before any game was final"
+      "note": "Nov 21: rated a card 0/10 before any game was final; Nov 21 run 2: said no games decided when one was final"
     },
     {
       "source": "seed",
@@ -396,7 +397,9 @@
           "edge|needs|standings"
         ],
         "noAsk": true
-      }
+      },
+      "regression": true,
+      "note": "Nov 21 run 2: answered from eliminations only, no chance or swing"
     },
     {
       "id": "why-out",
@@ -412,7 +415,7 @@
       },
       "source": "fix",
       "regression": true,
-      "note": "Nov 21: 'out' before kickoff was never explained; edge now gives outBecause"
+      "note": "Nov 21 run 2: answered from eliminations only, no chance or swing"
     }
   ]
 }
