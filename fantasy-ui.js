@@ -382,19 +382,20 @@
     const magic = Math.max(0, wpct(B) + gB.length - wpct(A) + (holds === A.owner ? 0 : 1));
     const rec = (o) => { const r = s.find((x) => x.owner === o); return r ? `${r.wins}-${r.losses}` : ""; };
     const od = (o) => st.odds?.[o]?.playoffs;
-    const col = (r, proj, cls) => `<div class="fx-rv ${cls}"><b>${esc(r.owner)}</b><em>${r.wins}-${r.losses}</em><span>${od(r.owner) == null ? "" : `${pct(od(r.owner))} playoffs`}</span><span>proj ${proj.toFixed(1)} wins</span><span>${pts(r.pointsFor)} PF</span></div>`;
+    const col = (r, proj, cls) => `<div class="fx-rv ${cls}"><span class="fx-rv-tag">${cls === "in" ? "IN" : "OUT"}</span><b>${esc(r.owner)} <small>${r.wins}-${r.losses}</small></b><em>${od(r.owner) == null ? "–" : pct(od(r.owner))}</em><i>PLAYOFF ODDS</i><span>${proj.toFixed(1)} proj W · ${pts(r.pointsFor)} PF</span></div>`;
     const g1 = (g) => g ? `<span class="${g.op === (g === gA.find((x) => x.week === g.week) ? B.owner : A.owner) ? "vs" : ""}"><b>${esc(g.op)}</b> <small>${esc(rec(g.op))}</small> <i class="${g.p >= 0.55 ? "up" : g.p <= 0.45 ? "dn" : ""}">${pct(g.p)}</i></span>` : "<span>–</span>";
     const m = document.createElement("div");
     m.id = "fx-mupop"; m.className = "fx-team"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Playoff race");
     m.innerHTML = `<div class="fx-tcard"><div class="fx-thead"><span class="fx-k2">PLAYOFF RACE · SEED ${line}</span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-popbody">
-      <div class="fx-rvs">${col(A, projA, "in")}<i class="fx-rv-x">IN<br>vs<br>OUT</i>${col(B, projB, "out")}</div>
+      <div class="fx-rvs">${col(A, projA, "in")}<i class="fx-rv-x">VS</i>${col(B, projB, "out")}</div>
       <ul class="fx-rfacts">
-        <li><i>TIEBREAK</i><span><b>${esc(holds)}</b> wins a tie · ${esc(tieWhy)}</span></li>
-        ${meet ? `<li class="hot"><i>SHOWDOWN</i><span>They meet in week ${meet.week}: ${esc(A.owner)} ${pct(meet.p)} to win</span></li>` : ""}
-        <li><i>MAGIC #</i><span>${magic ? `<b>${magic}</b>: any ${magic === 1 ? `${esc(A.owner)} win or ${esc(B.owner)} loss` : `${magic} of ${esc(A.owner)} wins plus ${esc(B.owner)} losses`} puts ${esc(A.owner)} out of ${esc(B.owner)}'s reach` : `${esc(B.owner)} can no longer catch ${esc(A.owner)}`}</span></li>
+        <li><i>TIEBREAK</i><span><b>${esc(holds)}</b> · ${esc(tieWhy)}</span></li>
+        ${meet ? `<li class="hot"><i>SHOWDOWN</i><span>Week ${meet.week} head to head · <b>${esc(meet.p >= 0.5 ? A.owner : B.owner)}</b> ${pct(Math.max(meet.p, 1 - meet.p))}</span></li>` : ""}
+        ${(() => { const also = s.filter((r) => r !== A && r !== B && !sd.slice(0, -1).includes(r) && (wpct(r) === wpct(A) || wpct(r) === wpct(B))); return also.length ? `<li class="hot"><i>ALSO IN IT</i><span>${also.map((r) => `<b>${esc(r.owner)}</b> ${r.wins}-${r.losses}${od(r.owner) == null ? "" : ` (${pct(od(r.owner))})`}`).join(", ")} on the same record</span></li>` : ""; })()}
+        <li><i>MAGIC #</i><span>${magic ? `<b>${magic}</b> · ${esc(A.owner)} wins + ${esc(B.owner)} losses to stay ahead` : `${esc(B.owner)} can't catch ${esc(A.owner)}`}</span></li>
       </ul>
       <div class="fx-k2 fx-rsk">GAMES LEFT</div>
-      <div class="fx-rsch"><div class="fx-rsr hd"><i></i><span>${esc(A.owner)}</span><span>${esc(B.owner)}</span></div>${weeks.map((w) => `<div class="fx-rsr"><i>WK ${w}</i>${g1(gA.find((g) => g.week === w))}${g1(gB.find((g) => g.week === w))}</div>`).join("")}</div>
+      <div class="fx-rsch"><div class="fx-rsr hd"><i></i><span class="a">${esc(A.owner).toUpperCase()}</span><span class="b">${esc(B.owner).toUpperCase()}</span></div>${weeks.map((w) => `<div class="fx-rsr${meet && meet.week === w ? " meet" : ""}"><i>WK ${w}</i>${g1(gA.find((g) => g.week === w))}${g1(gB.find((g) => g.week === w))}</div>`).join("")}</div>
       <p class="fx-whyn">Win chances from points per game this season; playoff odds from 4,000 simulated finishes. Other teams can still change the race.</p></div></div>`;
     m.addEventListener("click", (e) => { if (e.target === m || e.target.closest("[data-fxx]")) m.remove(); });
     document.body.appendChild(m);
