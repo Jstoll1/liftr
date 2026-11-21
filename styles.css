@@ -10783,3 +10783,15 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .ct-out { margin: 12px 0 0; max-height: 50vh; overflow: auto; white-space: pre-wrap; font-size: 10.5px; line-height: 1.4; color: rgba(255, 255, 255, .8); user-select: text; -webkit-user-select: text; }
 .ct-bar { height: 6px; margin-top: 12px; border-radius: 3px; background: rgba(255, 255, 255, .08); overflow: hidden; }
 .ct-bar i { display: block; width: 0; height: 100%; background: var(--neon-cyan); transition: width .4s ease; }
+
+/* Player sheet header: one row (place, name, win %, VS ME, PATH), close button above it. */
+#rank-sheet .rs-head { padding-top: 30px; }
+#rank-sheet .rs-x { position: absolute; top: 2px; right: 12px; width: 24px; height: 24px; font-size: 11px; }
+#rank-sheet .rs-top.rs-one { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--card-border); background: rgba(255, 255, 255, .025); }
+#rank-sheet .rs-one .ranking-place { flex: none; }
+#rank-sheet .rs-one .rs-name { flex: 1; min-width: 0; }
+#rank-sheet .rs-one .rs-name small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#rank-sheet .rs-win { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+#rank-sheet .rs-win .rs-pct { font-size: 18px; text-shadow: none; }
+#rank-sheet .rs-win small { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--text-dim); }
+#rank-sheet .rs-one .rs-vs, #rank-sheet .rs-one .rs-path { flex: none; width: auto; min-height: 30px; padding: 0 9px; margin: 0; font-size: 6.5px; }
