@@ -10342,6 +10342,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-kb-p { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; font-size: 12px; } .fx-kb-p.b { justify-content: flex-end; text-align: right; }
 .fx-kb-p b { font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .fx-kb-p .fx-nfl { width: 14px; height: 14px; }
 .fx-kb-p small { flex-basis: 100%; font-size: 9.5px; color: var(--text-dim); }
+.fx-kb-p { flex-wrap: nowrap; } .fx-kb-p em { flex: none; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff; } .fx-kb-r > i { font-size: 5.5px; }
 .fx-dv { display: inline-block; margin-left: 6px; padding: 1px 3px; border-radius: 3px; vertical-align: 2px; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5px; color: var(--neon-cyan); border: 1px solid rgba(var(--neon-cyan-rgb), .45); }
 .fx-fire { font-style: normal; font-size: 9px; margin-left: 2px; }
 .fx-sts.dv .fx-c.fx-skc { display: grid; grid-template-columns: 1fr 12px; align-items: center; }
