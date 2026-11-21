@@ -46,12 +46,15 @@
       ],
       "checks": {
         "tools": [
-          "standings"
+          "standings|edge"
+        ],
+        "must": [
+          "Conlan|Connie"
         ],
         "noAsk": true
       },
       "regression": true,
-      "note": "Nov 21: named Robert (status out) the favourite; must read standings"
+      "note": "Nov 21: named Robert (status out) the favourite; must read standings; run 4 (Nov 21): regressed, named Robert (2nd) as the favourite; edge now resolves 'favourite' itself"
     },
     {
       "source": "seed",
@@ -259,8 +262,12 @@
         "tools": [
           "archive"
         ],
-        "noAsk": true
-      }
+        "must": [
+          "Curt"
+        ]
+      },
+      "regression": true,
+      "note": "Nov 21 run 4: the archive named Jake (+1) luckiest over Curt (+1.6); it now gets a luckiest-first list"
     },
     {
       "source": "seed",
@@ -421,6 +428,52 @@
       "source": "fix",
       "regression": true,
       "note": "Nov 21 run 2: answered from eliminations only, no chance or swing; run 3: still chose eliminations (its description now points to needs)"
+    },
+    {
+      "id": "hey-chief-curt-here-what-kinda-o",
+      "screen": "pickem",
+      "turns": [
+        "Hey Chief - Curt here.  What kinda odds you got for a guy like me winning the ship this year (emphasis on a Boston accent)?",
+        "Quality"
+      ],
+      "checks": {
+        "tools": [
+          "archive"
+        ],
+        "mustNot": [
+          "clarify",
+          "what you mean"
+        ],
+        "must": [
+          "%"
+        ]
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "flagged Nov 21: 'Quality' after an answer got 'could you clarify'; a reaction now gets a short in-voice reply"
+    },
+    {
+      "id": "what-kinda-odds",
+      "screen": "pickem",
+      "turns": [
+        "What kinda odds?",
+        "Odds"
+      ],
+      "checks": {
+        "tools": [
+          "standings|needs|edge"
+        ],
+        "mustNot": [
+          "clarify",
+          "specify"
+        ],
+        "must": [
+          "%"
+        ]
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "flagged Nov 21: asked which odds twice; bare 'odds' now means the asker's chance this week"
     }
   ]
 }

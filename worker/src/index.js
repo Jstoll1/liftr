@@ -26,7 +26,7 @@ import { MATCHUPS } from "./matchup-data.js";
 import { pullCurrentSeason, CURRENT_KEY, freshFor } from "./fantasy.js";
 import { fantasyStats } from "./fantasy-stats.js";
 import { historyContext, careers, meetings } from "./fantasy-history.js";
-import { CASES_KEY, RUNS_KEY, addCase, cleanCase, mergeRun, runRecord, turned } from "./chieftest.js";
+import { CASES_KEY, RUNS_KEY, addCase, cleanCase, mergeRun, runRecord, turned, uniqueIds } from "./chieftest.js";
 import { ROAST_SYSTEM, cleanRoastStats } from "./roast.js";
 
 const app = {
@@ -3944,7 +3944,7 @@ async function handleHistoryAsk(request, env, corsHeaders) {
       // fantasy page and would only bloat the prompt here.
       const { live: lw, teams, weekly: _wk, remaining: _rm, regret: _rg, ...rest } = live;
       let st = null; try { st = fantasyStats(live); } catch {}
-      const analytics = st ? { playoffOdds: st.odds, allPlayAndLuck: st.allPlay, powerRankings: st.power.map((x) => ({ rank: x.rank, owner: x.owner, move: x.move })), lastWeekAwards: st.awards, benchPointsLeft: st.regret.map((x) => ({ owner: x.owner, season: x.season })), streaks: st.streak, meaning: "playoffOdds: chance to make the playoffs, get a bye and win the title, from simulating the rest of the season. allPlay: record if every team played every other team each week; luck = actual wins minus all-play expected wins. benchPointsLeft: points left on the bench against the best possible lineup." } : null;
+      const analytics = st ? { playoffOdds: st.odds, allPlayAndLuck: st.allPlay, luckiestFirst: Object.values(st.allPlay || {}).sort((a, b) => b.luck - a.luck).map((x) => ({ owner: x.owner, luck: x.luck, wins: x.actualWins, expectedWins: x.expWins })), powerRankings: st.power.map((x) => ({ rank: x.rank, owner: x.owner, move: x.move })), lastWeekAwards: st.awards, benchPointsLeft: st.regret.map((x) => ({ owner: x.owner, season: x.season })), streaks: st.streak, meaning: "playoffOdds: chance to make the playoffs, get a bye and win the title, from simulating the rest of the season. allPlay: record if every team played every other team each week; luck = actual wins minus all-play expected wins. benchPointsLeft: points left on the bench against the best possible lineup." } : null;
       cur = { ...rest, ...(analytics ? { analytics } : {}), ...(lw ? { thisWeek: { week: lw.week, matchups: lw.matchups.map((m) => ({ away: m.away?.owner, awayPoints: m.away?.points, home: m.home?.owner, homePoints: m.home?.points, final: m.final })) } } : {}) };
     }
   } catch {}
@@ -4982,7 +4982,7 @@ async function handleChiefTest(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Not configured" }, 500, corsHeaders);
   if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
   const nc = { ...corsHeaders, "Cache-Control": "no-store" };
-  const read = async () => ({ cases: ((await env.LIFTR_KV.get(CASES_KEY, "json")) || []).map((c) => cleanCase(c)).filter(Boolean), runs: (await env.LIFTR_KV.get(RUNS_KEY, "json")) || [] });
+  const read = async () => ({ cases: uniqueIds(((await env.LIFTR_KV.get(CASES_KEY, "json")) || []).map((c) => cleanCase(c)).filter(Boolean)), runs: (await env.LIFTR_KV.get(RUNS_KEY, "json")) || [] });
   if (request.method === "GET") { const r = await read(); if (url.searchParams.get("report") === "1") r.report = (await env.LIFTR_KV.get(`${RUNS_KEY}:last`, "json")) || null; return json(r, 200, nc); }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   let body; try { body = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); }
