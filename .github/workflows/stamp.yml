@@ -18,6 +18,9 @@ on:
       - "admin.js"
       - "attract-facts.js"
       - "scout.js"
+      - "ask-ui.js"
+      - "fantasy-ui.js"
+      - "lightning-ui.js"
       - "icons/**"
 
 permissions:

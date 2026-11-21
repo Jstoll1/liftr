@@ -422,7 +422,16 @@
       }
       const maxes = MANAGERS.map((n) => [n, banked(n).max]).sort((a, b) => b[1] - a[1]);
       const lockG = GAMES.find((g) => all[who]?.picks?.[g.id]?.lock);
-      return { member: who, chanceToWin: d ? r3(d.pct) : null, ceiling: banked(who).max, ceilingRank: maxes.findIndex(([n]) => n === who) + 1, of: MANAGERS.length,
+      // The whole room's chances and points, so "why am I lowest" can be
+      // answered by comparison, and the ceiling stated for what it is: the
+      // most points this member can still reach, ranked against the others'
+      // most. It is not a finishing place: anyone with a chance can finish 1st.
+      const field = MANAGERS.map((n) => ({ member: n, chanceToWin: memo?.detail?.[n] ? r3(memo.detail[n].pct) : null, points: banked(n).pts, mostPossible: banked(n).max, picksLeft: banked(n).picksLeft })).sort((a, b) => (b.chanceToWin ?? 0) - (a.chanceToWin ?? 0));
+      const pct0 = d ? d.pct : null;
+      return { member: who, chanceToWin: pct0 != null ? r3(pct0) : null, canStillFinishFirst: pct0 == null ? null : pct0 > 0, chanceRank: field.findIndex((x) => x.member === who) + 1, of: MANAGERS.length,
+        points: banked(who).pts, mostPointsPossible: banked(who).max, mostPointsPossibleRank: maxes.findIndex(([n]) => n === who) + 1,
+        mostPointsPossibleMeans: "the most points this member can still reach if every open pick hits, ranked against every member's own most; NOT their best finishing place",
+        field,
         lock: lockG ? { game: gName(lockG), pick: `${short(lockG, all[who].picks[lockG.id].team)}` } : null,
         againstTheRoom: contrarian.slice(0, 4), swings: (d?.games || []).slice(0, 3).map((x) => ({ game: gName(x.game), chanceIfHits: r3(x.ifHit), chanceIfMisses: r3(x.ifMiss) })) };
     },
