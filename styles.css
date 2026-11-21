@@ -10568,6 +10568,25 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-why-top { margin: 8px 0 2px; font-size: 11.5px; line-height: 1.45; color: var(--text-dim); }
 .fx-why-top b { margin-right: 4px; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6.5px; color: var(--neon-cyan); }
 .fx-race { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; margin-top: 10px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--card-border); background: rgba(0, 0, 0, .2); }
+.fx-race { cursor: pointer; }
+.fx-rc { padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, .06); }
+.fx-rc.me { box-shadow: inset 2px 0 0 var(--neon-cyan); padding-left: 8px; }
+.fx-rc-h { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.fx-rc-h small { font-size: 10.5px; color: var(--text-dim); }
+.fx-rc.in .fx-rk { color: var(--neon-cyan); }
+.fx-rc-o { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; }
+.fx-rc-o b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 10px; color: #fff; }
+.fx-rc-o i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5px; color: var(--text-dim); margin-top: 3px; }
+.fx-rc-p { margin: 4px 0 0 26px; font-size: 11px; color: var(--text-dim); }
+.fx-rc-p b { color: #fff; }
+.fx-rc-g { list-style: none; margin: 6px 0 0 26px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.fx-rc-g li { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 11.5px; }
+.fx-rc-g i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); }
+.fx-rc-n { font-weight: 600; color: #fff; }
+.fx-rc-g .fx-rc-n { font-weight: 500; }
+.fx-rc-g small { font-size: 10px; color: var(--text-dim); }
+.fx-rc-g b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8px; color: rgba(255, 255, 255, .8); }
+.fx-rc-g b.up { color: var(--neon-green); } .fx-rc-g b.dn { color: var(--neon-pink); }
 .fx-race-k { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); }
 .fx-race small { font-size: 10px; color: var(--text-dim); }
 .fx-race-t { flex-basis: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; font-size: 12px; order: 3; }
