@@ -306,6 +306,12 @@ const app = {
     // One owner's players: injury status from the ESPN fantasy roster and
     // each player's latest news from ESPN, most important first. Public
     // ESPN data only; cached per player so a busy Sunday costs little.
+    // League seeding settings (divisions, tiebreak, playoff size), read-only.
+    if (url.pathname === "/fantasy-settings" && request.method === "GET") {
+      let cur = await env.LIFTR_KV.get(CURRENT_KEY, "json");
+      if (!cur || !("divisions" in cur)) { try { await pullCurrentSeason(env, MATCHUPS.espnOwners, { force: true }); cur = await env.LIFTR_KV.get(CURRENT_KEY, "json"); } catch {} }
+      return json({ playoffTeams: cur?.playoffTeams ?? null, regularSeasonWeeks: cur?.regularSeasonWeeks ?? null, playoffTiebreak: cur?.playoffTiebreak ?? null, divisions: cur?.divisions ?? null, divisionOf: cur?.divisionOf ?? null, seedingSettings: cur?.seedingSettings ?? null }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+    }
     if (url.pathname === "/fantasy-news" && request.method === "GET") {
       const cur = await env.LIFTR_KV.get(CURRENT_KEY, "json");
       const owner = String(url.searchParams.get("owner") || "");
