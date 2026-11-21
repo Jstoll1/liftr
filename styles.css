@@ -10366,7 +10366,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-card-mu { position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 10px 10px 9px; border-radius: 10px; cursor: pointer; overflow: hidden;
   border: 1px solid var(--card-border);
   background:
-    repeating-linear-gradient(135deg, rgba(255, 255, 255, .022) 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, .009) 0 2px, transparent 2px 9px),
     linear-gradient(160deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, .22));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
   transition: border-color .2s, transform .12s; }
@@ -10388,9 +10388,13 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-cr.lead b { color: #fff; }
 .fx-cr.lead em { color: #fff; }
 .fx-card-mu.clear .fx-cr.lead em { text-shadow: 0 0 8px rgba(var(--neon-cyan-rgb), .45); }
-.fx-card-mu.clear .fx-cr.lead::before { content: ""; position: absolute; left: -10px; top: 3px; bottom: 3px; width: 2px; border-radius: 0 2px 2px 0; background: var(--neon-cyan); }
+.fx-cr { margin: 0 -6px; padding: 3px 6px; border-radius: 7px; border: 1px solid transparent; }
+.fx-card-mu:is(.clear, .close) .fx-cr.lead.s-a { border-color: rgba(var(--neon-cyan-rgb), .45); background: linear-gradient(90deg, rgba(var(--neon-cyan-rgb), .14), rgba(var(--neon-cyan-rgb), .02)); box-shadow: 0 0 8px rgba(var(--neon-cyan-rgb), .14); }
+.fx-card-mu:is(.clear, .close) .fx-cr.lead.s-b { border-color: rgba(var(--neon-purple-rgb), .5); background: linear-gradient(90deg, rgba(var(--neon-purple-rgb), .16), rgba(var(--neon-purple-rgb), .02)); box-shadow: 0 0 8px rgba(var(--neon-purple-rgb), .14); }
+.fx-card-mu.close .fx-cr.lead { box-shadow: none; }
+.fx-card-mu.clear .fx-cr.lead.s-b em { text-shadow: 0 0 8px rgba(var(--neon-purple-rgb), .45); }
 .fx-card-mu.zero .fx-cr em, .fx-card-mu.tie .fx-cr em { color: rgba(255, 255, 255, .62); }
-.fx-card-mu.zero .fx-cr b { color: rgba(255, 255, 255, .55); }
+.fx-card-mu.zero .fx-cr b, .fx-card-mu.tie .fx-cr b { color: rgba(255, 255, 255, .85); }
 .fx-cr.me b { color: var(--neon-cyan); }
 /* Battle meter: each side's share of the points, cyan against purple,
    segmented, a bright divider where they meet; an empty track at 0-0. */
@@ -10416,12 +10420,15 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-card-mu.mine::after { display: none; }
 .fx-card-mu.mine .fx-cmk { top: 0; padding: 3px 8px 3px; color: var(--card-bg); background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); }
 .fx-card-mu.mine .fx-cr { flex-direction: column; align-items: flex-start; gap: 4px; }
-.fx-card-mu.mine .fx-cr + .fx-vs + .fx-cr { align-items: flex-end; text-align: right; }
+.fx-card-mu.mine .fx-cr.s-b { align-items: flex-end; text-align: right; }
 .fx-card-mu.mine .fx-cr .fx-badge { position: absolute; top: 2px; }
-.fx-card-mu.mine .fx-cr:first-of-type .fx-badge { left: 0; } .fx-card-mu.mine .fx-cr + .fx-vs + .fx-cr .fx-badge { right: 0; }
+.fx-card-mu.mine .fx-cr.s-a .fx-badge { left: 0; } .fx-card-mu.mine .fx-cr.s-b .fx-badge { right: 0; }
 .fx-card-mu.mine .fx-cr b { padding: 0 30px; max-width: 100%; font-size: 12.5px; }
-.fx-card-mu.mine .fx-cr:first-of-type b { padding: 0 0 0 30px; } .fx-card-mu.mine .fx-cr + .fx-vs + .fx-cr b { padding: 0 30px 0 0; }
+.fx-card-mu.mine .fx-cr.s-a b { padding: 0 0 0 30px; } .fx-card-mu.mine .fx-cr.s-b b { padding: 0 30px 0 0; }
 .fx-card-mu.mine .fx-cr em { font-size: 22px; min-width: 0; line-height: 1.1; margin-top: 4px; }
+.fx-card-mu.mine .fx-cr { margin: 0; padding: 0; border: 0; background: none !important; box-shadow: none !important; }
+.fx-card-mu.mine .fx-cr.s-a em { align-self: flex-end; } .fx-card-mu.mine .fx-cr.s-b em { align-self: flex-start; }
+.fx-card-mu.mine .fx-vs { margin-top: 26px; }
 .fx-card-mu.mine .fx-cr.lead em { text-shadow: 0 0 10px rgba(var(--neon-cyan-rgb), .5); }
 .fx-card-mu.mine .fx-cr.lead::before { display: none; }
 .fx-vs { align-self: center; padding: 4px 6px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .08em; color: #fff;
@@ -10432,6 +10439,10 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 @keyframes fx-bump { 0% { transform: scale(1.25); color: var(--neon-cyan); } 100% { transform: none; } }
 .fx-card-mu.took { animation: fx-took 1.2s ease-out 1; }
 @keyframes fx-took { 0%, 30% { border-color: var(--neon-cyan); box-shadow: 0 0 16px rgba(var(--neon-cyan-rgb), .35); } 100% { } }
+/* The league table's own header, so the board hands over cleanly. */
+.fx-sechd { display: flex; align-items: center; gap: 10px; margin: 20px 0 2px; }
+.fx-sechd::before, .fx-sechd::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--neon-cyan-rgb), .45), rgba(var(--neon-purple-rgb), .45), transparent); }
+.fx-sechd span { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .14em; color: var(--neon-cyan); }
 @media (prefers-reduced-motion: reduce) { .fx-sc.bump, .fx-card-mu.took { animation: none; } .fx-meter i, .fx-meter s { transition: none; } .fx-card-mu:active { transform: none; } }
 /* A tapped matchup opens its breakdown in a pop-up; the card frame is the pop-up's. */
 .fx-mucard .fx-thead { align-items: center; }
