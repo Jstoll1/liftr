@@ -6,7 +6,7 @@ export const CASES_KEY = "chieftest:cases";
 export const RUNS_KEY = "chieftest:runs";
 export const RETIRE_AFTER = 5; // passes in a row before a non-regression test rests
 
-const slug = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32) || "case";
+const slug = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40).replace(/-$/, "") || "case";
 
 // A clean case from whatever was sent: one to three turns of text, a screen,
 // where it came from, and the checks a good answer must pass.
@@ -37,7 +37,8 @@ export function addCase(cases, c, now = Date.now()) {
   const x = cleanCase({ ...c, added: now, streak: 0, runs: 0, fails: 0, retired: false }, now);
   if (!x) return { cases, added: null };
   const ids = new Set(cases.map((y) => y.id));
-  let id = x.id, n = 2; while (ids.has(id)) id = `${x.id}-${n++}`;
+  const base = x.id.slice(0, 34).replace(/-$/, "");
+  let id = x.id, n = 2; while (ids.has(id)) id = `${base}-${n++}`;
   x.id = id;
   return { cases: [...cases, x], added: x };
 }
@@ -67,3 +68,11 @@ export function runRecord(r, now = Date.now()) {
   const ids = (a) => (Array.isArray(a) ? a.map(slug).slice(0, 40) : []);
   return { at: now, build: String(r?.build || "").replace(/\D/g, "").slice(0, 14), state: String(r?.state || "").slice(0, 40), passed: Math.max(0, Number(r?.passed) || 0), total: Math.max(0, Number(r?.total) || 0), failed, regressed: ids(r?.regressed), fixed: ids(r?.fixed) };
 }
+
+// Two tests with one id (an older bug cut the "-2" off a long id): the
+// later one gets a number so each keeps its own record.
+export function uniqueIds(cases) {
+  const seen = new Set();
+  return cases.map((c) => { let id = c.id, n = 2; while (seen.has(id)) id = `${c.id.slice(0, 34).replace(/-$/, "")}-${n++}`; seen.add(id); return id === c.id ? c : { ...c, id }; });
+}
+

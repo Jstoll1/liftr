@@ -476,6 +476,8 @@
     // league (sides most of the room did not take, and what those pay), their
     // lock, their ceiling against everyone else's, and their biggest swings.
     edge({ member } = {}) {
+      // "favourite" / "leader": whoever has the best chance right now.
+      if (/^(favou?rite|leader|the favou?rite|top)$/i.test(String(member || "").trim())) { const m0 = base(); member = MANAGERS.slice().sort((a, b) => (m0?.detail?.[b]?.pct || 0) - (m0?.detail?.[a]?.pct || 0))[0]; }
       const who = memberOf(member || me()); if (!who) return { error: `No member ${member}.` };
       const hn = hiddenNote(); if (hn.picksHidden && /Everyone/.test(hn.picksHidden)) return { ...hn, oddsAvailable: false };
       const memo = base(), d = memo?.detail?.[who], all = lastGoodCloudPicks || {}, f = fins();
