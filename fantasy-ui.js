@@ -272,7 +272,7 @@
 
   // "Connie 6-11 Jake" -> "Jake leads 11-6"; "Connie 3-0 Jake" -> "Connie 3-0".
   // Every meeting, regular season and playoffs together: "Jake leads 17-8".
-  const allTime = (h, plate) => { const w = {}; for (const t of [h?.regularSeason, h?.playoffs]) { const m = String(t || "").match(/^(\S+) (\d+)-(\d+) (\S+)$/); if (m) { w[m[1]] = (w[m[1]] || 0) + +m[2]; w[m[4]] = (w[m[4]] || 0) + +m[3]; } } const [a, b] = Object.keys(w); if (plate && a && b) { const [hi, lo] = w[a] >= w[b] ? [a, b] : [b, a]; return `<i>H2H</i><b>${w[hi] === w[lo] ? "All square" : esc(hi)}</b><strong>${w[hi]}–${w[lo]}</strong>`; } return a && b ? leadOf(`${a} ${w[a]}-${w[b]} ${b}`) : leadOf(h?.regularSeason); };
+  const allTime = (h, plate) => { const w = {}; for (const t of [h?.regularSeason, h?.playoffs]) { const m = String(t || "").match(/^(\S+) (\d+)-(\d+) (\S+)$/); if (m) { w[m[1]] = (w[m[1]] || 0) + +m[2]; w[m[4]] = (w[m[4]] || 0) + +m[3]; } } const [a, b] = Object.keys(w); if (plate && a && b) { const l = plate in w ? plate : a, r = l === a ? b : a; return `<i>H2H</i><strong aria-label="All time ${esc(l)} ${w[l]}, ${esc(r)} ${w[r]}"><span class="${w[l] >= w[r] ? "hi" : ""}">${w[l]}</span>–<span class="${w[r] >= w[l] ? "hi" : ""}">${w[r]}</span></strong>`; } return a && b ? leadOf(`${a} ${w[a]}-${w[b]} ${b}`) : leadOf(h?.regularSeason); };
   const leadOf = (t) => { const m = String(t || "").match(/^(\S+) (\d+)-(\d+) (\S+)$/); if (!m) return esc(t || ""); const [, a, x, y, b] = m, X = +x, Y = +y; return X === Y ? `tied ${X}-${Y}` : X > Y ? `<b>${esc(a)}</b> leads ${X}-${Y}` : `<b>${esc(b)}</b> leads ${Y}-${X}`; };
   // Each chip opens the games behind it: every regular-season meeting, the
   // playoff ones, a final, or the last few.
@@ -443,7 +443,7 @@
         const meter = `<span class="fx-meter ${state}" title="${tot > 0 ? `${esc(A?.owner)} ${pts(sa)} · ${esc(B?.owner)} ${pts(sb)}` : "No points yet"}${w != null ? ` · win chance ${esc(A?.owner)} ${pct(w)}` : ""}">${tot > 0 ? `<i class="a" style="width:${share.toFixed(1)}%"></i><i class="b" style="width:${(100 - share).toFixed(1)}%"></i><s style="left:${share.toFixed(1)}%"></s>` : ""}</span>`;
         var card = `<div class="fx-card-mu ${state}${mine(m) ? " mine" : ""}${m.final ? " final" : ""}${took ? " took" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-haspopup="dialog" aria-label="${esc(A?.owner)} ${pts(sa)} against ${esc(B?.owner)} ${pts(sb)}">
           ${mine(m) ? `<span class="fx-cmk">YOUR MATCHUP</span>` : m.final ? `<span class="fx-cmk dim">FINAL</span>` : ""}${row(A, B, "a", sa)}${mine(m) ? `<span class="fx-vs" aria-hidden="true">VS</span>` : ""}${row(B, A, "b", sb)}
-          ${mine(m) && h?.regularSeason ? `<span class="fx-mh">${allTime(h, true)}</span>` : ""}${meter}
+          ${mine(m) && h?.regularSeason ? `<span class="fx-mh">${allTime(h, A?.owner || true)}</span>` : ""}${meter}
         </div>`;
       }
       if (!isOpen) return { card, full: "", mine: mine(m) };
