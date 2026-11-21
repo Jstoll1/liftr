@@ -437,10 +437,13 @@
         const prev = fxSeen[m.id], took = prev && prev.lead && lead && prev.lead !== lead, bump = (k, v) => prev && prev[k] !== v ? " bump" : "";
         fxSeen[m.id] = { lead, a: sa, b: sb };
         const row = (t, o, side, v) => `<span class="fx-cr s-${side}${lead === side ? " lead" : ""}${t?.owner === me() ? " me" : ""}">${badge(t)}<b>${esc(t?.owner || "")}${mine(m) && (t?.name || data.teams?.[t?.owner]?.name) ? `<small class="fx-tmn">${esc(t?.name || data.teams?.[t?.owner]?.name)}</small>` : ""}</b><em class="fx-sc${bump(side, v)}">${pts(t?.points)}</em></span>`;
-        // Battle meter: each side's share of the points scored, a crisp
+        // Battle meter: each side's chance to win, a crisp
         // divider where they meet; empty and neutral before anyone scores.
-        const share = tot > 0 ? Math.min(96, Math.max(4, (sa / tot) * 100)) : 50;
-        const meter = `<span class="fx-meter ${state}" title="${tot > 0 ? `${esc(A?.owner)} ${pts(sa)} · ${esc(B?.owner)} ${pts(sb)}` : "No points yet"}${w != null ? ` · win chance ${esc(A?.owner)} ${pct(w)}` : ""}">${tot > 0 ? `<i class="a" style="width:${share.toFixed(1)}%"></i><i class="b" style="width:${(100 - share).toFixed(1)}%"></i><s style="left:${share.toFixed(1)}%"></s>` : ""}</span>`;
+        // The bar is the chance to win: live odds while it is on, settled once final, score share only when no odds exist.
+        const odds = m.final ? (sa > sb ? 1 : sa < sb ? 0 : 0.5) : w != null ? w : tot > 0 ? sa / tot : null;
+        const share = odds == null ? 50 : m.final ? odds * 100 : Math.min(97, Math.max(3, odds * 100));
+        const mstate = odds == null ? "zero" : Math.abs(odds - 0.5) < 0.12 ? "close" : "clear";
+        const meter = `<span class="fx-meter ${mstate}" title="${odds == null ? "No odds yet" : `Win chance: ${esc(A?.owner)} ${pct(odds)} · ${esc(B?.owner)} ${pct(1 - odds)}`}" aria-label="${odds == null ? "" : `Win chance ${esc(A?.owner)} ${pct(odds)}`}">${odds != null ? `<i class="a" style="width:${share.toFixed(1)}%"></i><i class="b" style="width:${(100 - share).toFixed(1)}%"></i><s style="left:${share.toFixed(1)}%"></s>` : ""}</span>`;
         var card = `<div class="fx-card-mu ${state}${mine(m) ? " mine" : ""}${m.final ? " final" : ""}${took ? " took" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-haspopup="dialog" aria-label="${esc(A?.owner)} ${pts(sa)} against ${esc(B?.owner)} ${pts(sb)}">
           ${mine(m) ? `<span class="fx-cmk">YOUR MATCHUP</span>` : m.final ? `<span class="fx-cmk dim">FINAL</span>` : ""}${row(A, B, "a", sa)}${mine(m) ? `<span class="fx-vs" aria-hidden="true">VS</span>` : ""}${row(B, A, "b", sb)}
           ${mine(m) && h?.regularSeason ? `<span class="fx-mh">${allTime(h, A?.owner || true)}</span>` : ""}${meter}
