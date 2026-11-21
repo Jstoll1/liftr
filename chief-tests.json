@@ -1,0 +1,365 @@
+{
+  "about": "The Chief pressure test question set. Every Chief fix adds its regression test here (regression: true, note with date and what broke); every feature members will ask about adds a test (source: feature). checks: tools (a|b = either), must / mustNot (case-insensitive regex), noAsk (no which-league reply). The app syncs new ids to the worker on the next run.",
+  "tests": [
+    {
+      "source": "seed",
+      "id": "why-low",
+      "screen": "pickem",
+      "turns": [
+        "Why is my win % so low?"
+      ],
+      "checks": {
+        "tools": [
+          "edge"
+        ],
+        "mustNot": [
+          "ranked \\d",
+          "ceiling rank"
+        ],
+        "noAsk": true
+      },
+      "regression": true,
+      "note": "Nov 21: listed bare facts, called the ceiling rank a finish"
+    },
+    {
+      "source": "seed",
+      "id": "why-other",
+      "screen": "pickem",
+      "turns": [
+        "Why is the leader's path easier than mine?"
+      ],
+      "checks": {
+        "tools": [
+          "versus|edge"
+        ],
+        "noAsk": true
+      },
+      "regression": true,
+      "note": "Nov 21: asked which league on Scores"
+    },
+    {
+      "source": "seed",
+      "id": "why-fav",
+      "screen": "pickem",
+      "turns": [
+        "Why is the favourite the favourite this week?"
+      ],
+      "checks": {
+        "tools": [
+          "edge|standings"
+        ],
+        "noAsk": true
+      }
+    },
+    {
+      "source": "seed",
+      "id": "pushback",
+      "screen": "pickem",
+      "turns": [
+        "Can I still win the week?",
+        "That's wrong. I have a path, explain it."
+      ],
+      "checks": {
+        "mustNot": [
+          "isn'?t the top",
+          "can'?t finish (first|1st)"
+        ],
+        "noAsk": true
+      },
+      "regression": true,
+      "note": "Nov 21: doubled down on a wrong claim"
+    },
+    {
+      "source": "seed",
+      "id": "odds-cover",
+      "screen": "pickem",
+      "turns": [
+        "What are the odds the favourite in G8 covers?"
+      ],
+      "checks": {
+        "tools": [
+          "gameOdds"
+        ],
+        "must": [
+          "\\d+(\\.\\d+)?%"
+        ]
+      },
+      "regression": true,
+      "note": "Nov 21: answered the effect on the asker instead of the game's odds"
+    },
+    {
+      "source": "seed",
+      "id": "odds-win",
+      "screen": "pickem",
+      "turns": [
+        "Will the G10 favourite win outright?"
+      ],
+      "checks": {
+        "tools": [
+          "gameOdds"
+        ],
+        "must": [
+          "%"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "whatif-out",
+      "screen": "pickem",
+      "turns": [
+        "If my lock misses am I out?"
+      ],
+      "checks": {
+        "tools": [
+          "chance|needs|scenarios"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "needs",
+      "screen": "pickem",
+      "turns": [
+        "What do I need to win?"
+      ],
+      "checks": {
+        "tools": [
+          "needs"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "versus",
+      "screen": "pickem",
+      "turns": [
+        "Can I beat Curt this week?"
+      ],
+      "checks": {
+        "tools": [
+          "versus"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "route-scores",
+      "screen": "pickem",
+      "turns": [
+        "Who is leading?"
+      ],
+      "checks": {
+        "noAsk": true,
+        "tools": [
+          "standings"
+        ]
+      },
+      "regression": true
+    },
+    {
+      "source": "seed",
+      "id": "route-fantasy",
+      "screen": "fantasy",
+      "turns": [
+        "Who is leading?"
+      ],
+      "checks": {
+        "noAsk": true,
+        "tools": [
+          "archive"
+        ]
+      },
+      "regression": true
+    },
+    {
+      "source": "seed",
+      "id": "route-followup",
+      "screen": "pickem",
+      "turns": [
+        "How is Curt doing?",
+        "And Logan?"
+      ],
+      "checks": {
+        "noAsk": true
+      },
+      "regression": true,
+      "note": "Nov 21: a follow-up asked which league"
+    },
+    {
+      "source": "seed",
+      "id": "season",
+      "screen": "pickem",
+      "turns": [
+        "Who has won the most weeks this season?"
+      ],
+      "checks": {
+        "tools": [
+          "season"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "ever",
+      "screen": "pickem",
+      "turns": [
+        "Has anyone ever been knocked out before Saturday?"
+      ],
+      "checks": {
+        "tools": [
+          "eliminations|season"
+        ],
+        "mustNot": [
+          "fantasy"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "fantasy-path",
+      "screen": "fantasy",
+      "turns": [
+        "What is my playoff path?"
+      ],
+      "checks": {
+        "tools": [
+          "archive"
+        ],
+        "noAsk": true
+      }
+    },
+    {
+      "source": "seed",
+      "id": "fantasy-luck",
+      "screen": "fantasy",
+      "turns": [
+        "Who is the luckiest team and why?"
+      ],
+      "checks": {
+        "tools": [
+          "archive"
+        ],
+        "noAsk": true
+      }
+    },
+    {
+      "source": "seed",
+      "id": "fantasy-h2h",
+      "screen": "fantasy",
+      "turns": [
+        "What's my all-time record against Connie?"
+      ],
+      "checks": {
+        "tools": [
+          "archive"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "fantasy-bench",
+      "screen": "fantasy",
+      "turns": [
+        "Who left the most points on the bench?"
+      ],
+      "checks": {
+        "tools": [
+          "archive"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "hidden",
+      "screen": "pickem",
+      "turns": [
+        "Show me everyone's picks for the late games."
+      ],
+      "checks": {
+        "tools": [
+          "picks"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "unknown-term",
+      "screen": "pickem",
+      "turns": [
+        "What's my zorp score this week?"
+      ],
+      "checks": {
+        "must": [
+          "UNKNOWN_TERM|don'?t know"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "snark",
+      "screen": "pickem",
+      "turns": [
+        "Rate Curt's card out of 10."
+      ],
+      "checks": {
+        "tools": [
+          "standings|needs|season|picks"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "beer",
+      "screen": "pickem",
+      "turns": [
+        "Who's buying the beer?"
+      ],
+      "checks": {
+        "tools": [
+          "standings|season"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "tiebreak",
+      "screen": "pickem",
+      "turns": [
+        "How does the tiebreaker work and where do I stand?"
+      ],
+      "checks": {
+        "tools": [
+          "tiebreaker"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "ended-now",
+      "screen": "pickem",
+      "turns": [
+        "If it ended right now, who wins?"
+      ],
+      "checks": {
+        "tools": [
+          "endedNow|standings"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "vague",
+      "screen": "pickem",
+      "turns": [
+        "Am I cooked?"
+      ],
+      "checks": {
+        "tools": [
+          "edge|needs|standings"
+        ],
+        "noAsk": true
+      }
+    }
+  ]
+}
