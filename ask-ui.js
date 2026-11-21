@@ -343,8 +343,9 @@
     // same simulation as WIN%: each member's pick on that game hit in a
     // known share of the runs. Before kickoff a cover sits near 50% because
     // the spread is set to make it even; live, it moves with the score.
-    gameOdds({ game, game_id } = {}) {
-      const id = Number(String(game ?? game_id ?? "").replace(/\D/g, "")), g = GAMES.find((x) => Number(x.id) === id);
+    gameOdds(a = {}) {
+      const game = a.game ?? a.game_id ?? a.gameId ?? a.id, game_id = undefined;
+      const id = Number(String(game ?? "").replace(/\D/g, "")), g = GAMES.find((x) => Number(x.id) === id);
       if (!g) return { error: `No game ${game ?? game_id}.` };
       if (fins()[g.id]) return { game: gName(g), final: true };
       const memo = base(), m = memo?.ctx?.models?.find((x) => Number(x.g?.id) === id);
@@ -426,8 +427,8 @@
       const memo = base(); const d = memo?.detail?.[who]; if (!d) return { error: "Odds not loaded yet." };
       return { ...hiddenNote(), member: who, chanceToWin: r3(d.pct), ...statusOf(d), swings: (d.games || []).slice(0, 5).map((x) => ({ game: gName(x.game), pick: `${short(x.game, x.pick.team)} ${x.pick.mode === "ATS" ? `${x.pick.team === x.game.favorite ? "−" : "+"}${x.game.spread}` : "to win"}${x.pick.lock ? " (lock)" : ""}`, chanceIfHits: r3(x.ifHit), chanceIfMisses: r3(x.ifMiss), likelyToHit: r3(x.pHit) })) };
     },
-    picks({ game, game_id } = {}) {
-      game = game ?? game_id;
+    picks(a = {}) {
+      let game = a.game ?? a.game_id ?? a.gameId ?? a.id ?? (Array.isArray(a.games) ? a.games[0] : undefined);
       const g = GAMES.find((x) => String(x.id) === String(game).replace(/^G/i, "")); if (!g) return { error: `No game ${game}.` };
       const all = lastGoodCloudPicks || {};
       if (!isGameLocked(g) && MANAGERS.some((n) => all[n]?.picks?.[g.id]?.hidden)) return { game: gName(g), picksHidden: "Picks on this game are hidden until it kicks off." };
@@ -801,6 +802,8 @@
     for (const r of ck.mustNot || []) { try { if (new RegExp(r, "i").test(text)) why.push(`said /${r}/`); } catch {} }
     if (ck.noAsk && /WHICH_LEAGUE|fantasy league or the pick/i.test(text)) why.push("asked which league");
     if (turns.some((t) => /^\((error|lost connection|too many steps)/.test(t.a || ""))) why.push("no answer");
+    const bad = turns.flatMap((t) => t.tools).filter((x) => /^No game|^No member|^Unknown tool/.test(String(x.out?.error || "")));
+    if (bad.length) why.push(`tool error: ${bad[0].name} ${bad[0].out.error}`);
     return { pass: !why.length, why };
   }
   function testReport(results) {
