@@ -10792,6 +10792,6 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 #rank-sheet .rs-one .rs-name { flex: 1; min-width: 0; }
 #rank-sheet .rs-one .rs-name small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #rank-sheet .rs-win { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-#rank-sheet .rs-win .rs-pct { font-size: 18px; text-shadow: none; }
+#rank-sheet .rs-top .rs-win .rs-pct { font-size: 13px !important; line-height: 1; text-shadow: none; }
 #rank-sheet .rs-win small { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--text-dim); }
 #rank-sheet .rs-one .rs-vs, #rank-sheet .rs-one .rs-path { flex: none; width: auto; min-height: 30px; padding: 0 9px; margin: 0; font-size: 6.5px; }
