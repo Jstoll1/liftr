@@ -323,6 +323,27 @@
         tiebreaker: tb ? (tbTotal == null ? "tiebreaker game not started: ties stay ties" : `tiebreaker total would be ${tbTotal}`) : undefined,
         standings: rows.slice(0, 6).map((r) => ({ member: r.name, points: r.score, place: r.place, tied: !!r.tied })) };
     },
+    // How likely a game's outcome is (cover, straight-up win), read from the
+    // same simulation as WIN%: each member's pick on that game hit in a
+    // known share of the runs. Before kickoff a cover sits near 50% because
+    // the spread is set to make it even; live, it moves with the score.
+    gameOdds({ game } = {}) {
+      const id = Number(String(game || "").replace(/\D/g, "")), g = GAMES.find((x) => Number(x.id) === id);
+      if (!g) return { error: `No game ${game}.` };
+      if (fins()[g.id]) return { game: gName(g), final: true };
+      const memo = base(); if (!memo?.detail) return { error: "Odds not loaded yet." };
+      const out = {};
+      for (const n of MANAGERS) for (const e of memo.detail[n]?.games || []) {
+        if (Number(e.game?.id) !== id || !e.pick?.team || e.pHit == null) continue;
+        const other = e.pick.team === g.home ? g.away : g.home, key = e.pick.mode === "ATS" ? "cover" : "win";
+        out[key] = out[key] || {};
+        out[key][short(g, e.pick.team)] = r3(e.pHit);
+        if (key === "win") out[key][short(g, other)] = r3(1 - e.pHit);
+      }
+      if (out.cover) { const [t, p] = Object.entries(out.cover)[0]; const o = short(g, t === short(g, g.home) ? g.away : g.home); if (!(o in out.cover)) out.cover[o] = r3(1 - p); }
+      if (!Object.keys(out).length) return { game: gName(g), error: "No pick on this game to read odds from." };
+      return { game: gName(g), line: g.favorite ? `${short(g, g.favorite)} −${g.spread}` : "pick'em", ...out, means: "cover = chance each side covers the line; win = straight-up; from the simulation behind WIN%. Before kickoff a cover is near 50% by design." };
+    },
     chance({ conditions = [] } = {}) {
       const conds = readConds(conditions); if (conds.error) return conds;
       const memo = base(); if (!memo) return { error: "Odds not loaded yet." };
