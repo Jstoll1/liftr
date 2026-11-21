@@ -126,18 +126,18 @@
   // solo picks, and one headline reason picked from those.
   function storyOf(who, memo, all, f) {
     const pick = (n, g) => all[n]?.picks?.[g.id];
-    const same = (a, b) => a && b && !a.hidden && !b.hidden && a.team === b.team && a.mode === b.mode;
+    const same = (a, b, g) => a && b && !a.hidden && !b.hidden && a.mode === b.mode && (a.team === b.team || (g && short(g, a.team) === short(g, b.team)));
     const term = (g, x) => `${short(g, x.team)} ${x.mode === "ATS" ? `${x.team === g.favorite ? "−" : "+"}${g.spread}` : "to win"}${x.lock ? " (lock)" : ""}`;
     const open = GAMES.filter((g) => !f[g.id] && pick(who, g)?.team);
     const chance = (n) => memo?.detail?.[n]?.pct ?? 0;
     const mine = chance(who), b = banked(who);
     const ahead = MANAGERS.filter((n) => n !== who && chance(n) > mine).sort((x, y) => chance(y) - chance(x));
     const vs = ahead.slice(0, 3).map((n) => {
-      const diff = open.filter((g) => !same(pick(who, g), pick(n, g)));
+      const diff = open.filter((g) => !same(pick(who, g), pick(n, g), g));
       const bn = banked(n);
       return { member: n, chance: r3(chance(n)), samePicks: open.length - diff.length, of: open.length, canOnlyGainOn: diff.map((g) => `${gName(g)}: you ${term(g, pick(who, g))}${pick(n, g)?.team ? `, ${n} ${pick(n, g).hidden ? "hidden" : term(g, pick(n, g))}` : `, ${n} no pick`}`), pointsNow: `${b.pts} to ${bn.pts}`, mostPossible: `${b.max} to ${bn.max}` };
     });
-    const solo = open.filter((g) => MANAGERS.every((n) => n === who || !same(pick(who, g), pick(n, g)))).map((g) => `${gName(g)} ${term(g, pick(who, g))}`);
+    const solo = open.filter((g) => MANAGERS.every((n) => n === who || !same(pick(who, g), pick(n, g), g))).map((g) => `${gName(g)} ${term(g, pick(who, g))}`);
     const top = vs[0];
     let headline;
     if (!memo?.detail?.[who]) headline = null; // no odds yet: nothing to explain
@@ -147,6 +147,22 @@
     else if (top && b.pts < banked(top.member).pts) headline = `${who} trails ${top.member} by ${banked(top.member).pts - b.pts} points already banked, with ${b.picksLeft} picks left to make it up.`;
     else headline = `${who}'s picks split from the leaders on several games; ${who} needs most of those to land.`;
     return { headline, againstTheMembersAhead: vs, soloPicks: solo };
+  }
+  // Why "out" before many games are played: a member who scores at least as
+  // much as this one on every open game, whatever the result, and has at
+  // least as much banked, can never be passed.
+  function outBecause(who) {
+    const all = lastGoodCloudPicks || {}, f = fins(), b0 = banked(who);
+    const open = GAMES.filter((g) => !f[g.id]);
+    const margins = (g) => { const sp = Number(g.spread) || 0; return [-40, -21, -14, -10, -7, -3, -1, 1, 3, 7, 10, 14, 21, 40, sp - 1, sp + 1, -sp - 1, -sp + 1].map((m) => ({ awayScore: 50, homeScore: 50 + Math.round(m) })).filter((r) => r.homeScore !== r.awayScore); };
+    const pts = (n, g, r) => { const p = all[n]?.picks?.[g.id]; return p?.team && !p.hidden ? scorePick(g, p, r) || 0 : 0; };
+    for (const n of MANAGERS) {
+      if (n === who || banked(n).pts < b0.pts) continue;
+      let ok = true, better = [];
+      for (const g of open) { let worse = false, any = false; for (const r of margins(g)) { const d = pts(n, g, r) - pts(who, g, r); if (d < 0) { worse = true; break; } if (d > 0) any = true; } if (worse) { ok = false; break; } if (any) better.push(gName(g)); }
+      if (ok) return { member: n, why: `${n} scores at least as much as ${who} on every open game whatever happens${better.length ? `, and more on ${better.slice(0, 3).join(", ")}` : ""}, so ${who} can't finish ahead (a tie would go to the tiebreaker).` };
+    }
+    return null;
   }
   function banked(who) {
     const st = (lastGoodCloudPicks || {})[who]?.picks || {}, f = fins();
@@ -217,7 +233,7 @@
   const TOOLS = {
     // The fantasy league archive, answered by the Worker's archivist.
     archive: async ({ question }) => {
-      const q = String(question || "").trim().slice(0, 300);
+      const q = String(question || "").trim().slice(0, 300).replace(/\bConlan\b/g, "Connie");
       if (q.length < 3) return { error: "Ask the archive a full question." };
       try {
         const r = await fetch(`${WORKER_URL}/history-ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, asker: typeof currentManager !== "undefined" ? currentManager : undefined }) });
@@ -327,22 +343,23 @@
     // same simulation as WIN%: each member's pick on that game hit in a
     // known share of the runs. Before kickoff a cover sits near 50% because
     // the spread is set to make it even; live, it moves with the score.
-    gameOdds({ game } = {}) {
-      const id = Number(String(game || "").replace(/\D/g, "")), g = GAMES.find((x) => Number(x.id) === id);
-      if (!g) return { error: `No game ${game}.` };
+    gameOdds({ game, game_id } = {}) {
+      const id = Number(String(game ?? game_id ?? "").replace(/\D/g, "")), g = GAMES.find((x) => Number(x.id) === id);
+      if (!g) return { error: `No game ${game ?? game_id}.` };
       if (fins()[g.id]) return { game: gName(g), final: true };
-      const memo = base(); if (!memo?.detail) return { error: "Odds not loaded yet." };
-      const out = {};
-      for (const n of MANAGERS) for (const e of memo.detail[n]?.games || []) {
-        if (Number(e.game?.id) !== id || !e.pick?.team || e.pHit == null) continue;
-        const other = e.pick.team === g.home ? g.away : g.home, key = e.pick.mode === "ATS" ? "cover" : "win";
-        out[key] = out[key] || {};
-        out[key][short(g, e.pick.team)] = r3(e.pHit);
-        if (key === "win") out[key][short(g, other)] = r3(1 - e.pHit);
+      const memo = base(), m = memo?.ctx?.models?.find((x) => Number(x.g?.id) === id);
+      if (!m || m.fixed) return { error: "Odds not loaded yet." };
+      // The same game model as WIN%, played 4,000 times.
+      let cov = { [g.away]: 0, [g.home]: 0 }, win = { [g.away]: 0, [g.home]: 0 }; const N = 4000;
+      for (let s = 0; s < N; s++) {
+        let h = m.curH + (m.base || 0), a = m.curA + (m.base || 0);
+        const n = poissonRand(m.lam); for (let q = 0; q < n; q++) { const p = Math.random() < 0.6 ? 7 : 3; if (Math.random() < m.pHome) h += p; else a += p; }
+        if (h === a) { const p = Math.random() < 0.6 ? 7 : 3; if (Math.random() < m.pHome) h += p; else a += p; }
+        const o = resultOutcome(g, { awayScore: a, homeScore: h });
+        if (o.atsWinner in cov) cov[o.atsWinner]++; if (o.suWinner in win) win[o.suWinner]++;
       }
-      if (out.cover) { const [t, p] = Object.entries(out.cover)[0]; const o = short(g, t === short(g, g.home) ? g.away : g.home); if (!(o in out.cover)) out.cover[o] = r3(1 - p); }
-      if (!Object.keys(out).length) return { game: gName(g), error: "No pick on this game to read odds from." };
-      return { game: gName(g), line: g.favorite ? `${short(g, g.favorite)} −${g.spread}` : "pick'em", ...out, means: "cover = chance each side covers the line; win = straight-up; from the simulation behind WIN%. Before kickoff a cover is near 50% by design." };
+      const pc = (o) => Object.fromEntries(Object.entries(o).map(([t, v]) => [short(g, t), r3(v / N)]));
+      return { game: gName(g), line: g.favorite ? `${short(g, g.favorite)} −${g.spread}` : "pick'em", cover: pc(cov), win: pc(win), means: "chance each side covers the line, and wins straight up, from the game model behind WIN% (spread, total, live score and clock). Before kickoff a cover is near 50% by design." };
     },
     chance({ conditions = [] } = {}) {
       const conds = readConds(conditions); if (conds.error) return conds;
@@ -409,7 +426,8 @@
       const memo = base(); const d = memo?.detail?.[who]; if (!d) return { error: "Odds not loaded yet." };
       return { ...hiddenNote(), member: who, chanceToWin: r3(d.pct), ...statusOf(d), swings: (d.games || []).slice(0, 5).map((x) => ({ game: gName(x.game), pick: `${short(x.game, x.pick.team)} ${x.pick.mode === "ATS" ? `${x.pick.team === x.game.favorite ? "−" : "+"}${x.game.spread}` : "to win"}${x.pick.lock ? " (lock)" : ""}`, chanceIfHits: r3(x.ifHit), chanceIfMisses: r3(x.ifMiss), likelyToHit: r3(x.pHit) })) };
     },
-    picks({ game } = {}) {
+    picks({ game, game_id } = {}) {
+      game = game ?? game_id;
       const g = GAMES.find((x) => String(x.id) === String(game).replace(/^G/i, "")); if (!g) return { error: `No game ${game}.` };
       const all = lastGoodCloudPicks || {};
       if (!isGameLocked(g) && MANAGERS.some((n) => all[n]?.picks?.[g.id]?.hidden)) return { game: gName(g), picksHidden: "Picks on this game are hidden until it kicks off." };
@@ -481,6 +499,7 @@
       return { member: who, chanceToWin: pct0 != null ? r3(pct0) : null, canStillFinishFirst: pct0 == null ? null : pct0 > 0, chanceRank: field.findIndex((x) => x.member === who) + 1, of: MANAGERS.length,
         points: banked(who).pts, mostPointsPossible: banked(who).max, mostPointsPossibleRank: maxes.findIndex(([n]) => n === who) + 1,
         story,
+        ...(d && d.alive === false ? { outBecause: outBecause(who) || "no result left puts this member first (checked exactly)" } : {}),
         mostPointsPossibleMeans: "the most points this member can still reach if every open pick hits, ranked against every member's own most; NOT their best finishing place",
         field,
         lock: lockG ? { game: gName(lockG), pick: `${short(lockG, all[who].picks[lockG.id].team)}` } : null,
