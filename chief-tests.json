@@ -533,6 +533,29 @@
       "source": "miss",
       "regression": true,
       "note": "Nov 21 (Jake): said out with only 'every game leaves you at 0%', no reason; needs now carries outBecause (who mirrors or beats every result left, or the point ceiling)"
+    },
+    {
+      "id": "out-names-blocker",
+      "screen": "pickem",
+      "turns": [
+        "Is Jordan really out why all the sudden"
+      ],
+      "checks": {
+        "tools": [
+          "needs|edge"
+        ],
+        "must": [
+          "even if|at least|same (side|pick)|would still"
+        ],
+        "mustNot": [
+          "lifts someone else",
+          "−1 with|-1 with"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 21 (Jake): out reason was generic ('every path that lifts Jordan lifts someone else') and quoted '-1 with a maximum of 13'; now names who still beats his best case and on which games"
     }
   ]
 }

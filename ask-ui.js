@@ -427,7 +427,16 @@
       const memo = base(); const d = memo?.detail?.[who]; if (!d) return { error: "Odds not loaded yet." };
       // Out: say why in the same call (who mirrors or beats every result
       // left, or the point ceiling), so the answer never stops at "you're out".
-      const why = d.alive === false ? (() => { const ob = outBecause(who); if (ob) return { outBecause: ob.why, blockedBy: ob.member }; const me0 = banked(who), lead = MANAGERS.map((n) => ({ n, b: banked(n) })).sort((x, y) => y.b.pts - x.b.pts)[0]; return { outBecause: `No mix of the open results puts ${who} first (checked exactly): ${who} has ${me0.pts} with at most ${me0.max} possible; ${lead.n} leads with ${lead.b.pts}, and every path that lifts ${who} lifts someone else at least as much.` }; })() : {};
+      const why = d.alive === false ? (() => { const ob = outBecause(who); if (ob) return { outBecause: ob.why, blockedBy: ob.member }; const me0 = banked(who), lead = MANAGERS.map((n) => ({ n, b: banked(n) })).sort((x, y) => y.b.pts - x.b.pts)[0]; // Jordan's best case: every open pick of his hits. For each rival, the
+        // least he can score in that case; anyone at or above Jordan's best
+        // is the concrete block.
+        const all = lastGoodCloudPicks || {}, f = fins(), open = GAMES.filter((g) => !f[g.id] && all[who]?.picks?.[g.id]?.team);
+        const marg = (g) => { const sp = Number(g.spread) || 0; return [-40, -21, -14, -10, -7, -3, -1, 1, 3, 7, 10, 14, 21, 40, sp - 1, sp + 1, -sp - 1, -sp + 1].map((m) => ({ awayScore: 50, homeScore: 50 + Math.round(m) })).filter((r) => r.homeScore >= 0); };
+        const pk = (n, g, r) => { const p = all[n]?.picks?.[g.id]; return p?.team && !p.hidden ? scorePick(g, p, r) || 0 : 0; };
+        const hitWays = (g) => marg(g).filter((r) => pk(who, g, r) > 0);
+        const rivals = MANAGERS.filter((n) => n !== who).map((n) => { let lo = banked(n).pts; const agree = []; for (const g of open) { const ways = hitWays(g); if (!ways.length) continue; const m = Math.min(...ways.map((r) => pk(n, g, r))); lo += m; if (m > 0) agree.push(gName(g)); } return { n, lo, agree }; }).filter((x) => x.lo >= me0.max).sort((x, y) => y.lo - x.lo);
+        if (rivals.length) { const r = rivals[0]; return { outBecause: `Even if every open ${who} pick hits, he tops out at ${me0.max} (${me0.pts} now). ${r.n} would still have at least ${r.lo}${r.agree.length ? `, because he has the same side on ${r.agree.slice(0, 3).join(", ")}` : " from points already banked"}.${rivals.length > 1 ? ` ${rivals.slice(1, 3).map((x) => `${x.n} (${x.lo})`).join(" and ")} also stay at or above him.` : ""}`, blockedBy: r.n, bestCase: me0.max }; }
+        return { outBecause: `${who} has ${me0.pts} now and ${me0.max} at most. ${lead.n} leads with ${lead.b.pts}. No single mix of the open results puts ${who} on top: the games he needs also lift whoever he is chasing (checked exactly).` }; })() : {};
       return { ...hiddenNote(), member: who, chanceToWin: r3(d.pct), ...statusOf(d), ...why, swings: (d.games || []).slice(0, 5).map((x) => ({ game: gName(x.game), pick: `${short(x.game, x.pick.team)} ${x.pick.mode === "ATS" ? `${x.pick.team === x.game.favorite ? "−" : "+"}${x.game.spread}` : "to win"}${x.pick.lock ? " (lock)" : ""}`, chanceIfHits: r3(x.ifHit), chanceIfMisses: r3(x.ifMiss), likelyToHit: r3(x.pHit) })) };
     },
     picks(a = {}) {
