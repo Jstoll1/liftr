@@ -360,21 +360,34 @@
   // and each game left with a win chance from season scoring.
   const openRace = () => {
     document.getElementById("fx-mupop")?.remove();
-    const st = data.stats || {}, line = st.playoffTeams || data.playoffTeams || 6, s = stand(), rem = data.remaining || [], inS = new Set(seeds(line).map((r) => r.owner));
-    const ppg = (o) => st.teams?.[o]?.ppg || 0, sdv = 26;
-    const pWin = (a, b) => phi((ppg(a) - ppg(b)) / (sdv * Math.SQRT2));
-    const odds = (o) => st.odds?.[o]?.playoffs;
-    const live = s.filter((r, i) => { const p = odds(r.owner); return p == null ? Math.abs(i + 1 - line) <= 2 : p > 0.005 && p < 0.995; });
-    const rows = (live.length ? live : s.slice(Math.max(0, line - 3), line + 2)).map((r) => {
-      const games = rem.filter((g) => g.home === r.owner || g.away === r.owner).sort((x, y) => x.week - y.week).map((g) => { const o = g.home === r.owner ? g.away : g.home, orec = s.find((x) => x.owner === o); return { week: g.week, o, rec: orec ? `${orec.wins}-${orec.losses}` : "", p: pWin(r.owner, o) }; });
-      const proj = wpct(r) + games.reduce((n, g) => n + g.p, 0), i = s.indexOf(r);
-      return `<div class="fx-rc${inS.has(r.owner) ? " in" : " out"}${r.owner === me() ? " me" : ""}"><div class="fx-rc-h"><span class="fx-rk">${r.rank || i + 1}</span><b class="fx-rc-n">${esc(r.owner)}</b><small>${r.wins}-${r.losses} · ${pts(r.pointsFor)} PF</small><span class="fx-rc-o">${odds(r.owner) == null ? "" : `<b>${pct(odds(r.owner))}</b><i>PLAYOFFS</i>`}</span></div>
-        <div class="fx-rc-p">Projected <b>${proj.toFixed(1)}</b> wins · ${pts(ppg(r.owner))} a game</div>
-        ${games.length ? `<ul class="fx-rc-g">${games.map((g) => `<li><i>WK ${g.week}</i><span>vs <b class="fx-rc-n">${esc(g.o)}</b> <small>${esc(g.rec)}</small></span><b class="${g.p >= 0.55 ? "up" : g.p <= 0.45 ? "dn" : ""}">${pct(g.p)}</b></li>`).join("")}</ul>` : ""}</div>`;
-    }).join("");
+    const st = data.stats || {}, line = st.playoffTeams || data.playoffTeams || 6, s = stand(), rem = data.remaining || [];
+    const sd = seeds(line), A = sd[sd.length - 1], B = orderRec(s.filter((r) => !sd.includes(r)))[0];
+    if (!A || !B) return;
+    const ppg = (o) => st.teams?.[o]?.ppg || 0, pWin = (a, b) => phi((ppg(a) - ppg(b)) / (26 * Math.SQRT2));
+    const games = (o) => rem.filter((g) => g.home === o || g.away === o).map((g) => { const op = g.home === o ? g.away : g.home; return { week: g.week, op, p: pWin(o, op) }; });
+    const gA = games(A.owner), gB = games(B.owner), weeks = [...new Set([...gA, ...gB].map((g) => g.week))].sort((x, y) => x - y);
+    const projA = wpct(A) + gA.reduce((n, g) => n + g.p, 0), projB = wpct(B) + gB.reduce((n, g) => n + g.p, 0);
+    const h = h2hWins(), hA = h[A.owner]?.[B.owner] || 0, hB = h[B.owner]?.[A.owner] || 0;
+    const holds = hA > hB ? A.owner : hB > hA ? B.owner : (A.pointsFor || 0) >= (B.pointsFor || 0) ? A.owner : B.owner, tieWhy = hA !== hB ? `head to head ${Math.max(hA, hB)}-${Math.min(hA, hB)}` : "points for (head to head even)";
+    const meet = gA.find((g) => g.op === B.owner);
+    // Magic number: A's wins plus B's losses that lock A ahead of B.
+    const magic = Math.max(0, wpct(B) + gB.length - wpct(A) + (holds === A.owner ? 0 : 1));
+    const rec = (o) => { const r = s.find((x) => x.owner === o); return r ? `${r.wins}-${r.losses}` : ""; };
+    const od = (o) => st.odds?.[o]?.playoffs;
+    const col = (r, proj, cls) => `<div class="fx-rv ${cls}"><b>${esc(r.owner)}</b><em>${r.wins}-${r.losses}</em><span>${od(r.owner) == null ? "" : `${pct(od(r.owner))} playoffs`}</span><span>proj ${proj.toFixed(1)} wins</span><span>${pts(r.pointsFor)} PF</span></div>`;
+    const g1 = (g) => g ? `<span class="${g.op === (g === gA.find((x) => x.week === g.week) ? B.owner : A.owner) ? "vs" : ""}"><b>${esc(g.op)}</b> <small>${esc(rec(g.op))}</small> <i class="${g.p >= 0.55 ? "up" : g.p <= 0.45 ? "dn" : ""}">${pct(g.p)}</i></span>` : "<span>–</span>";
     const m = document.createElement("div");
     m.id = "fx-mupop"; m.className = "fx-team"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Playoff race");
-    m.innerHTML = `<div class="fx-tcard"><div class="fx-thead"><span class="fx-k2">PLAYOFF RACE · TOP ${line} IN</span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-popbody"><p class="fx-why-top">Teams still in doubt. Odds from 4,000 simulated finishes; game chances from points per game this season.${data.playoffTiebreak ? ` Ties go to ${/H2H|HEAD/i.test(data.playoffTiebreak) ? "head to head" : "points for"}.` : ""}</p>${rows}</div></div>`;
+    m.innerHTML = `<div class="fx-tcard"><div class="fx-thead"><span class="fx-k2">PLAYOFF RACE · SEED ${line}</span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-popbody">
+      <div class="fx-rvs">${col(A, projA, "in")}<i class="fx-rv-x">IN<br>vs<br>OUT</i>${col(B, projB, "out")}</div>
+      <ul class="fx-rfacts">
+        <li><i>TIEBREAK</i><span><b>${esc(holds)}</b> wins a tie · ${esc(tieWhy)}</span></li>
+        ${meet ? `<li class="hot"><i>SHOWDOWN</i><span>They meet in week ${meet.week}: ${esc(A.owner)} ${pct(meet.p)} to win</span></li>` : ""}
+        <li><i>MAGIC #</i><span>${magic ? `<b>${magic}</b>: any ${magic === 1 ? `${esc(A.owner)} win or ${esc(B.owner)} loss` : `${magic} of ${esc(A.owner)} wins plus ${esc(B.owner)} losses`} puts ${esc(A.owner)} out of ${esc(B.owner)}'s reach` : `${esc(B.owner)} can no longer catch ${esc(A.owner)}`}</span></li>
+      </ul>
+      <div class="fx-k2 fx-rsk">GAMES LEFT</div>
+      <div class="fx-rsch"><div class="fx-rsr hd"><i></i><span>${esc(A.owner)}</span><span>${esc(B.owner)}</span></div>${weeks.map((w) => `<div class="fx-rsr"><i>WK ${w}</i>${g1(gA.find((g) => g.week === w))}${g1(gB.find((g) => g.week === w))}</div>`).join("")}</div>
+      <p class="fx-whyn">Win chances from points per game this season; playoff odds from 4,000 simulated finishes. Other teams can still change the race.</p></div></div>`;
     m.addEventListener("click", (e) => { if (e.target === m || e.target.closest("[data-fxx]")) m.remove(); });
     document.body.appendChild(m);
   };
