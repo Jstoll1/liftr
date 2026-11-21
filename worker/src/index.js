@@ -4980,7 +4980,10 @@ async function handleChiefTest(request, env, corsHeaders, url) {
   if (body?.action === "sync") {
     const removed = new Set((await env.LIFTR_KV.get(`${CASES_KEY}:removed`, "json")) || []), have = new Set(cases.map((c) => c.id));
     let n = 0;
-    for (const c of (Array.isArray(body.cases) ? body.cases : []).slice(0, 100)) { const x = cleanCase(c); if (!x || have.has(x.id) || removed.has(x.id)) continue; cases = [...cases, { ...x, added: Date.now(), streak: 0, runs: 0, fails: 0, retired: false }]; have.add(x.id); n++; }
+    for (const c of (Array.isArray(body.cases) ? body.cases : []).slice(0, 100)) { const x = cleanCase(c); if (!x || removed.has(x.id)) continue;
+      // A test already in the set takes the file's wording, checks, note and
+      // regression flag (the repo is the source of truth); its record stays.
+      if (have.has(x.id)) { const i = cases.findIndex((y) => y.id === x.id); const y = cases[i]; if (JSON.stringify([y.turns, y.checks, y.note, y.regression, y.screen]) !== JSON.stringify([x.turns, x.checks, x.note, x.regression, x.screen])) { cases[i] = { ...y, turns: x.turns, checks: x.checks, note: x.note, regression: x.regression, screen: x.screen, retired: x.regression ? false : y.retired }; n++; } continue; } cases = [...cases, { ...x, added: Date.now(), streak: 0, runs: 0, fails: 0, retired: false }]; have.add(x.id); n++; }
     if (n) await save();
     return json({ cases, runs, added: n }, 200, nc);
   }
