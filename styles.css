@@ -10439,6 +10439,21 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 @keyframes fx-bump { 0% { transform: scale(1.25); color: var(--neon-cyan); } 100% { transform: none; } }
 .fx-card-mu.took { animation: fx-took 1.2s ease-out 1; }
 @keyframes fx-took { 0%, 30% { border-color: var(--neon-cyan); box-shadow: 0 0 16px rgba(var(--neon-cyan-rgb), .35); } 100% { } }
+/* Your team's updates: injured starters first, then news. */
+.fx-tn { list-style: none; margin: 8px 0 0; padding: 0; }
+.fx-tn li { display: flex; align-items: flex-start; gap: 9px; padding: 8px 0; border-top: 1px solid rgba(255, 255, 255, .06); }
+.fx-tn li:first-child { border-top: 0; }
+.fx-tn li[data-fxnews] { cursor: pointer; }
+.fx-tn .fx-nfl { width: 22px; height: 22px; flex: none; margin-top: 1px; }
+.fx-tn-m { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fx-tn-h { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.fx-tn-h b { font-size: 12.5px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fx-tn-h small { font-size: 10px; color: var(--text-dim); white-space: nowrap; }
+.fx-tn-h u { margin-left: auto; flex: none; text-decoration: none; padding: 1px 5px; border-radius: 3px; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--arcade-gold); border: 1px solid rgba(var(--arcade-gold-rgb), .55); }
+.fx-tn-h u.hi { color: #fff; background: var(--neon-pink); border-color: var(--neon-pink); }
+.fx-tn-n { font-size: 11.5px; line-height: 1.4; color: rgba(255, 255, 255, .72); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.fx-tn-n i { font-style: normal; color: var(--text-dim); font-size: 10px; }
+.fx-tn-more { display: block; margin: 6px auto 0; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--card-border); background: transparent; color: var(--text-dim); font: 600 11px system-ui, sans-serif; }
 /* The league table's own header, so the board hands over cleanly. */
 .fx-sechd { display: flex; align-items: center; gap: 10px; margin: 20px 0 2px; }
 .fx-sechd::before, .fx-sechd::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--neon-cyan-rgb), .45), rgba(var(--neon-purple-rgb), .45), transparent); }

@@ -303,6 +303,32 @@ const app = {
     // The fantasy page: the live season and this week's matchups. The league
     // is public on ESPN, so this is too. Refreshed on read when stale (two
     // minutes during NFL games, three hours otherwise).
+    // One owner's players: injury status from the ESPN fantasy roster and
+    // each player's latest news from ESPN, most important first. Public
+    // ESPN data only; cached per player so a busy Sunday costs little.
+    if (url.pathname === "/fantasy-news" && request.method === "GET") {
+      const cur = await env.LIFTR_KV.get(CURRENT_KEY, "json");
+      const owner = String(url.searchParams.get("owner") || "");
+      const roster = cur?.rosters?.[owner];
+      if (!roster) return json({ error: "No such team" }, 404, corsHeaders);
+      const players = await Promise.all(roster.slice(0, 20).map(async (p) => {
+        let news = [];
+        if (p.id) {
+          const key = `fxnews:${p.id}`;
+          news = await env.LIFTR_KV.get(key, "json");
+          if (!news) {
+            news = [];
+            try {
+              const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/news?athletes=${encodeURIComponent(p.id)}&limit=3`, { signal: AbortSignal.timeout(5000) });
+              if (r.ok) { const j = await r.json(); news = (j.articles || []).slice(0, 3).map((a) => ({ headline: String(a.headline || "").slice(0, 160), blurb: String(a.description || "").slice(0, 240), at: Date.parse(a.published || a.lastModified || "") || null, link: a.links?.web?.href || null })).filter((a) => a.headline); }
+            } catch {}
+            await env.LIFTR_KV.put(key, JSON.stringify(news), { expirationTtl: 1200 });
+          }
+        }
+        return { id: p.id, name: p.name, pos: p.pos, nfl: p.nfl, slot: p.slot, injury: p.injury, news };
+      }));
+      return json({ owner, at: Date.now(), players }, 200, { ...corsHeaders, "Cache-Control": "public, max-age=300" });
+    }
     if (url.pathname === "/fantasy" && request.method === "GET") {
       let cur = await env.LIFTR_KV.get(CURRENT_KEY, "json");
       // An older save (before weekly scores and rosters) is re-pulled at once.

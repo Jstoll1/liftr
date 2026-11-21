@@ -357,6 +357,27 @@
   };
 
   let fullById = {}, histOpen = null, chipOpen = null;
+  // Your team's updates: injuries from ESPN fantasy and each player's
+  // latest news, most important first (injured starters, then injured
+  // bench, then fresh news). Fetched for the signed-in owner only.
+  let teamNews = null, teamNewsAt = 0, newsAll = false;
+  const loadTeamNews = async () => {
+    const o = me(); if (!o || !data?.rosters?.[o] || Date.now() - teamNewsAt < 10 * 60000) return;
+    teamNewsAt = Date.now();
+    try { const r = await fetch(`${WORKER_URL}/fantasy-news?owner=${encodeURIComponent(o)}`); if (r.ok) { teamNews = await r.json(); paint(); } } catch {}
+  };
+  const SEV = { OUT: 5, INJURY_RESERVE: 4, SUSPENSION: 4, DOUBTFUL: 3, QUESTIONABLE: 2, PROBABLE: 1, DAY_TO_DAY: 1 };
+  const statusTxt = (x) => ({ OUT: "OUT", INJURY_RESERVE: "IR", SUSPENSION: "SUSP", DOUBTFUL: "D", QUESTIONABLE: "Q", PROBABLE: "P", DAY_TO_DAY: "DTD" }[x] || String(x || "").slice(0, 4));
+  const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 60 ? `${Math.max(1, m)}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
+  function teamNewsHtml() {
+    if (!teamNews?.players) { loadTeamNews(); return ""; }
+    const fresh = (n) => n && n.at && Date.now() - n.at < 3 * 86400000;
+    const items = teamNews.players.map((p) => { const starter = !/^(BE|IR)$/.test(p.slot), sev = SEV[p.injury] || 0, n = (p.news || []).find(fresh); return { p, n, starter, score: (starter ? 10 : 0) + sev * 3 + (n ? 2 : 0) }; })
+      .filter((x) => x.p.injury || x.n).sort((a, b) => b.score - a.score || (b.n?.at || 0) - (a.n?.at || 0));
+    const shown = newsAll ? items : items.slice(0, 5);
+    const row = ({ p, n, starter }) => `<li${n?.link ? ` data-fxnews="${esc(n.link)}" role="link" tabindex="0"` : ""}>${nflLogo(p.nfl)}<span class="fx-tn-m"><span class="fx-tn-h"><b>${esc(p.name)}</b><small>${esc(p.pos || "")}${starter ? "" : " · bench"}</small>${p.injury ? `<u class="sev${SEV[p.injury] >= 3 ? " hi" : ""}">${statusTxt(p.injury)}</u>` : ""}</span>${n ? `<span class="fx-tn-n">${esc(n.headline)} <i>${ago(n.at)}</i></span>` : ""}</span></li>`;
+    return `<div class="fx-sechd"><span>YOUR TEAM · UPDATES</span></div>${items.length ? `<ul class="fx-tn">${shown.map(row).join("")}</ul>${items.length > 5 ? `<button type="button" class="fx-tn-more" data-fxnewsall="1">${newsAll ? "Show fewer" : `Show all ${items.length}`}</button>` : ""}` : `<p class="fx-note">No injuries or news on your roster in the last three days.</p>`}`;
+  }
   const fxSeen = {}; // matchup id -> last painted leader and scores
   const openMu = (id) => {
     document.getElementById("fx-mupop")?.remove();
@@ -426,6 +447,7 @@
       <div class="fx-head"><span class="fx-k">FANTASY · ${esc(data.year)}</span><span class="fx-wk">${anyLive ? `<i class="fx-dot"></i>LIVE · ` : ""}WEEK ${esc(week)}</span></div>
       ${data.take?.text ? `<button type="button" class="fx-take-btn" data-fxtake="1"><img src="assets/images/chief/chief2-96.webp" alt=""><span class="fx-k2">WEEK ${esc(data.take.week)} RECAP</span><em>from the Chief</em><i>▸</i></button>` : ""}
       ${games ? `<div class="fx-mus">${games}</div>` : `<p class="fx-note">This week's matchups show once ESPN posts them.</p>`}
+      ${teamNewsHtml()}
       ${tables()}
       ${historyHtml()}
       ${performers()}
@@ -451,6 +473,9 @@
     if (o) { insOpen = null; return openTeam(o.dataset.fxo); }
     const side = e.target.closest("[data-fxteam]");
     if (side) { e.stopPropagation(); return openTeam(side.dataset.fxteam); }
+    const nw = e.target.closest("[data-fxnews]");
+    if (nw) { try { window.noteUse?.("fantasy-news"); } catch {} window.open(nw.dataset.fxnews, "_blank", "noopener"); return; }
+    if (e.target.closest("[data-fxnewsall]")) { newsAll = !newsAll; return paint(); }
     const hx = e.target.closest("[data-fxh]");
     if (hx && !e.target.closest(".fx-why")) { histOpen = histOpen === hx.dataset.fxh ? null : hx.dataset.fxh; try { window.noteUse?.("fantasy-history", hx.dataset.fxh.split("|")[0]); } catch {} return paint(); }
     const mu = e.target.closest("[data-fxmu]");
