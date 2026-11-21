@@ -439,6 +439,23 @@
   });
   root.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.closest("[data-fxmu],[data-fxo],[data-fxh]")) { e.preventDefault(); e.target.click(); } });
 
+  // Swipe a fantasy pop-up down to close it: from the top of its scroll,
+  // the card follows the finger and closes past 90px (as its ✕ would).
+  let sw = null;
+  document.addEventListener("touchstart", (e) => {
+    const card = e.target.closest?.(".fx-team .fx-tcard"); if (!card || card.scrollTop > 0) { sw = null; return; }
+    sw = { card, y: e.touches[0].clientY, dy: 0 };
+  }, { passive: true });
+  document.addEventListener("touchmove", (e) => {
+    if (!sw) return; sw.dy = e.touches[0].clientY - sw.y;
+    if (sw.dy > 0 && sw.card.scrollTop <= 0) { sw.card.style.transition = "none"; sw.card.style.transform = `translateY(${sw.dy}px)`; sw.card.parentElement.style.opacity = String(Math.max(0.35, 1 - sw.dy / 400)); }
+  }, { passive: true });
+  document.addEventListener("touchend", () => {
+    if (!sw) return; const { card, dy } = sw; sw = null;
+    if (dy > 90) { const x = card.querySelector("[data-fxx]"); if (x) x.click(); else card.parentElement.remove(); try { window.noteUse?.("fantasy-swipe-close"); } catch {} return; }
+    card.style.transition = "transform .2s ease-out"; card.style.transform = ""; card.parentElement.style.opacity = "";
+  });
+
   const visible = () => !document.getElementById("history-screen")?.classList.contains("hidden") && !document.hidden;
   window.paintFantasy = async (force) => { paint(); await load(force); paint(); };
   if (visible()) window.paintFantasy();
