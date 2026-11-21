@@ -10220,6 +10220,24 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-mhp strong { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 11px; letter-spacing: .06em; color: #fff; }
 .fx-mhp strong span { color: rgba(255, 255, 255, .5); } .fx-mhp strong span.hi { color: #fff; }
 .fx-mhp small { font-size: 10px; color: var(--text-dim); }
+.fx-rvs { display: grid; grid-template-columns: 1fr 30px 1fr; align-items: center; margin-top: 4px; }
+.fx-rv { display: flex; flex-direction: column; gap: 2px; padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, .03); font-size: 10.5px; color: var(--text-dim); }
+.fx-rv.in { box-shadow: inset 2px 0 0 var(--neon-cyan); } .fx-rv.out { box-shadow: inset -2px 0 0 var(--neon-pink); text-align: right; align-items: flex-end; }
+.fx-rv b { font-size: 14px; color: #fff; } .fx-rv em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 12px; color: #fff; margin: 3px 0 4px; }
+.fx-rv-x { font-style: normal; text-align: center; font-family: 'Press Start 2P', monospace; font-size: 5.5px; line-height: 1.8; color: var(--text-dim); }
+.fx-rfacts { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.fx-rfacts li { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; background: rgba(255, 255, 255, .025); font-size: 11.5px; color: rgba(255, 255, 255, .85); }
+.fx-rfacts li.hot { box-shadow: inset 2px 0 0 var(--arcade-gold); }
+.fx-rfacts i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--neon-cyan); } .fx-rfacts li.hot i { color: var(--arcade-gold); }
+.fx-rsk { display: block; margin: 12px 0 4px; }
+.fx-rsr { display: grid; grid-template-columns: 34px 1fr 1fr; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(255, 255, 255, .05); font-size: 11.5px; }
+.fx-rsr.hd { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); }
+.fx-rsr > i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--text-dim); }
+.fx-rsr span { display: flex; align-items: baseline; gap: 4px; min-width: 0; white-space: nowrap; }
+.fx-rsr span.vs b { color: var(--arcade-gold); }
+.fx-rsr small { font-size: 9.5px; color: var(--text-dim); }
+.fx-rsr span > i { margin-left: auto; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 7px; color: rgba(255, 255, 255, .8); }
+.fx-rsr span > i.up { color: var(--neon-green); } .fx-rsr span > i.dn { color: var(--neon-pink); }
 .fx-dv { display: inline-block; margin-left: 6px; padding: 1px 3px; border-radius: 3px; vertical-align: 2px; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5px; color: var(--neon-cyan); border: 1px solid rgba(var(--neon-cyan-rgb), .45); }
 .fx-fire { font-style: normal; font-size: 9px; margin-left: 2px; }
 .fx-rk { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-dim); text-align: center; }
