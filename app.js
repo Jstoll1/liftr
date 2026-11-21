@@ -7371,14 +7371,15 @@ function drawRankSheet(keepScroll) {
   const vsBtn = canVs ? `<button type="button" class="rs-vs${vsOn ? " on" : ""}" data-rs="vs" aria-pressed="${vsOn}">VS ME</button>` : "";
   const solo = row.solo ? `<div class="rs-solo"><b>${row.solo.solo}</b> pick${row.solo.solo === 1 ? "" : "s"} nobody else made${row.solo.twin ? ` · matches <b>${escapeCd(shown(row.solo.twin.name))}</b> on ${row.solo.twin.n} of ${row.solo.seen}` : ""}</div>` : "";
   el.querySelector(".rs-head").innerHTML = `
-    <div class="rs-top">
+    <button type="button" class="rs-x" data-rs="x" aria-label="Close">✕</button>
+    <div class="rs-top rs-one">
       <button type="button" class="rs-nav" data-rs="prev" aria-label="Previous player">‹</button>
       <span class="ranking-place${row.score > 0 && row.place <= 3 ? ` medal m${row.place}` : ""}">${row.tied ? "T" : ""}${row.place}</span>
       <span class="rs-name"><b>${escapeCd(shown(name).toUpperCase())}</b>${rankLockHtml(row)}<small>${row.subline || ""} · <span class="rs-pts">${row.score} PTS</span></small></span>
+      ${pct != null ? `<span class="rs-win"><b class="rs-pct${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}${txt === "CLINCHED" ? " clin" : ""}">${txt}</b><small>WIN</small></span>` : ""}
+      ${vsBtn}${canPath ? `<button type="button" class="rd-path-btn rs-path" data-path="${escapeCd(name)}">PATH</button>` : ""}
       <button type="button" class="rs-nav" data-rs="next" aria-label="Next player">›</button>
-      <button type="button" class="rs-x" data-rs="x" aria-label="Close">✕</button>
     </div>
-    ${pct != null ? `<div class="rs-hero"><div class="rs-chance"><span class="rs-k">CHANCE TO WIN</span><b class="rs-pct${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}${txt === "CLINCHED" ? " clin" : ""}">${txt}</b><span class="rs-meter" aria-hidden="true">${Array.from({ length: 20 }, (_, k) => `<i class="${k < Math.round(Math.max(0, Math.min(100, pct)) / 5) ? "on" : ""}"></i>`).join("")}</span></div><div class="rs-btns">${vsBtn}${canPath ? `<button type="button" class="rd-path-btn rs-path" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>PATH</button>` : ""}</div></div>` : vsBtn ? `<div class="rs-wp">${vsBtn}</div>` : ""}
     ${solo}
     <span class="rs-count">${i + 1} / ${rows.length}</span><div class="rs-dots" aria-hidden="true">${rows.map((_, k) => `<i class="${k === i ? "on" : ""}"></i>`).join("")}</div>`;
   const body = el.querySelector(".rs-body"); const top = body.scrollTop;
