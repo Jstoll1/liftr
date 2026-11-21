@@ -45,7 +45,7 @@
     if (Date.now() - nflAt > 55000) {
       try {
         const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?t=${Math.floor(Date.now() / 60000)}`);
-        if (r.ok) { const j = await r.json(); nfl = {}; for (const ev of j.events || []) { const c = ev.competitions?.[0]; const st = c?.status?.type?.state || "pre"; for (const t of c?.competitors || []) nfl[String(t.team?.abbreviation || "").toUpperCase()] = { state: st, done: !!c?.status?.type?.completed, ball: st === "in" && !!c?.situation?.possession && String(c.situation.possession) === String(t.team?.id), rz: !!c?.situation?.isRedZone, left: st === "in" ? Math.max(0, Math.min(1, ((4 - Math.min(4, Number(c?.status?.period) || 1)) * 900 + (Number(c?.status?.clock) || 0)) / 3600)) : st === "pre" ? 1 : 0 }; } nflAt = Date.now(); }
+        if (r.ok) { const j = await r.json(); nfl = {}; for (const ev of j.events || []) { const c = ev.competitions?.[0]; const st = c?.status?.type?.state || "pre"; const cs = c?.competitors || []; for (const t of cs) { const o = cs.find((x) => x !== t); nfl[String(t.team?.abbreviation || "").toUpperCase()] = { opp: String(o?.team?.abbreviation || ""), away: t.homeAway === "away", my: Number(t.score) || 0, their: Number(o?.score) || 0, detail: String(c?.status?.type?.shortDetail || ""), state: st, done: !!c?.status?.type?.completed, ball: st === "in" && !!c?.situation?.possession && String(c.situation.possession) === String(t.team?.id), rz: !!c?.situation?.isRedZone, sp: 0, left: st === "in" ? Math.max(0, Math.min(1, ((4 - Math.min(4, Number(c?.status?.period) || 1)) * 900 + (Number(c?.status?.clock) || 0)) / 3600)) : st === "pre" ? 1 : 0 }; } } nflAt = Date.now(); }
       } catch {}
     }
     busy = false;
@@ -84,6 +84,12 @@
   // slot row is lit; a totals row closes the column.
   const lineup = (t, o, x) => { const os = o?.starters || []; return `<ol class="fx-lu">${(t?.starters || []).map((p, i) => { const tp = toPlay(p), lv = live(p), q = os[i], st = stOf(p); const win = q && !tp && toPlay(q) !== true && (p.pts || 0) > (q.pts || 0); return `<li class="${tp ? "tp" : ""}${lv ? " fx-on" : ""}"><i>${esc(p.slot)}</i>${nflLogo(p.nfl) || "<span></span>"}<span class="fx-pn"><span class="fx-pt">${esc(p.name)}</span>${status(p)}</span><b class="${win ? "win" : ""}">${st ? (st === "live" && gameOf(p)?.ball ? `<s class="fx-ball${gameOf(p).rz ? " rz" : ""}" title="${gameOf(p).rz ? "Has the ball in the red zone" : "Has the ball"}"></s>` : `<s class="fx-sd ${st}" title="${st === "pre" ? "To play" : st === "live" ? "Playing now" : "Done"}"></s>`) : ""}${tp && p.proj != null ? `<small>${pts(p.proj)}</small>` : pts(p.pts)}</b></li>`; }).join("")}<li class="tot"><i>TOTAL</i><span></span><span class="fx-pn"><span class="fx-pt">${x && !x.final ? `proj ${pts(x.exp)}` : ""}</span></span><b>${pts(t?.points)}</b></li></ol>`; };
 
+  // ESPN-style mirrored lineup: one row per slot, the position in a centre
+  // spine, each side's player with his game, points and projection.
+  const short = (n) => { const w = String(n || "").split(" "); return /D\/ST$/.test(n) || w.length < 2 ? String(n || "") : `${w[0][0]}. ${w.slice(1).join(" ")}`; };
+  const gameLine = (p) => { const g = gameOf(p); if (!g) return ""; const at = `${g.away ? "@" : ""}${esc(g.opp)}`; return g.state === "pre" ? `${at} ${esc(g.detail.replace(/ - .*$/, ""))}` : `${at} ${g.away ? `${g.their}-${g.my}` : `${g.my}-${g.their}`} ${esc(g.state === "in" ? g.detail : "Final")}`; };
+  const cell = (p, side, win) => { if (!p) return `<div class="fx-mc ${side} empty"></div>`; const st = stOf(p), g = gameOf(p); return `<div class="fx-mc ${side} ${st}${win ? " win" : ""}"><span class="fx-mc-n">${side === "r" ? "" : nflLogo(p.nfl)}<b>${esc(short(p.name))}</b>${side === "r" ? nflLogo(p.nfl) : ""}</span><span class="fx-mc-g">${st === "live" && g?.ball ? '<s class="fx-ball"></s>' : ""}${gameLine(p)}${status(p)}</span><span class="fx-mc-s"><em>${st === "pre" ? "–" : pts(p.pts)}</em><small>${p.proj != null ? pts(p.proj) : ""}</small></span></div>`; };
+  const mirror = (L, Rt) => { const a = L?.starters || [], b = Rt?.starters || [], n = Math.max(a.length, b.length); let rows = ""; for (let i = 0; i < n; i++) { const p = a[i], q = b[i], done = (x) => x && stOf(x) !== "pre"; const wa = done(p) && done(q) && (p.pts || 0) > (q.pts || 0), wb = done(p) && done(q) && (q.pts || 0) > (p.pts || 0); rows += `<div class="fx-mr">${cell(p, "l", wa)}<i class="fx-ms">${esc((p || q)?.slot || "")}</i>${cell(q, "r", wb)}</div>`; } return `<div class="fx-mir">${rows}</div>`; };
   const sparkline = (o) => {
     const wk = (data.weekly || []), mine = wk.filter((x) => x.owner === o).sort((a, b) => a.week - b.week);
     if (mine.length < 2) return "";
@@ -505,7 +511,7 @@
       return { id: m.id, card, mine: mine(m), full: `<div class="fx-mu open${m.final ? " final" : ""}${mine(m) ? " mine" : ""}" data-fxmu="${m.id}">
         <div class="fx-row">${sideHtml(L, Rt, "a", oL)}<span class="fx-vs">${m.final ? "FINAL" : "VS"}</span>${sideHtml(Rt, L, "h", oR)}</div>
         ${h ? `<div class="fx-ctx"><small>ALL TIME</small><span class="fx-chips">${h2hLine(h, m.id)}</span></div>` : ""}${swing({ ...m, away: L, home: Rt })}${wL != null ? `<div class="fx-ctx"><small>WIN CHANCE</small><div class="fx-wp" title="From live points and projections for players still to play"><b>${esc(L?.owner)} ${pct(wL)}</b><span><i style="width:${(wL * 100).toFixed(1)}%"></i></span><b>${pct(1 - wL)} ${esc(Rt?.owner)}</b></div></div>` : ""}
-        <div class="fx-lus">${lineup(L, Rt, oL)}${lineup(Rt, L, oR)}</div><p class="fx-note fx-sdkey"><span><s class="fx-sd done"></s>done</span><span><s class="fx-sd live"></s>playing</span><span><s class="fx-ball"></s>has the ball</span><span><s class="fx-sd pre"></s>to play (projection)</span></p>
+        ${mirror(L, Rt)}<p class="fx-note fx-sdkey"><span>Big number: points</span><span>small: projection</span><span class="fx-k-live">green: playing</span><span><s class="fx-ball"></s>has the ball</span></p>
       </div>` };
     });
     // Tap a card: the full breakdown opens in a pop-up.
