@@ -10210,7 +10210,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-take { margin: 0 0 10px; padding: 0 0 10px; border-bottom: 1px solid var(--card-border); }
 .fx-take p { margin: 6px 0 0; font-size: 12.5px; line-height: 1.45; color: rgba(255, 255, 255, .85); }
 .fx-k2 { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--arcade-gold); letter-spacing: .06em; }
-.fx-tabs { display: flex; gap: 4px; margin-top: 14px; }
+.fx-tabs { display: flex; gap: 4px; margin-top: 10px; }
 .fx-tabs button { flex: 1; padding: 7px 0; border-radius: 6px; border: 1px solid var(--card-border); background: transparent; color: var(--text-dim); font-family: 'Press Start 2P', monospace; font-size: 6.5px; cursor: pointer; }
 .fx-tabs button.on { border-color: var(--neon-cyan); color: var(--neon-cyan); background: rgba(var(--neon-cyan-rgb), .08); }
 .fx-sth { grid-template-columns: minmax(0, 1fr) 48px 50px 40px !important; white-space: nowrap; }
@@ -10500,6 +10500,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-tn-more { position: relative; display: block; margin: -9px 12px 0 auto; padding: 4px 7px; border: 1px solid rgba(var(--neon-cyan-rgb), .35); border-radius: 5px; background: var(--bg); color: var(--neon-cyan); font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .04em; cursor: pointer; }
 /* The league table's own header, so the board hands over cleanly. */
 .fx-sechd { display: flex; align-items: center; gap: 10px; margin: 20px 0 2px; }
+.fx-tn + .fx-sechd, .fx-tn-more + .fx-sechd { margin-top: 12px; }
 .fx-sechd::before, .fx-sechd::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--neon-cyan-rgb), .45), rgba(var(--neon-purple-rgb), .45), transparent); }
 .fx-sechd span { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .14em; color: var(--neon-cyan); }
 @media (prefers-reduced-motion: reduce) { .fx-sc.bump, .fx-card-mu.took { animation: none; } .fx-meter i, .fx-meter s { transition: none; } .fx-card-mu:active { transform: none; } }
