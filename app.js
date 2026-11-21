@@ -11949,7 +11949,7 @@ document.getElementById("sim-open")?.addEventListener("click", () => {
 
 // One-off announcement: shown once per phone, until it expires.
 (() => {
-  const A = { id: "fantasy-page-2026", until: Date.parse("2027-01-15T00:00:00Z"), kicker: "NEW FEATURE", title: "Fantasy page", body: "Track this week's fantasy matchups, gain insights, and make history.", cta: "Take me there", go: () => document.getElementById("nav-history-btn")?.click() };
+  const A = { id: "fantasy-page-2026", until: Date.parse("2026-11-21T20:50:00Z"), kicker: "NEW FEATURE", title: "Fantasy page", body: "Track this week's fantasy matchups, gain insights, and make history.", cta: "Take me there", go: () => document.getElementById("nav-history-btn")?.click() };
   const KEY = `brochiefs_announce_${A.id}`;
   const show = () => {
     try { if (localStorage.getItem(KEY) || Date.now() > A.until || window.__liveView || window.__adminEntry) return; } catch { return; }
