@@ -340,7 +340,7 @@
 
   // The playoff race: the last team in against the first team out.
   const wpct = (r) => (r.wins || 0) + (r.ties || 0) / 2;
-  const tieRule = () => /POINT/i.test(String(data.playoffTiebreak || "")) ? "POINTS DECIDE" : "HEAD TO HEAD DECIDES";
+  const tieRule = () => /POINT/i.test(String(data.playoffTiebreak || "")) ? "POINTS TIEBREAKER" : "H2H TIEBREAKER";
   const stand = () => [...(data.standings || [])].sort((x, y) => (x.rank || 99) - (y.rank || 99));
   // Seeds as ESPN sets them: division winners first (by record), then the
   // best other records. Without divisions, straight record order.
@@ -359,16 +359,21 @@
     for (const d of data.divisions || []) { const rs = orderRec(s.filter((r) => data.divisionOf?.[r.owner] === d.id)); if (rs.length > 1) add(rs[0], rs[1], "div", `${String(d.name || "DIVISION").toUpperCase()} TITLE · BYE`, ["LEADS", "CHASES"]); }
     return out.sort((x, y) => x.gap - y.gap);
   };
-  const bubble = (line) => races(line).map((r, i) => { const A = stand().find((x) => x.owner === r.a), B = stand().find((x) => x.owner === r.b); const tag = r.gap === 0 ? `TIED · ${tieRule()}` : `${r.gap} WIN APART`; return `<div class="fx-race" data-fxrace="${i}" role="button" tabindex="0" aria-haspopup="dialog"><span class="fx-race-k">${esc(r.label)}</span><span class="fx-race-t"><span class="in">${owner(A.owner)} <em>${A.wins}-${A.losses}</em></span><i>${tag}</i><span class="out">${owner(B.owner)} <em>${B.wins}-${B.losses}</em></span></span><small>${r.left ? `${r.left} week${r.left === 1 ? "" : "s"} left` : "Final week"} ▸</small></div>`; }).join("");
+  const bubble = (line) => races(line).map((r, i) => { const A = stand().find((x) => x.owner === r.a), B = stand().find((x) => x.owner === r.b); const tag = r.gap === 0 ? `TIED IN RECORD<br>${tieRule()}` : `${r.gap} WIN APART`; return `<div class="fx-race" data-fxrace="${i}" role="button" tabindex="0" aria-haspopup="dialog"><span class="fx-race-k">${esc(r.label)}</span><span class="fx-race-t"><span class="in">${owner(A.owner)} <em>${A.wins}-${A.losses}</em></span><i>${tag}</i><span class="out">${owner(B.owner)} <em>${B.wins}-${B.losses}</em></span></span><small>${r.left ? `${r.left} week${r.left === 1 ? "" : "s"} left` : "Final week"} ▸</small></div>`; }).join("");
   // The race sheet: every team still in doubt, its odds, projected wins,
   // and each game left with a win chance from season scoring.
   // Playoff picture if the season ended today: seeds, byes and the
   // first-round pairings (fixed bracket: 3v6, 4v5).
   const picture = (line) => {
-    const sd = seeds(line); if (sd.length < 4) return "";
-    const dw = divWinners(), t = (r, n) => r ? `<span class="fx-pp-t${r.owner === me() ? " me" : ""}"><i>${n}</i><b>${esc(r.owner)}</b><small>${r.wins}-${r.losses}${dw.has(r.owner) ? " · DIV" : ""}</small></span>` : "";
-    const byes = line === 6 ? 2 : 0, pairs = []; for (let i = byes, j = sd.length - 1; i < j; i++, j--) pairs.push([i, j]);
-    return `<div class="fx-pp"><div class="fx-pp-k">IF IT ENDED TODAY</div>${byes ? `<div class="fx-pp-r"><span class="fx-pp-l">BYE</span>${sd.slice(0, byes).map((r, i) => t(r, i + 1)).join("")}</div>` : ""}${pairs.map(([i, j]) => `<div class="fx-pp-r"><span class="fx-pp-l">RD 1</span>${t(sd[i], i + 1)}<em>v</em>${t(sd[j], j + 1)}</div>`).join("")}</div>`;
+    const sd = seeds(line); if (sd.length < 6 || line !== 6) return "";
+    const dw = divWinners(), t = (n) => { const r = sd[n - 1]; return `<span class="fx-br-t${r.owner === me() ? " me" : ""}"><i>${n}</i><b>${esc(r.owner)}</b><small>${r.wins}-${r.losses}</small>${dw.has(r.owner) ? '<u>DIV WIN</u>' : ""}</span>`; };
+    const tbd = (x) => `<span class="fx-br-t tbd"><i></i><b>Winner ${x}</b></span>`;
+    return `<div class="fx-br" aria-label="Playoff bracket if the season ended today"><div class="fx-br-k">IF IT ENDED TODAY</div><div class="fx-br-g">
+      <div class="fx-br-h">ROUND 1</div><div class="fx-br-h">SEMIS · BYES</div><div class="fx-br-h">FINAL</div>
+      <div class="fx-br-m r1 a">${t(4)}${t(5)}</div><div class="fx-br-m sf a">${t(1)}${tbd("4/5")}</div>
+      <div class="fx-br-f">🏆</div>
+      <div class="fx-br-m r1 b">${t(3)}${t(6)}</div><div class="fx-br-m sf b">${t(2)}${tbd("3/6")}</div>
+    </div></div>`;
   };
   const openRace = (idx = 0) => {
     document.getElementById("fx-mupop")?.remove();
@@ -426,7 +431,7 @@
     // record (ties by head to head), games back from its leader.
     const dvs = (data.divisions || []).filter((d) => stand().some((r) => data.divisionOf?.[r.owner] === d.id));
     const divTables = tab === "standings" && dvs.length > 1 ? dvs.map((d) => { const rs = orderRec(stand().filter((r) => data.divisionOf?.[r.owner] === d.id)), lead = rs[0]; return `<div class="fx-sth t-standings fx-dvh"><span>${esc(String(d.name || "").toUpperCase())}</span><span>W-L</span><span>GB</span><span>PF</span><span>STRK</span></div><div class="fx-sts t-standings dv">${rs.map((r, i) => { const gb = ((lead.wins - r.wins) + (r.losses - lead.losses)) / 2, sk = st.streak?.[r.owner] || "–"; return row(r.owner, { rank: i + 1, sub: data.teams?.[r.owner]?.name, cols: [{ v: `${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}` }, { v: gb ? String(gb) : "–", cls: "pf" }, { v: pts(r.pointsFor), cls: "pf" }, { v: `${esc(sk)}${/^W([4-9]|\d\d)/.test(sk) ? '<i class="fx-fire" aria-label="hot streak">🔥</i>' : ""}`, cls: /^W/.test(sk) ? "up" : /^L/.test(sk) ? "dn" : "" }] }, 99); }).join("")}</div>`; }).join("") : "";
-    const why = { standings: divW.size ? `Each division winner plus the next ${line - divW.size} best records make the playoffs (${line} teams). Cyan rank = in today.` : `Top ${line} make the playoffs.`, power: "Who's playing best right now: points, record against the whole league each week, and the last three weeks.", odds: `Chances from 4,000 simulated finishes of the season. Top ${line} make the playoffs.`, luck: "Real record against the record your points deserve. Plus means more wins than the scoring earned.", both: "Fantasy place next to pick'em place this season, best combined first." }[tab];
+    const why = { standings: divW.size ? `${divW.size} division winners + ${line - divW.size} wild cards · Cyan = playoff position` : `Top ${line} make the playoffs.`, power: "Who's playing best right now: points, record against the whole league each week, and the last three weeks.", odds: `Chances from 4,000 simulated finishes of the season. Top ${line} make the playoffs.`, luck: "Real record against the record your points deserve. Plus means more wins than the scoring earned.", both: "Fantasy place next to pick'em place this season, best combined first." }[tab];
     return `<div class="fx-sechd"><span>LEAGUE TABLE</span></div><div class="fx-tabs" role="tablist">${[["standings", "STANDINGS"], ["power", "POWER"], ["odds", "ODDS"], ["luck", "LUCK"]].map(([k, l]) => `<button type="button" role="tab" aria-selected="${tab === k}" class="${tab === k ? "on" : ""}" data-fxtab="${k}">${l}</button>`).join("")}</div>
       <p class="fx-why-top"><b>${{ standings: "STANDINGS", power: "POWER", odds: "ODDS", luck: "LUCK", both: "BOTH LEAGUES" }[tab]}</b> ${esc(why)}</p>${tab === "standings" ? picture(line) + bubble(line) : ""}
       ${divTables || `<div class="fx-sth t-${tab}"><span></span>${set.head.map((h) => `<span>${h}</span>`).join("")}</div>
