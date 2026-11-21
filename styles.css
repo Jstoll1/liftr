@@ -10423,7 +10423,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-meter.tie i.a, .fx-meter.tie i.b { opacity: .7; }
 .fx-meter.clear i { opacity: .95; }
 /* The main event: your matchup, head to head. */
-.fx-mus > .fx-card-mu.mine { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 10px; padding: 13px 12px 9px;
+.fx-mus > .fx-card-mu.mine { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 10px; padding: 21px 12px 9px;
   border-color: rgba(var(--neon-cyan-rgb), .55);
   background:
     repeating-linear-gradient(120deg, rgba(255, 255, 255, .03) 0 3px, transparent 3px 14px),
@@ -10441,20 +10441,21 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-card-mu.mine .fx-cr.s-a .fx-badge { left: 0; } .fx-card-mu.mine .fx-cr.s-b .fx-badge { right: 0; }
 .fx-card-mu.mine .fx-cr b { padding: 0 30px; max-width: 100%; font-size: 12.5px; }
 .fx-card-mu.mine .fx-cr.s-a b { padding: 0 0 0 30px; } .fx-card-mu.mine .fx-cr.s-b b { padding: 0 30px 0 0; }
-.fx-card-mu.mine .fx-cr em { font-size: 22px; min-width: 0; line-height: 1.1; margin-top: 2px; color: rgba(255, 255, 255, .66); }
+.fx-card-mu.mine .fx-cr em { font-size: 24px; min-width: 0; line-height: 1.1; margin-top: 4px; color: rgba(255, 255, 255, .78); }
+.fx-card-mu.mine .fx-cr.lead em { color: #fff; }
 .fx-card-mu.mine .fx-cr { margin: 0; padding: 0; border: 0; background: none !important; box-shadow: none !important; }
 .fx-card-mu.mine .fx-cr.s-a em { align-self: flex-end; } .fx-card-mu.mine .fx-cr.s-b em { align-self: flex-start; }
 .fx-card-mu.mine .fx-vs { grid-column: 2; grid-row: 1; align-self: end; margin: 0 0 7px; }
-.fx-card-mu.mine .fx-cr.lead em { text-shadow: 0 0 10px rgba(var(--neon-cyan-rgb), .5); }
+.fx-card-mu.mine .fx-cr.lead.s-a em { text-shadow: 0 0 10px rgba(var(--neon-cyan-rgb), .55); } .fx-card-mu.mine .fx-cr.lead.s-b em { text-shadow: 0 0 10px rgba(var(--neon-purple-rgb), .6); }
 .fx-card-mu.mine .fx-cr.lead::before { display: none; }
 .fx-vs { align-self: center; padding: 4px 6px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .08em; color: #fff;
   background: linear-gradient(135deg, rgba(var(--neon-cyan-rgb), .35), rgba(var(--neon-purple-rgb), .45)); border: 1px solid rgba(255, 255, 255, .18); transform: skewX(-8deg); }
 .fx-card-mu.mine .fx-meter { grid-column: 1 / -1; height: 8px; margin-top: 6px; }
 .fx-tmn { display: block; margin-top: 2px; font-size: 10px; font-weight: 500; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fx-card-mu.mine .fx-cr b { display: block; }
-.fx-mh { grid-column: 2; grid-row: 1; align-self: start; justify-self: center; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 9.5px; color: rgba(255, 255, 255, .8); text-align: center; }
-.fx-mh strong { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 10px; color: #fff; }
-.fx-mh i { font-style: normal; padding: 3px 5px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .08em; color: var(--card-bg); background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); }
+.fx-mh { position: absolute; top: 0; right: 14px; display: flex; align-items: center; gap: 6px; padding: 1px 8px 2px 2px; border-radius: 0 0 6px 6px; background: rgba(0, 0, 0, .35); border: 1px solid rgba(255, 255, 255, .1); border-top: 0; }
+.fx-mh strong { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8px; color: #fff; }
+.fx-mh i { font-style: normal; padding: 2px 4px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .08em; color: var(--card-bg); background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); }
 .fx-mh strong span { color: rgba(255, 255, 255, .5); } .fx-mh strong span.hi { color: #fff; }
 /* Motion: a score that moved pops, a lead that changed hands flashes once. */
 .fx-sc.bump { animation: fx-bump .5s ease-out 1; }
