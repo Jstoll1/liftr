@@ -10440,3 +10440,6 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-ball { flex: none; display: inline-block; width: 11px; height: 7px; margin-right: 3px; text-decoration: none; border-radius: 50%; background: var(--neon-orange); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35); position: relative; vertical-align: 1px; }
 .fx-ball::after { content: ""; position: absolute; left: 3px; right: 3px; top: 3px; height: 1px; background: rgba(255, 255, 255, .85); }
 .fx-ball.rz { background: var(--neon-pink); box-shadow: 0 0 4px var(--neon-pink); }
+/* Fantasy pop-ups: no rubber-band bounce fighting the swipe to close. */
+.fx-tcard { overscroll-behavior: contain; }
+.fx-thead { touch-action: none; }

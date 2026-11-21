@@ -443,12 +443,15 @@
   // the card follows the finger and closes past 90px (as its ✕ would).
   let sw = null;
   document.addEventListener("touchstart", (e) => {
-    const card = e.target.closest?.(".fx-team .fx-tcard"); if (!card || card.scrollTop > 0) { sw = null; return; }
-    sw = { card, y: e.touches[0].clientY, dy: 0 };
+    // From the header always; from anywhere else only at the top of the scroll
+    // (iOS can leave a fraction of a pixel, so allow a little).
+    const card = e.target.closest?.(".fx-team .fx-tcard"), head = e.target.closest?.(".fx-thead");
+    if (!card || (!head && card.scrollTop > 4)) { sw = null; return; }
+    sw = { card, y: e.touches[0].clientY, dy: 0, top: card.scrollTop, head: !!head };
   }, { passive: true });
   document.addEventListener("touchmove", (e) => {
     if (!sw) return; sw.dy = e.touches[0].clientY - sw.y;
-    if (sw.dy > 0 && sw.card.scrollTop <= 0) { sw.card.style.transition = "none"; sw.card.style.transform = `translateY(${sw.dy}px)`; sw.card.parentElement.style.opacity = String(Math.max(0.35, 1 - sw.dy / 400)); }
+    if (sw.dy > 0 && (sw.head || sw.card.scrollTop <= 4)) { sw.card.style.transition = "none"; sw.card.style.transform = `translateY(${sw.dy}px)`; sw.card.parentElement.style.opacity = String(Math.max(0.35, 1 - sw.dy / 400)); }
   }, { passive: true });
   document.addEventListener("touchend", () => {
     if (!sw) return; const { card, dy } = sw; sw = null;
