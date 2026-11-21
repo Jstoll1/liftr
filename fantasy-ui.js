@@ -357,6 +357,7 @@
   };
 
   let fullById = {}, histOpen = null, chipOpen = null;
+  const fxSeen = {}; // matchup id -> last painted leader and scores
   const openMu = (id) => {
     document.getElementById("fx-mupop")?.remove();
     const m = document.createElement("div");
@@ -387,10 +388,24 @@
         // Yours on the left; each row shows the projected final beside the
         // live score; the bar splits in the two owners' colours.
         const flip = m.home?.owner === me(), A = flip ? m.home : m.away, B = flip ? m.away : m.home, pa = flip ? oh : oa, pb = flip ? oa : oh, w = wp == null ? null : flip ? 1 - wp : wp;
-        const row = (t, o, x) => `<span class="fx-cr${(t?.points || 0) > (o?.points || 0) ? " lead" : ""}${t?.owner === me() ? " me" : ""}">${badge(t)}<b>${esc(t?.owner || "")}</b><em>${pts(t?.points)}</em></span>`;
-        var card = `<div class="fx-card-mu${mine(m) ? " mine" : ""}${m.final ? " final" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-haspopup="dialog" aria-label="${esc(A?.owner)} against ${esc(B?.owner)}">
-          ${mine(m) ? `<span class="fx-cmk">YOUR MATCHUP</span>` : m.final ? `<span class="fx-cmk dim">FINAL</span>` : ""}${row(A, B, pa)}${row(B, A, pb)}
-          ${w != null ? `<span class="fx-cbar" title="Win chance: ${esc(A?.owner)} ${pct(w)}, ${esc(B?.owner)} ${pct(1 - w)}"><i style="width:${(w * 100).toFixed(1)}%"></i></span>` : ""}
+        // The card's state sets how loud it is: nothing scored yet stays
+        // quiet, a tie stays neutral, a close one gets a little more
+        // contrast, a clear leader a little emphasis on their side.
+        const sa = Number(A?.points) || 0, sb = Number(B?.points) || 0, tot = sa + sb;
+        const state = tot <= 0 ? "zero" : sa === sb ? "tie" : Math.abs(sa - sb) <= Math.max(8, tot * 0.08) ? "close" : "clear";
+        const lead = sa > sb ? "a" : sb > sa ? "b" : "";
+        // A brief flash when the lead changes hands, and a pop on a score
+        // that moved, compared with the last paint.
+        const prev = fxSeen[m.id], took = prev && prev.lead && lead && prev.lead !== lead, bump = (k, v) => prev && prev[k] !== v ? " bump" : "";
+        fxSeen[m.id] = { lead, a: sa, b: sb };
+        const row = (t, o, side, v) => `<span class="fx-cr${lead === side ? " lead" : ""}${t?.owner === me() ? " me" : ""}">${badge(t)}<b>${esc(t?.owner || "")}</b><em class="fx-sc${bump(side, v)}">${pts(t?.points)}</em></span>`;
+        // Battle meter: each side's share of the points scored, a crisp
+        // divider where they meet; empty and neutral before anyone scores.
+        const share = tot > 0 ? (sa / tot) * 100 : 50;
+        const meter = `<span class="fx-meter ${state}" title="${tot > 0 ? `${esc(A?.owner)} ${pts(sa)} · ${esc(B?.owner)} ${pts(sb)}` : "No points yet"}${w != null ? ` · win chance ${esc(A?.owner)} ${pct(w)}` : ""}">${tot > 0 ? `<i class="a" style="width:${share.toFixed(1)}%"></i><i class="b" style="width:${(100 - share).toFixed(1)}%"></i><s style="left:${share.toFixed(1)}%"></s>` : ""}</span>`;
+        var card = `<div class="fx-card-mu ${state}${mine(m) ? " mine" : ""}${m.final ? " final" : ""}${took ? " took" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-haspopup="dialog" aria-label="${esc(A?.owner)} ${pts(sa)} against ${esc(B?.owner)} ${pts(sb)}">
+          ${mine(m) ? `<span class="fx-cmk">YOUR MATCHUP</span>` : m.final ? `<span class="fx-cmk dim">FINAL</span>` : ""}${row(A, B, "a", sa)}${mine(m) ? `<span class="fx-vs" aria-hidden="true">VS</span>` : ""}${row(B, A, "b", sb)}
+          ${meter}
         </div>`;
       }
       if (!isOpen) return { card, full: "", mine: mine(m) };
