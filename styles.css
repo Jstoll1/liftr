@@ -10436,7 +10436,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-card-mu.mine .fx-meter { grid-column: 1 / -1; height: 8px; margin-top: 10px; }
 .fx-tmn { display: block; margin-top: 2px; font-size: 10px; font-weight: 500; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fx-card-mu.mine .fx-cr b { display: block; }
-.fx-mh { grid-column: 1 / -1; justify-self: center; margin-top: 10px; display: flex; align-items: center; gap: 7px; font-size: 11px; color: rgba(255, 255, 255, .72); }
+.fx-mh { grid-column: 1 / -1; justify-self: center; margin-top: 2px; display: flex; align-items: center; gap: 7px; font-size: 11px; color: rgba(255, 255, 255, .72); }
 .fx-mh i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .1em; color: var(--text-dim); }
 .fx-mh b { color: #fff; font-weight: 600; }
 /* Motion: a score that moved pops, a lead that changed hands flashes once. */
