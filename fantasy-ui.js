@@ -373,7 +373,7 @@
   // Your team's updates: injuries from ESPN fantasy and each player's
   // latest news, most important first (injured starters, then injured
   // bench, then fresh news). Fetched for the signed-in owner only.
-  let teamNews = null, teamNewsAt = 0, newsAll = false;
+  let teamNews = null, teamNewsAt = 0, newsAll = false, newsOpen = null;
   const loadTeamNews = async () => {
     const o = me(); if (!o || !data?.rosters?.[o] || Date.now() - teamNewsAt < 10 * 60000) return;
     teamNewsAt = Date.now();
@@ -391,7 +391,8 @@
     const items = teamNews.players.map((p) => { const st = code(p.espnInjury?.status) || p.injury; const starter = !/^(BE|IR)$/.test(p.slot), sev = SEV[st] || 0, n = (p.news || []).find(fresh) || (p.espnInjury?.note ? { headline: p.espnInjury.note, at: p.espnInjury.at, link: null } : null); return { p: { ...p, injury: st }, n, starter, score: (starter ? 10 : 0) + sev * 3 + (n ? 2 : 0) }; })
       .filter((x) => x.p.injury || x.n).sort((a, b) => b.score - a.score || (b.n?.at || 0) - (a.n?.at || 0));
     const shown = newsAll ? items : items.slice(0, 5);
-    const row = ({ p, n, starter }) => `<li${n?.link ? ` data-fxnews="${esc(n.link)}" role="link" tabindex="0"` : ""}>${nflLogo(p.nfl)}<span class="fx-tn-m"><span class="fx-tn-h"><b>${esc(p.name)}</b><small>${esc(p.pos || "")}${starter ? "" : " · bench"}</small>${p.injury ? `<u class="sev${SEV[p.injury] >= 3 ? " hi" : ""}">${statusTxt(p.injury)}</u>` : ""}</span>${n ? `<span class="fx-tn-n">${esc(n.headline)}${n.at ? ` <i>${ago(n.at)}</i>` : ""}</span>` : ""}</span></li>`;
+    const full = (p) => { const all = (p.news || []).filter((x) => x.headline); return `<div class="fx-tn-full">${all.length ? all.map((x) => `<div class="fx-tn-it"><p>${esc(x.note && x.note.length > x.headline.length ? x.note : x.headline)}</p><span>${x.at ? `${ago(x.at)} ago` : ""}${x.link ? ` · <a href="${esc(x.link)}" target="_blank" rel="noopener" data-fxlink="1">ESPN ›</a>` : ""}</span></div>`).join("") : `<p class="fx-note">No ESPN notes on him this week.</p>`}</div>`; };
+    const row = ({ p, n, starter }) => `<li data-fxnp="${esc(p.id)}" role="button" tabindex="0" aria-expanded="${newsOpen === String(p.id)}"${newsOpen === String(p.id) ? ' class="open"' : ""}>${nflLogo(p.nfl)}<span class="fx-tn-m"><span class="fx-tn-h"><b>${esc(p.name)}</b><small>${esc(p.pos || "")}${starter ? "" : " · bench"}</small>${p.injury ? `<u class="sev${SEV[p.injury] >= 3 ? " hi" : ""}">${statusTxt(p.injury)}</u>` : ""}</span>${n ? `<span class="fx-tn-n">${esc(n.headline)}${n.at ? ` <i>${ago(n.at)}</i>` : ""}</span>` : ""}${newsOpen === String(p.id) ? full(p) : ""}</span></li>`;
     return `<div class="fx-sechd"><span>YOUR TEAM · UPDATES</span></div>${items.length ? `<ul class="fx-tn">${shown.map(row).join("")}</ul>${items.length > 5 ? `<button type="button" class="fx-tn-more" data-fxnewsall="1">${newsAll ? "Show fewer" : `Show all ${items.length}`}</button>` : ""}` : `<p class="fx-note">No injuries or news on your roster in the last three days.</p>`}`;
   }
   const fxSeen = {}; // matchup id -> last painted leader and scores
@@ -489,8 +490,9 @@
     if (o) { insOpen = null; return openTeam(o.dataset.fxo); }
     const side = e.target.closest("[data-fxteam]");
     if (side) { e.stopPropagation(); return openTeam(side.dataset.fxteam); }
-    const nw = e.target.closest("[data-fxnews]");
-    if (nw) { try { window.noteUse?.("fantasy-news"); } catch {} window.open(nw.dataset.fxnews, "_blank", "noopener"); return; }
+    if (e.target.closest("[data-fxlink]")) { try { window.noteUse?.("fantasy-news-link"); } catch {} return; }
+    const nw = e.target.closest("[data-fxnp]");
+    if (nw) { const id = nw.dataset.fxnp; newsOpen = newsOpen === id ? null : id; if (newsOpen) { try { window.noteUse?.("fantasy-news"); } catch {} } return paint(); }
     if (e.target.closest("[data-fxnewsall]")) { newsAll = !newsAll; return paint(); }
     const hx = e.target.closest("[data-fxh]");
     if (hx && !e.target.closest(".fx-why")) { histOpen = histOpen === hx.dataset.fxh ? null : hx.dataset.fxh; try { window.noteUse?.("fantasy-history", hx.dataset.fxh.split("|")[0]); } catch {} return paint(); }
