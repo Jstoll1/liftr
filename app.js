@@ -9541,7 +9541,7 @@ function sinceState(game, pick, l) {
 // The play as a short result: "Run for 15 yds", "Pass complete for 22 yds · 1st down",
 // "Incomplete pass · Penalty, offside". Names, numbers and tacklers are dropped.
 function playSummary(t) {
-  t = String(t || "").replace(/^\(\d+:\d+\)\s*/, "").replace(/^\(?(No Huddle-?\s*)?(Shotgun|Pistol|Under Center|Wildcat)?\)?\s*/i, "").trim();
+  t = String(t || "").replace(/^\(\d+:\d+\)\s*/, "").replace(/^\(?(No Huddle-?\s*)?(Shotgun|Pistol|Under Center|Wildcat)?\)?\s*/i, "").replace(/#\d+\s*/g, "").trim();
   if (!t) return "";
   const yds = (n) => `${Math.abs(n)} yd${Math.abs(n) === 1 ? "" : "s"}`;
   let m;
