@@ -317,29 +317,47 @@ const app = {
       // the player. Cached 20 minutes per player. ?debug=1 adds what each
       // source answered, to check the sources from a browser.
       const debug = url.searchParams.get("debug") === "1";
+      const dbgTop = [];
+      // Fresh injury status for the whole roster in one call to ESPN's
+      // fantasy player API (the site athlete record answers the worker 403).
+      const ids = roster.map((p) => p.id).filter((x) => Number(x) > 0);
+      let inj = debug ? null : await env.LIFTR_KV.get(`fxinj:${owner}`, "json");
+      if (!inj && ids.length) {
+        inj = {};
+        try {
+          const yr = new Date().getUTCFullYear();
+          const r = await fetch(`https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${yr}/players?scoringPeriodId=0&view=players_wl`, { headers: { Accept: "application/json", "X-Fantasy-Filter": JSON.stringify({ filterIds: { value: ids } }) }, signal: AbortSignal.timeout(6000) });
+          dbgTop.push(`players_wl ${r.status}`);
+          if (r.ok) for (const x of await r.json()) if (x?.id) inj[x.id] = { status: x.injuryStatus && x.injuryStatus !== "ACTIVE" ? x.injuryStatus : null, injured: !!x.injured };
+        } catch (e) { dbgTop.push(`players_wl ${String(e?.message || e).slice(0, 40)}`); }
+        if (!debug) await env.LIFTR_KV.put(`fxinj:${owner}`, JSON.stringify(inj), { expirationTtl: 900 });
+      }
       const players = await Promise.all(roster.slice(0, 20).map(async (p) => {
         if (!p.id) return { ...p, news: [] };
-        const key = `fxnews3:${p.id}`;
+        const key = `fxnews4:${p.id}`;
         let hit = debug ? null : await env.LIFTR_KV.get(key, "json");
         if (!hit) {
           const dbg = [];
           const get = async (src) => { try { const r = await fetch(src, { signal: AbortSignal.timeout(5000) }); dbg.push(`${new URL(src).pathname.split("/").slice(-3).join("/")} ${r.status}`); return r.ok ? await r.json() : null; } catch (e) { dbg.push(`${src.slice(0, 60)} ${String(e?.message || e).slice(0, 40)}`); return null; } };
-          let injury = null, news = [];
-          const ath = await get(`https://site.web.api.espn.com/apis/common/v3/sports/football/nfl/athletes/${encodeURIComponent(p.id)}`);
-          const a = ath?.athlete || ath;
-          const inj = (a?.injuries || [])[0];
-          if (inj) injury = { status: String(inj.status || inj.type?.description || "").slice(0, 30), note: String(inj.shortComment || inj.longComment || "").slice(0, 400), long: String(inj.longComment || "").slice(0, 600), at: Date.parse(inj.date || "") || null, type: inj.details?.type || inj.type?.name || null, returnDate: inj.details?.returnDate || null };
-          const mine = (x) => (x.categories || []).some((c) => String(c.athleteId ?? c.athlete?.id ?? "") === String(p.id));
-          for (const src of [`https://site.api.espn.com/apis/fantasy/v2/games/ffl/news/players?limit=10&playerId=${encodeURIComponent(p.id)}`, `https://site.api.espn.com/apis/site/v2/sports/football/nfl/news?athletes=${encodeURIComponent(p.id)}&limit=10`]) {
+          // A story counts when ESPN tags the player, or names him (last
+          // name) in its headline or summary; the general feed's team
+          // stories that name neither are left out.
+          const last = String(p.name || "").replace(/\s+(Jr\.?|Sr\.?|II|III|IV)$/i, "").split(/\s+/).pop().toLowerCase();
+          const mine = (x) => (x.categories || []).some((c) => String(c.athleteId ?? c.athlete?.id ?? "") === String(p.id)) || (last.length > 2 && `${x.headline || ""} ${x.description || ""}`.toLowerCase().includes(last));
+          let news = [];
+          if (Number(p.id) > 0) for (const src of [`https://site.api.espn.com/apis/fantasy/v2/games/ffl/news/players?limit=10&playerId=${encodeURIComponent(p.id)}`, `https://site.api.espn.com/apis/site/v2/sports/football/nfl/news?athletes=${encodeURIComponent(p.id)}&limit=10`]) {
             const j = await get(src); const list = j?.feed || j?.articles || [];
-            news = list.filter(mine).slice(0, 3).map((x) => ({ headline: String(x.headline || "").slice(0, 160), at: Date.parse(x.published || x.lastModified || "") || null, link: x.links?.web?.href || null })).filter((x) => x.headline);
+            dbg.push(`${list.length} stories, ${list.filter(mine).length} his`);
+            news = list.filter(mine).slice(0, 3).map((x) => ({ headline: String(x.headline || "").slice(0, 160), note: String(x.description || "").slice(0, 300), at: Date.parse(x.published || x.lastModified || "") || null, link: x.links?.web?.href || null })).filter((x) => x.headline);
             if (news.length) break;
           }
-          hit = { injury, news, ...(debug ? { dbg } : {}) };
+          hit = { news, ...(debug ? { dbg } : {}) };
           if (!debug) await env.LIFTR_KV.put(key, JSON.stringify(hit), { expirationTtl: 1200 });
         }
-        return { id: p.id, name: p.name, pos: p.pos, nfl: p.nfl, slot: p.slot, injury: p.injury, espnInjury: hit.injury, news: hit.news, ...(hit.dbg ? { dbg: hit.dbg } : {}) };
+        const live = inj?.[p.id];
+        return { id: p.id, name: p.name, pos: p.pos, nfl: p.nfl, slot: p.slot, injury: p.injury, espnInjury: live?.status ? { status: live.status, note: "", at: null } : null, news: hit.news, ...(hit.dbg ? { dbg: hit.dbg } : {}) };
       }));
+      if (debug) return json({ owner, at: Date.now(), dbg: dbgTop, players }, 200, corsHeaders);
       return json({ owner, at: Date.now(), players }, 200, { ...corsHeaders, "Cache-Control": "public, max-age=300" });
     }
     if (url.pathname === "/fantasy" && request.method === "GET") {
