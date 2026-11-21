@@ -10638,6 +10638,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-why-top b { margin-right: 4px; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6.5px; color: var(--neon-cyan); }
 .fx-race { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; margin-top: 10px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--card-border); background: rgba(0, 0, 0, .2); }
 .fx-race { cursor: pointer; }
+.fx-race + .fx-race { margin-top: 6px; }
 .fx-rc { padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, .06); }
 .fx-rc.me { box-shadow: inset 2px 0 0 var(--neon-cyan); padding-left: 8px; }
 .fx-rc-h { display: flex; align-items: center; gap: 8px; font-size: 13px; }
