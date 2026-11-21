@@ -9910,14 +9910,14 @@ body.rs-open #ask-fab { display: none; }
 .bs.must { border-color: var(--neon-yellow); background: rgba(255, 210, 63, .06); }
 .bs-k { display: block; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .08em; color: rgba(255, 255, 255, .55); margin-bottom: 8px; }
 .bs-k em { font-style: normal; color: var(--neon-yellow); }
-.bs-main { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; }
-.bs-main img { width: 30px; height: 30px; object-fit: contain; }
-.bs-t { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.bs-t b { font-size: 15px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bs-t small { font-size: 12px; color: rgba(255, 255, 255, .55); }
-.bs-o { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.bs-main { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
+.bs-main img { width: 22px; height: 22px; object-fit: contain; }
+.bs-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.bs-t b { font-size: 13.5px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bs-t small { font-size: 10.5px; color: rgba(255, 255, 255, .55); }
+.bs-o { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .bs-o small, .ps-hm small { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .06em; color: rgba(255, 255, 255, .45); }
-.bs-o b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 13px; }
+.bs-o b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 11px; }
 .bs-o b.up, .ps-hm b.up { color: var(--neon-green); } .bs-o b.dn, .ps-hm b.dn { color: var(--neon-pink); }
 .bs-r { display: block; margin-top: 8px; font-size: 12px; color: rgba(255, 255, 255, .6); }
 .bs-r b { color: #fff; }
@@ -9973,10 +9973,10 @@ body.rs-open #ask-fab { display: none; }
 .rs-chance { row-gap: 4px; }
 .rs-btns .rs-vs { min-height: 28px; }
 .rs-top .rs-path { min-height: 30px; }
-.bs { padding: 7px 11px; margin-bottom: 4px; }
+.bs { padding: 5px 10px 6px; margin-bottom: 4px; }
 .ps-row.final { padding-top: 5px; padding-bottom: 5px; }
 .ps-row.final .ps-sub { font-size: 11px; }
-.bs-k { margin-bottom: 4px; }
+.bs-k { margin-bottom: 2px; font-size: 5.5px; }
 .bs-r { margin-top: 6px; }
 /* Header v3.4: chance to win on one balanced line: label, number, bar, VS ME. */
 .rs-hero { align-items: center; gap: 10px; }
