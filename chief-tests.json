@@ -344,7 +344,7 @@
         ]
       },
       "regression": true,
-      "note": "Nov 21: rated a card 0/10 before any game was final; Nov 21 run 2: said no games decided when one was final"
+      "note": "Nov 21: rated a card 0/10 before any game was final; Nov 21 run 2: said no games decided when one was final; run 3: still '0 out of 10'; standings now gives hits and decided per member"
     },
     {
       "source": "seed",
@@ -369,8 +369,13 @@
       "checks": {
         "tools": [
           "tiebreaker"
+        ],
+        "mustNot": [
+          "0\\.0\\d+%"
         ]
-      }
+      },
+      "regression": true,
+      "note": "Nov 21 run 3: said 0.061% for a 6.1% chance"
     },
     {
       "source": "seed",
@@ -415,7 +420,7 @@
       },
       "source": "fix",
       "regression": true,
-      "note": "Nov 21 run 2: answered from eliminations only, no chance or swing"
+      "note": "Nov 21 run 2: answered from eliminations only, no chance or swing; run 3: still chose eliminations (its description now points to needs)"
     }
   ]
 }
