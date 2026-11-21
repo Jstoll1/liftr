@@ -9321,7 +9321,7 @@ html:not(.pro) .bug-fav { font-family: 'Chakra Petch', sans-serif; font-weight: 
 html:not(.pro) .bug-row.mine { background: rgba(var(--neon-cyan-rgb), .12); border-radius: 7px; }
 html:not(.pro) .bug-row.mine.hit { background: rgba(var(--neon-green-rgb), .13); }
 html:not(.pro) .bug-row.mine.miss { background: rgba(var(--neon-pink-rgb), .12); }
-/* Rank rides after the name in small grey, never on the logo. */
+/* (Scores cards carry the rank on the logo's lower corner: .bug-mark .tm-rank.) */
 html:not(.pro) .bug-team .tm-rank { position: static; margin-left: 4px; background: none; border: 0; padding: 0; font-family: 'Chakra Petch', sans-serif; font-size: 9px; font-weight: 500; color: rgba(255, 255, 255, .4); box-shadow: none; flex: none; }
 html:not(.pro) .bug-row.mine .bug-team { color: #fff; }
 html:not(.pro) .rankings-list::after { display: none !important; }
