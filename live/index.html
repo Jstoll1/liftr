@@ -1292,6 +1292,8 @@ body::before { display: none; }
 .wk-g { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
 @media (min-width: 1100px) { .wk-g { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; } .wk-full { grid-column: 1 / -1; } }
 .wk-side, .wk-main, .wk-full { min-width: 0; }
+.wk-g > .wk-main:only-child { grid-column: 1 / -1; }
+@media (min-width: 1100px) { .wk-rest .wk-side + .wk-side > .lv-sec:first-child { margin-top: 0; } }
 .lv-sec { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 10px; }
 .lv-sec h3 { margin: 0; font: 600 14px/1.2 var(--sans); color: var(--text); }
 .lv-sec span { font-size: 12px; color: var(--dim); }
@@ -1972,7 +1974,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
         <div class="gd-ax"><span>12p</span><span>3p</span><span>6p</span><span>9p</span><span>12a</span></div>
         ${feats.length ? `<div class="gd-f">${feats.map(([l, n]) => `<span>${esc(l)} <b>${n}</b></span>`).join("")}</div>` : ""}`;
     };
-    const weekView = () => {
+    const weekView = (part = "all") => {
       if (!wk) return `<div class="note">Loading the week…</div>`;
       // Who, which day: visits (or minutes, by the switch), darker for more;
       // a tap or hover gives both.
@@ -2007,12 +2009,18 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
         <div class="pl-ax">${[0, 6, 12, 18].map((h) => `<span>${hourLabel(h)}</span>`).join("")}<span>11p</span></div>
         <div class="wl-k"><span><i class="a"></i>7 days</span><span><i class="t"></i>today</span><span>busiest ${hourLabel(peakH)}</span></div></div>`;
       const firstTap = (wk.feed || []).reduce((m, e) => Math.min(m, e.at), now);
-      return `<div class="wk-g"><div class="wk-main"><div class="lv-sec row"><h3>Who was in</h3><span>${st.filter ? "" : "tap a name to follow one person"}</span><span class="seg sm" role="group" aria-label="Show"><button type="button" class="${byMin ? "" : "on"}" data-metric="visits">Visits</button><button type="button" class="${byMin ? "on" : ""}" data-metric="min">Minutes</button></span></div>${hmHtml}
-        </div><div class="wk-side"><div class="lv-sec"><h3>When in the day</h3><span>${st.filter ? esc(name(st.filter)) : "everyone"} · visits by hour</span></div>
-        ${pcHtml}
+      // Overview splits the week: who was in, then the visit list, then
+      // when in the day (part "main" / "rest"); elsewhere it stays whole.
+      const mainHtml = () => `<div class="wk-main"><div class="lv-sec row"><h3>Who was in</h3><span>${st.filter ? "" : "tap a name to follow one person"}</span><span class="seg sm" role="group" aria-label="Show"><button type="button" class="${byMin ? "" : "on"}" data-metric="visits">Visits</button><button type="button" class="${byMin ? "on" : ""}" data-metric="min">Minutes</button></span></div>${hmHtml}
+        </div>`;
+      const restHtml = () => `<div class="wk-side"><div class="lv-sec"><h3>When in the day</h3><span>${st.filter ? esc(name(st.filter)) : "everyone"} · visits by hour</span></div>
+        ${pcHtml}${part === "rest" ? `</div><div class="wk-side">` : ""}
         ${gameDay()}</div><div class="wk-full">
         ${featGrid()}
-        ${firstTap > wFrom + HOUR ? `<div class="note" style="margin-top:10px">Visits above go back all 7 days. Tap by tap detail in the visit list starts ${esc(dLong(dayOf(firstTap)))}.</div>` : ""}</div></div>`;
+        ${firstTap > wFrom + HOUR ? `<div class="note" style="margin-top:10px">Visits above go back all 7 days. Tap by tap detail in the visit list starts ${esc(dLong(dayOf(firstTap)))}.</div>` : ""}</div>`;
+      if (part === "main") return `<div class="wk-g">${mainHtml()}</div>`;
+      if (part === "rest") return `<div class="wk-g">${restHtml()}</div>`;
+      return `<div class="wk-g">${mainHtml()}${restHtml()}</div>`;
     };
     // The last 24 hours: one line per person (actions each hour), in the
     // same style as the headline sparklines; quiet people fold away.
@@ -2053,7 +2061,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       ${sessionBars()}
     </section>` : wk || st.range === "7d" ? `<section class="tl panel" id="sec-tl">
       <div class="ph"><h2>Last 7 days</h2>${seg}</div>
-      ${weekView()}
+      ${weekView(st.page === "home" ? "main" : "all")}
     </section>` : `<section class="tl panel" id="sec-tl">
       <div class="ph"><h2>Last 24 hours</h2><span class="sub">actions each hour</span>${seg}</div>
       ${personLines()}
@@ -2624,7 +2632,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     ].filter(Boolean).join("");
     const kpisNb = kpis.replace("<!--NB-->", nRows ? `<div class="nb-rows">${nRows}</div>` : "");
     const pageBody = {
-      home: `${kpisNb}${timeline}${overview}${recCard("home")}${ucPanel}${feedHtml}${strips}`,
+      home: `${kpisNb}${timeline}${feedHtml}${st.range !== "3h" && (wk || st.range === "7d") ? `<section class="tl panel wk-rest">${weekView("rest")}</section>` : ""}${overview}${recCard("home")}${ucPanel}${strips}`,
       activity: "",
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
       bi: `<div class="pg-bar"><h1>Ask Chief</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${chiefMsgPanel()}${ctPanel()}${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
