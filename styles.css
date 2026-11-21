@@ -9725,7 +9725,7 @@ body.rs-open #ask-fab { display: none; }
 .ps-hid { font-family: 'Press Start 2P', monospace; font-size: 8px; color: rgba(255, 255, 255, .4); }
 .ps-sub { font-size: 12px; color: rgba(255, 255, 255, .55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ps-sub b { color: #fff; font-weight: 700; }
-.ps-row.live .ps-when { color: var(--neon-pink); }
+.ps-row.live .ps-when { color: var(--neon-cyan); }
 .ps-row.final .ps-when { color: rgba(255, 255, 255, .7); }
 .ps-detail .rd-tb { margin-top: 6px; }
 @media (max-height: 500px) {
@@ -9888,10 +9888,20 @@ body.rs-open #ask-fab { display: none; }
 /* Player sheet v3: chance to win is the hero, one biggest swing card,
    HIT / MISS on every open pick, live rows tinted, tighter rows. */
 .rs-hero { display: flex; align-items: center; gap: 12px; }
+.ps-grp { display: flex; align-items: center; gap: 8px; margin: 10px 0 2px; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .08em; color: var(--text-dim); }
+.ps-grp::after { content: ""; flex: 1; height: 1px; background: var(--card-border); }
+.ps-grp.live { color: var(--neon-cyan); } .ps-grp.final { color: rgba(255, 255, 255, .55); }
+.ps-cols + .ps-grp { margin-top: 2px; }
+.ps-row.final .rd-pts:not(.miss):not(.none):not(.push)::before { content: "✓ "; }
 .rs-chance { flex: 1; min-width: 0; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; row-gap: 6px; align-items: end; }
 .rs-k { grid-column: 1 / -1; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .08em; color: rgba(255, 255, 255, .5); }
-.rs-pct { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 22px; line-height: 1; color: var(--neon-cyan); }
-.rs-pct.hot { color: var(--neon-green); } .rs-pct.out { color: rgba(255, 255, 255, .4); }
+.rs-pct { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 30px; line-height: 1; color: var(--neon-cyan); text-shadow: 0 0 10px rgba(var(--neon-cyan-rgb), .35); }
+.rs-meter { grid-column: 1 / -1; display: flex; gap: 2px; height: 10px; padding: 2px; border-radius: 4px; background: rgba(0, 0, 0, .45); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07); }
+.rs-meter i { flex: 1; border-radius: 1.5px; background: rgba(255, 255, 255, .06); }
+.rs-meter i.on { background: linear-gradient(180deg, rgba(255, 255, 255, .45), rgba(255, 255, 255, 0) 45%), var(--neon-cyan); box-shadow: 0 0 4px rgba(var(--neon-cyan-rgb), .35); }
+.rs-pct.hot + .rs-meter i.on { background: linear-gradient(180deg, rgba(255, 255, 255, .45), rgba(255, 255, 255, 0) 45%), var(--neon-green); box-shadow: 0 0 4px rgba(var(--neon-green-rgb), .35); }
+.rs-pct.out + .rs-meter { opacity: .4; }
+.rs-pct.hot { color: var(--neon-green); text-shadow: 0 0 10px rgba(var(--neon-green-rgb), .35); } .rs-pct.out { color: rgba(255, 255, 255, .4); }
 .rs-chance .rank-wp-bar { height: 8px; margin-bottom: 3px; }
 .rs-btns { flex: none; width: 150px; display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
 .rs-btns .rd-path-btn, .rs-btns .rs-vs { min-height: 30px; justify-content: center; text-align: center; }
@@ -9914,15 +9924,17 @@ body.rs-open #ask-fab { display: none; }
 .ps-hm { display: grid; grid-template-columns: 48px 52px; gap: 6px; text-align: right; }
 .ps-hm b { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .ps-hm.t3 b, .ps-hm.t4 b { opacity: .55; }
-.ps-hm.t1 b.up { color: var(--neon-yellow); }
+.ps-hm.t1 b.up { color: var(--neon-green); }
 .ps-heat.t5 { width: 106px; margin: 0; text-align: center; }
 .ps-cols { display: grid; grid-template-columns: minmax(0, 1fr) 48px 52px; gap: 6px; padding: 2px 0 6px; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .06em; color: rgba(255, 255, 255, .45); text-align: right; border-bottom: 1px solid var(--card-border); }
 .ps-cols span:first-child { text-align: left; }
 .ps-cols .up { color: var(--neon-green); } .ps-cols .dn { color: var(--neon-pink); }
 .ps-row.live::before { display: none; }
 .ps-row { padding: 8px 0; }
-.ps-row.live { background: rgba(var(--neon-pink-rgb), .07); border-radius: 8px; padding-left: 8px; padding-right: 8px; margin: 0 -8px; }
-.ps-row.live .ps-t b.live { animation: rs-blink 1.4s steps(2) infinite; }
+.ps-row.live { background: linear-gradient(90deg, rgba(var(--neon-cyan-rgb), .08), rgba(var(--neon-cyan-rgb), 0) 70%); box-shadow: inset 2px 0 0 var(--neon-cyan); border-radius: 6px; padding-left: 8px; padding-right: 8px; margin: 0 -8px; }
+.ps-row.live .ps-t b.live { color: var(--neon-cyan); }
+.ps-row.live .ps-sub b, .ps-row.live .ps-sub { color: rgba(255, 255, 255, .9); }
+.ps-row.live .ps-t b.live { animation: none; }
 @keyframes rs-blink { 50% { opacity: .45; } }
 .rs-btns .rs-vs { width: 100%; align-self: stretch; }
 @media (max-height: 500px) {
@@ -10054,6 +10066,8 @@ html.phone .rs-top .rs-nav { display: none; }
 #rank-sheet .rs-hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 10px; }
 #rank-sheet .rs-chance { display: flex; align-items: center; gap: 8px; min-width: 0; }
 #rank-sheet .rs-chance .rank-wp-bar { flex: 1; min-width: 30px; }
+#rank-sheet .rs-chance { flex-wrap: wrap; row-gap: 6px; }
+#rank-sheet .rs-chance .rs-meter { flex: 1 1 100%; }
 #rank-sheet .rs-btns { display: flex; flex-direction: row; gap: 6px; width: auto; }
 #rank-sheet .rs-btns > button { min-height: 30px; height: 30px; padding: 0 10px; margin: 0; font-size: 7px; width: auto; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
 #rank-sheet .rs-btns .rs-path .rd-path-play { margin-right: 4px; }
