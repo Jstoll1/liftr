@@ -2866,7 +2866,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       const note = on ? window.prompt("What's wrong with this answer? (optional)", "") : "";
       if (note === null) return;
       r.flagged = on ? Date.now() : undefined; r.note = on ? note || undefined : undefined; st.sig = ""; render();
-      try { const x = await fetch(`${WORKER}/week-chat?${auth()}`, { method: "POST", body: JSON.stringify({ action: "flag", id: r.id, flagged: on, note }) }); const j = await x.json().catch(() => ({})); if (x.ok && j.chat) Object.assign(r, j.chat); } catch {}
+      try { const x = await fetch(`${WORKER}/week-chat?${auth()}`, { method: "POST", body: JSON.stringify({ action: "flag", id: r.id, flagged: on, note }) }); const j = await x.json().catch(() => ({})); if (x.ok && j.chat) Object.assign(r, j.chat); if (j.addedTest) { st.ctAdded = [...(st.ctAdded || []), r.id]; loadChats(); } } catch {}
       st.sig = ""; render(); return;
     }
     if (b.dataset.recfold) { const k = b.dataset.recfold; recShut.has(k) ? recShut.delete(k) : recShut.add(k); store.set("brochiefs_live_rec_shut", JSON.stringify([...recShut])); st.sig = ""; render(); return; }
