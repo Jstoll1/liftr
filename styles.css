@@ -10194,6 +10194,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-st.in .fx-rk { color: var(--neon-cyan); }
 .fx-st.out { opacity: .78; }
 .fx-c.pf { color: rgba(255, 255, 255, .78); }
+.fx-dv { display: inline-block; margin-left: 6px; padding: 1px 3px; border-radius: 3px; vertical-align: 2px; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5px; color: var(--neon-cyan); border: 1px solid rgba(var(--neon-cyan-rgb), .45); }
 .fx-fire { font-style: normal; font-size: 9px; margin-left: 2px; }
 .fx-rk { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-dim); text-align: center; }
 .fx-rec, .fx-pf { text-align: right; font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff; }

@@ -17,3 +17,12 @@ test("historyContext: a 2-0 start finds past 2-0 starts and how they ended", () 
   assert.match(b.line, /Last: B in 2021, who lost the final/);
   assert.match(h.record[0].text, /past the record/);
 });
+
+import { seedOrder } from "../src/fantasy-stats.js";
+test("seedOrder: division winners take the top seeds (league screenshot, week 11)", () => {
+  const w = { Dewitt: 9, Andrew: 5, Curt: 8, Skills: 6, Jake: 5, Logan: 4, Robert: 3, Connie: 3, Nissan: 2, Jordan: 3 };
+  const pf = { Dewitt: 1200, Andrew: 1000, Curt: 1150, Skills: 1100, Jake: 1050, Logan: 990, Robert: 900, Connie: 950, Nissan: 800, Jordan: 1001 };
+  const div = { Dewitt: 1, Curt: 1, Skills: 1, Jake: 1, Logan: 1, Andrew: 2, Robert: 2, Connie: 2, Nissan: 2, Jordan: 2 };
+  assert.deepEqual(seedOrder(Object.keys(w), w, pf, 6, div), ["Dewitt", "Andrew", "Curt", "Skills", "Jake", "Logan"]);
+  assert.deepEqual(seedOrder(Object.keys(w), w, pf, 6, null).slice(0, 2), ["Dewitt", "Curt"]);
+});
