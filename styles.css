@@ -10423,7 +10423,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-meter.tie i.a, .fx-meter.tie i.b { opacity: .7; }
 .fx-meter.clear i { opacity: .95; }
 /* The main event: your matchup, head to head. */
-.fx-mus > .fx-card-mu.mine { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 10px; padding: 21px 12px 9px;
+.fx-mus > .fx-card-mu.mine { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 26px; padding: 21px 12px 9px;
   border-color: rgba(var(--neon-cyan-rgb), .55);
   background:
     repeating-linear-gradient(120deg, rgba(255, 255, 255, .03) 0 3px, transparent 3px 14px),
@@ -10453,7 +10453,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-card-mu.mine .fx-meter { grid-column: 1 / -1; height: 8px; margin-top: 3px; }
 .fx-tmn { display: block; margin-top: 2px; font-size: 10px; font-weight: 500; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fx-card-mu.mine .fx-cr b { display: block; }
-.fx-mh { position: absolute; top: 0; right: 10px; display: flex; align-items: center; gap: 6px; padding: 1px 8px 2px 2px; border-radius: 0 0 6px 6px; background: rgba(0, 0, 0, .35); border: 1px solid rgba(255, 255, 255, .1); border-top: 0; }
+.fx-mh { position: absolute; top: 25px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .fx-mh strong { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8px; color: #fff; }
 .fx-mh i { font-style: normal; padding: 2px 4px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .08em; color: var(--card-bg); background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); }
 .fx-mh strong span { color: rgba(255, 255, 255, .5); } .fx-mh strong span.hi { color: #fff; }
