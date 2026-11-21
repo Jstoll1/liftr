@@ -60,12 +60,21 @@ function normal(rand) { let u = 0, v = 0; while (!u) u = rand(); while (!v) v = 
 // Playoff seeds: with divisions, each division winner (best record, then
 // points for) takes a top seed, ordered by record; the best other records
 // fill the rest. Without divisions, straight record then points for.
-export function seedOrder(owners, w, pf, playoffTeams = 6, divisionOf = null) {
-  const by = (a, b) => w[b] - w[a] || pf[b] - pf[a];
+// Ties on record go to head-to-head wins among the tied teams (the
+// league's setting), then points for. h2h[a][b] = a's wins over b.
+export function h2hTable(weekly) {
+  const h = {};
+  for (const g of weekly || []) { const o = (weekly || []).find((y) => y.week === g.week && y.owner === g.opponent); if (o && g.points > o.points) { h[g.owner] = h[g.owner] || {}; h[g.owner][g.opponent] = (h[g.owner][g.opponent] || 0) + 1; } }
+  return h;
+}
+export function seedOrder(owners, w, pf, playoffTeams = 6, divisionOf = null, h2h = null) {
+  const byRec = (a, b) => w[b] - w[a] || pf[b] - pf[a];
+  const by = (a, b) => w[b] - w[a] || (h2h ? 0 : pf[b] - pf[a]) || pf[b] - pf[a];
+  const order = (list) => { const s = [...list].sort(byRec); if (!h2h) return s; const out = []; for (let i = 0; i < s.length;) { let j = i; while (j < s.length && w[s[j]] === w[s[i]]) j++; const grp = s.slice(i, j); const hw = (o) => grp.reduce((n, x) => n + (h2h[o]?.[x] || 0), 0); out.push(...grp.sort((a, b) => hw(b) - hw(a) || pf[b] - pf[a])); i = j; } return out; };
   const divs = divisionOf ? [...new Set(owners.map((o) => divisionOf[o]).filter((d) => d != null))] : [];
-  if (divs.length < 2) return [...owners].sort(by).slice(0, playoffTeams);
-  const winners = divs.map((d) => owners.filter((o) => divisionOf[o] === d).sort(by)[0]).filter(Boolean).sort(by);
-  return [...winners, ...owners.filter((o) => !winners.includes(o)).sort(by)].slice(0, playoffTeams);
+  if (divs.length < 2) return order(owners).slice(0, playoffTeams);
+  const winners = order(divs.map((d) => order(owners.filter((o) => divisionOf[o] === d))[0]).filter(Boolean));
+  return [...winners, ...order(owners.filter((o) => !winners.includes(o)))].slice(0, playoffTeams);
 }
 
 export function playoffOdds(weekly, standings, remaining, playoffTeams = 6, runs = 4000, seed = 7, divisionOf = null) {
@@ -80,6 +89,7 @@ export function playoffOdds(weekly, standings, remaining, playoffTeams = 6, runs
     model[s.owner] = { mean: k * m + (1 - k) * lgMean, sd: lgSd };
   }
   const owners = (standings || []).map((s) => s.owner);
+  const h2h = h2hTable(weekly);
   const tally = Object.fromEntries(owners.map((o) => [o, { playoffs: 0, bye: 0, title: 0, seedSum: 0 }]));
   const byes = playoffTeams === 6 ? 2 : playoffTeams === 4 ? 0 : Math.max(0, playoffTeams - 4);
   const play = (a, b) => { const pa = model[a].mean + model[a].sd * normal(rand), pb = model[b].mean + model[b].sd * normal(rand); return pa >= pb ? a : b; };
@@ -92,17 +102,14 @@ export function playoffOdds(weekly, standings, remaining, playoffTeams = 6, runs
       pf[g.home] += ph; pf[g.away] += pa;
       w[ph >= pa ? g.home : g.away] += 1;
     }
-    const seeds = seedOrder(owners, w, pf, playoffTeams, divisionOf);
+    const seeds = seedOrder(owners, w, pf, playoffTeams, divisionOf, h2h);
     seeds.forEach((o, i) => { tally[o].playoffs++; tally[o].seedSum += i + 1; if (i < byes) tally[o].bye++; });
-    // Bracket: byes wait; the rest pair high against low, winners reseed.
-    let alive = seeds.slice(byes), waiting = seeds.slice(0, byes);
-    while (alive.length + waiting.length > 1) {
-      const next = [];
-      for (let i = 0, j = alive.length - 1; i < j; i++, j--) next.push(play(alive[i], alive[j]));
-      if (alive.length % 2) next.push(alive[Math.floor(alive.length / 2)]);
-      alive = [...waiting, ...next].sort((a, b) => seeds.indexOf(a) - seeds.indexOf(b)); waiting = [];
-    }
-    if (alive[0]) tally[alive[0]].title++;
+    // Fixed bracket, no reseeding (the league's setting): with 6 teams,
+    // 3v6 and 4v5, then 1 meets the 4/5 winner and 2 the 3/6 winner.
+    let champ;
+    if (seeds.length === 6 && byes === 2) { const q1 = play(seeds[3], seeds[4]), q2 = play(seeds[2], seeds[5]); champ = play(play(seeds[0], q1), play(seeds[1], q2)); }
+    else { let alive = seeds.slice(byes), waiting = seeds.slice(0, byes); while (alive.length + waiting.length > 1) { const next = []; for (let i = 0, j = alive.length - 1; i < j; i++, j--) next.push(play(alive[i], alive[j])); if (alive.length % 2) next.push(alive[Math.floor(alive.length / 2)]); alive = [...waiting, ...next]; waiting = []; } champ = alive[0]; }
+    if (champ) tally[champ].title++;
   }
   return Object.fromEntries(owners.map((o) => [o, { playoffs: r3(tally[o].playoffs / runs), bye: r3(tally[o].bye / runs), title: r3(tally[o].title / runs), avgSeed: tally[o].playoffs ? r1(tally[o].seedSum / tally[o].playoffs) : null }]));
 }

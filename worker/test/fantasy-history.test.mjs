@@ -26,3 +26,9 @@ test("seedOrder: division winners take the top seeds (league screenshot, week 11
   assert.deepEqual(seedOrder(Object.keys(w), w, pf, 6, div), ["Dewitt", "Andrew", "Curt", "Skills", "Jake", "Logan"]);
   assert.deepEqual(seedOrder(Object.keys(w), w, pf, 6, null).slice(0, 2), ["Dewitt", "Curt"]);
 });
+
+test("seedOrder: tied records go to head to head", () => {
+  const w = { A: 5, B: 5, C: 9 }, pf = { A: 1200, B: 1000, C: 1100 };
+  assert.deepEqual(seedOrder(["A", "B", "C"], w, pf, 3, null, { B: { A: 1 } }), ["C", "B", "A"]);
+  assert.deepEqual(seedOrder(["A", "B", "C"], w, pf, 3, null, null), ["C", "A", "B"]);
+});
