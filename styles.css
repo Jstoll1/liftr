@@ -10444,18 +10444,18 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-card-mu.mine .fx-cr em { font-size: 22px; min-width: 0; line-height: 1.1; margin-top: 2px; color: rgba(255, 255, 255, .66); }
 .fx-card-mu.mine .fx-cr { margin: 0; padding: 0; border: 0; background: none !important; box-shadow: none !important; }
 .fx-card-mu.mine .fx-cr.s-a em { align-self: flex-end; } .fx-card-mu.mine .fx-cr.s-b em { align-self: flex-start; }
-.fx-card-mu.mine .fx-vs { align-self: end; margin: 0 0 7px; }
+.fx-card-mu.mine .fx-vs { grid-column: 2; grid-row: 1; align-self: end; margin: 0 0 7px; }
 .fx-card-mu.mine .fx-cr.lead em { text-shadow: 0 0 10px rgba(var(--neon-cyan-rgb), .5); }
 .fx-card-mu.mine .fx-cr.lead::before { display: none; }
 .fx-vs { align-self: center; padding: 4px 6px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .08em; color: #fff;
   background: linear-gradient(135deg, rgba(var(--neon-cyan-rgb), .35), rgba(var(--neon-purple-rgb), .45)); border: 1px solid rgba(255, 255, 255, .18); transform: skewX(-8deg); }
-.fx-card-mu.mine .fx-meter { grid-column: 1 / -1; height: 8px; margin-top: 8px; }
+.fx-card-mu.mine .fx-meter { grid-column: 1 / -1; height: 8px; margin-top: 6px; }
 .fx-tmn { display: block; margin-top: 2px; font-size: 10px; font-weight: 500; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fx-card-mu.mine .fx-cr b { display: block; }
-.fx-mh { grid-column: 1 / -1; justify-self: center; margin-top: 4px; display: flex; align-items: center; gap: 8px; padding: 3px 10px 3px 4px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, .1); background: rgba(0, 0, 0, .25); font-size: 11px; color: rgba(255, 255, 255, .8); }
+.fx-mh { grid-column: 2; grid-row: 1; align-self: start; justify-self: center; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 9.5px; color: rgba(255, 255, 255, .8); text-align: center; }
 .fx-mh strong { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 10px; color: #fff; }
 .fx-mh i { font-style: normal; padding: 3px 5px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .08em; color: var(--card-bg); background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); }
-.fx-mh b { color: #fff; font-weight: 600; }
+.fx-mh strong span { color: rgba(255, 255, 255, .5); } .fx-mh strong span.hi { color: #fff; }
 /* Motion: a score that moved pops, a lead that changed hands flashes once. */
 .fx-sc.bump { animation: fx-bump .5s ease-out 1; }
 @keyframes fx-bump { 0% { transform: scale(1.25); color: var(--neon-cyan); } 100% { transform: none; } }
