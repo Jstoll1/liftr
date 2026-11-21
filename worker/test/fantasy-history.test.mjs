@@ -32,3 +32,16 @@ test("seedOrder: tied records go to head to head", () => {
   assert.deepEqual(seedOrder(["A", "B", "C"], w, pf, 3, null, { B: { A: 1 } }), ["C", "B", "A"]);
   assert.deepEqual(seedOrder(["A", "B", "C"], w, pf, 3, null, null), ["C", "A", "B"]);
 });
+
+import { playoffOdds } from "../src/fantasy-stats.js";
+test("playoffOdds: a head-to-head game still to play feeds the tiebreak", () => {
+  // A leads B 1-0 head to head, same record; they meet once more. B is far
+  // stronger, so B usually wins that game, evens it 1-1, and takes the seed
+  // on points. Old code kept A's 1-0 and seeded A almost every time.
+  const weekly = [{ week: 1, owner: "A", points: 101, opponent: "B" }, { week: 1, owner: "B", points: 100, opponent: "A" },
+    { week: 2, owner: "A", points: 60, opponent: "C" }, { week: 2, owner: "C", points: 50, opponent: "A" }, { week: 2, owner: "B", points: 160, opponent: "D" }, { week: 2, owner: "D", points: 50, opponent: "B" },
+    { week: 1, owner: "C", points: 40, opponent: "D" }, { week: 1, owner: "D", points: 50, opponent: "C" }];
+  const standings = [{ owner: "A", wins: 2, losses: 0, pointsFor: 161 }, { owner: "B", wins: 1, losses: 1, pointsFor: 260 }, { owner: "C", wins: 0, losses: 2, pointsFor: 90 }, { owner: "D", wins: 1, losses: 1, pointsFor: 100 }];
+  const o = playoffOdds(weekly, standings, [{ week: 3, home: "A", away: "B" }], 1, 2000);
+  assert.ok(o.B.playoffs > 0.4, `B ${o.B.playoffs}`);
+});
