@@ -10168,7 +10168,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .lvn-tk.dim { color: var(--text-dim); }
 .lvn-pl { width: 14px; height: 14px; object-fit: contain; flex: none; }
 .lvn-tk > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-width: 0; overflow: hidden; }
-.lvn-tk .lvn-pl, .lvn-row.fresh .lvn-tk::before { margin-top: 2px; }
+.lvn-tk .lvn-pl { margin-top: 2px; } .lvn-row.fresh .lvn-tk::before { margin-top: 6px; }
 
 /* ==== RETRO: fantasy (top of the History tab) ==== */
 .fx { margin: 10px 0; padding: 12px 10px 8px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--card-bg); }
