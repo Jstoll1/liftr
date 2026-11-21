@@ -10539,6 +10539,12 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-lu li.tot b { color: #fff; font-size: 9px; }
 .fx-sdkey { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; }
 .fx-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.fx-mucard .fx-chips { flex-wrap: nowrap; min-width: 0; gap: 4px; width: 100%; }
+.fx-mucard .fx-chip { min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 2px 5px; font-size: 10px; }
+.fx-chip i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--text-dim); margin-right: 2px; }
+.fx-mucard .fx-ctx:has(.fx-chips) { display: flex; align-items: center; gap: 8px; }
+.fx-mucard .fx-ctx:has(.fx-chips) > small { flex: none; }
+.fx-mucard .fx-chipt { flex-basis: 100%; }
 .fx-chip { padding: 2px 7px; border-radius: 10px; border: 1px solid var(--card-border); font-size: 11px; line-height: 1.5; white-space: nowrap; }
 .fx-mucard .fx-side em { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .fx-side em small { font-family: system-ui, sans-serif; font-size: 10px; color: var(--text-dim); white-space: nowrap; }
