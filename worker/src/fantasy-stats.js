@@ -57,7 +57,18 @@ function normal(rand) { let u = 0, v = 0; while (!u) u = rand(); while (!v) v = 
 // so a hot start does not run away). Seeds by wins, then points for.
 // Playoffs: the top half of the field gets byes when the field is six
 // (two byes) or four (none); the title goes through single games.
-export function playoffOdds(weekly, standings, remaining, playoffTeams = 6, runs = 4000, seed = 7) {
+// Playoff seeds: with divisions, each division winner (best record, then
+// points for) takes a top seed, ordered by record; the best other records
+// fill the rest. Without divisions, straight record then points for.
+export function seedOrder(owners, w, pf, playoffTeams = 6, divisionOf = null) {
+  const by = (a, b) => w[b] - w[a] || pf[b] - pf[a];
+  const divs = divisionOf ? [...new Set(owners.map((o) => divisionOf[o]).filter((d) => d != null))] : [];
+  if (divs.length < 2) return [...owners].sort(by).slice(0, playoffTeams);
+  const winners = divs.map((d) => owners.filter((o) => divisionOf[o] === d).sort(by)[0]).filter(Boolean).sort(by);
+  return [...winners, ...owners.filter((o) => !winners.includes(o)).sort(by)].slice(0, playoffTeams);
+}
+
+export function playoffOdds(weekly, standings, remaining, playoffTeams = 6, runs = 4000, seed = 7, divisionOf = null) {
   const rand = rng(seed + (weekly || []).length);
   const all = (weekly || []).map((x) => x.points), lgMean = all.length ? all.reduce((a, b) => a + b, 0) / all.length : 100;
   const lgSd = all.length > 1 ? Math.sqrt(all.reduce((n, x) => n + (x - lgMean) ** 2, 0) / (all.length - 1)) : 20;
@@ -81,7 +92,7 @@ export function playoffOdds(weekly, standings, remaining, playoffTeams = 6, runs
       pf[g.home] += ph; pf[g.away] += pa;
       w[ph >= pa ? g.home : g.away] += 1;
     }
-    const seeds = [...owners].sort((a, b) => w[b] - w[a] || pf[b] - pf[a]).slice(0, playoffTeams);
+    const seeds = seedOrder(owners, w, pf, playoffTeams, divisionOf);
     seeds.forEach((o, i) => { tally[o].playoffs++; tally[o].seedSum += i + 1; if (i < byes) tally[o].bye++; });
     // Bracket: byes wait; the rest pair high against low, winners reseed.
     let alive = seeds.slice(byes), waiting = seeds.slice(0, byes);
@@ -165,5 +176,5 @@ export function fantasyStats(cur) {
   // Streak: the current run of wins or losses.
   const streak = {};
   for (const s of standings) { const mine = weekly.filter((x) => x.owner === s.owner).sort((a, b) => b.week - a.week); let n = 0, kind = null; for (const g of mine) { const o = weekly.find((y) => y.week === g.week && y.owner === g.opponent); const r = !o ? null : g.points > o.points ? "W" : g.points < o.points ? "L" : "T"; if (!kind) kind = r; if (r !== kind) break; n++; } streak[s.owner] = kind ? `${kind}${n}` : ""; }
-  return { teams: teamInsights(cur.rosters || {}, weekly, cur.remaining || [], standings), allPlay: ap, power: powerRankings(weekly, standings), odds: playoffOdds(weekly, standings, cur.remaining || [], cur.playoffTeams || 6), awards: weekAwards(weekly, last), regret: regretTotals(cur.regret), streak, playoffTeams: cur.playoffTeams || 6 };
+  return { teams: teamInsights(cur.rosters || {}, weekly, cur.remaining || [], standings), allPlay: ap, power: powerRankings(weekly, standings), odds: playoffOdds(weekly, standings, cur.remaining || [], cur.playoffTeams || 6, 4000, 7, cur.divisionOf || null), awards: weekAwards(weekly, last), regret: regretTotals(cur.regret), streak, playoffTeams: cur.playoffTeams || 6 };
 }
