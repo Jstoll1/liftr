@@ -334,16 +334,19 @@
 
   // The playoff race: the last team in against the first team out.
   const wpct = (r) => (r.wins || 0) + (r.ties || 0) / 2;
-  const tieRule = () => /H2H|HEAD/i.test(String(data.playoffTiebreak || "")) ? "HEAD TO HEAD DECIDES" : /POINT/i.test(String(data.playoffTiebreak || "")) ? "POINTS DECIDE" : "TIEBREAK DECIDES";
+  const tieRule = () => /POINT/i.test(String(data.playoffTiebreak || "")) ? "POINTS DECIDE" : "HEAD TO HEAD DECIDES";
   const stand = () => [...(data.standings || [])].sort((x, y) => (x.rank || 99) - (y.rank || 99));
   // Seeds as ESPN sets them: division winners first (by record), then the
   // best other records. Without divisions, straight record order.
-  const seeds = (line) => { const s = stand(), dv = data.divisionOf || {}, by = (x, y) => wpct(y) - wpct(x) || (y.pointsFor || 0) - (x.pointsFor || 0); const divs = [...new Set(s.map((r) => dv[r.owner]).filter((d) => d != null))]; if (divs.length < 2) return [...s].sort(by).slice(0, line); const win = divs.map((d) => s.filter((r) => dv[r.owner] === d).sort(by)[0]).sort(by); return [...win, ...s.filter((r) => !win.includes(r)).sort(by)].slice(0, line); };
+  // Head-to-head wins this season (the league's seeding tiebreak).
+  const h2hWins = () => { const h = {}, wk = data.weekly || []; for (const g of wk) { const o = wk.find((y) => y.week === g.week && y.owner === g.opponent); if (o && g.points > o.points) { h[g.owner] = h[g.owner] || {}; h[g.owner][g.opponent] = (h[g.owner][g.opponent] || 0) + 1; } } return h; };
+  const orderRec = (list) => { const h = h2hWins(), s = [...list].sort((x, y) => wpct(y) - wpct(x) || (y.pointsFor || 0) - (x.pointsFor || 0)), out = []; for (let i = 0; i < s.length;) { let j = i; while (j < s.length && wpct(s[j]) === wpct(s[i])) j++; const g = s.slice(i, j), hw = (r) => g.reduce((n, x) => n + (h[r.owner]?.[x.owner] || 0), 0); out.push(...g.sort((x, y) => hw(y) - hw(x) || (y.pointsFor || 0) - (x.pointsFor || 0))); i = j; } return out; };
+  const seeds = (line) => { const s = stand(), dv = data.divisionOf || {}; const divs = [...new Set(s.map((r) => dv[r.owner]).filter((d) => d != null))]; if (divs.length < 2) return orderRec(s).slice(0, line); const win = orderRec(divs.map((d) => orderRec(s.filter((r) => dv[r.owner] === d))[0])); return [...win, ...orderRec(s.filter((r) => !win.includes(r)))].slice(0, line); };
   const divWinners = () => { const s = stand(), dv = data.divisionOf || {}, by = (x, y) => wpct(y) - wpct(x) || (y.pointsFor || 0) - (x.pointsFor || 0); const divs = [...new Set(s.map((r) => dv[r.owner]).filter((d) => d != null))]; return divs.length < 2 ? new Set() : new Set(divs.map((d) => s.filter((r) => dv[r.owner] === d).sort(by)[0]?.owner)); };
   const bubble = (line) => {
-    const s = stand(), sd = seeds(line), a = sd[sd.length - 1], b = s.filter((r) => !sd.includes(r)).sort((x, y) => wpct(y) - wpct(x) || (y.pointsFor || 0) - (x.pointsFor || 0))[0];
+    const s = stand(), sd = seeds(line), a = sd[sd.length - 1], b = orderRec(s.filter((r) => !sd.includes(r)))[0];
     if (!a || !b) return "";
-    const gap = wpct(a) - wpct(b), reg = data.regularSeasonWeeks || 14, left = Math.max(0, reg - ((a.wins || 0) + (a.losses || 0) + (a.ties || 0)));
+    const gap = wpct(a) - wpct(b), reg = data.regularSeasonWeeks || 13, left = Math.max(0, reg - ((a.wins || 0) + (a.losses || 0) + (a.ties || 0)));
     const tag = gap === 0 ? `TIED · ${tieRule()}` : `${gap} WIN${gap === 1 ? "" : "S"} APART`;
     return `<div class="fx-race" data-fxrace="1" role="button" tabindex="0" aria-haspopup="dialog"><span class="fx-race-k">PLAYOFF RACE</span><span class="fx-race-t"><span class="in">${owner(a.owner)} <em>${a.wins}-${a.losses}</em></span><i>${tag}</i><span class="out">${owner(b.owner)} <em>${b.wins}-${b.losses}</em></span></span><small>${left ? `${left} week${left === 1 ? "" : "s"} left` : "Final week"} ▸</small></div>`;
   };
