@@ -10194,6 +10194,24 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-st.in .fx-rk { color: var(--neon-cyan); }
 .fx-st.out { opacity: .78; }
 .fx-c.pf { color: rgba(255, 255, 255, .78); }
+.fx-mir { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
+.fx-mr { display: grid; grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr); align-items: stretch; }
+.fx-ms { display: grid; place-items: center; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--neon-cyan); background: rgba(var(--neon-cyan-rgb), .06); border-left: 1px solid rgba(var(--neon-cyan-rgb), .18); border-right: 1px solid rgba(var(--neon-cyan-rgb), .18); }
+.fx-mc { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 6px; padding: 6px 7px; background: rgba(255, 255, 255, .025); min-height: 38px; }
+.fx-mc.l { border-radius: 6px 0 0 6px; } .fx-mc.r { border-radius: 0 6px 6px 0; grid-template-columns: auto minmax(0, 1fr); }
+.fx-mc-n { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 11.5px; color: #fff; }
+.fx-mc-n b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fx-mc-n .fx-nfl { width: 13px; height: 13px; flex: none; }
+.fx-mc-g { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 9.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; }
+.fx-mc-s { grid-row: 1 / 3; display: flex; flex-direction: column; justify-content: center; }
+.fx-mc.l .fx-mc-s { grid-column: 2; align-items: flex-end; } .fx-mc.r .fx-mc-s { grid-column: 1; grid-row: 1 / 3; align-items: flex-start; }
+.fx-mc.r .fx-mc-n, .fx-mc.r .fx-mc-g { grid-column: 2; justify-content: flex-end; text-align: right; }
+.fx-mc-s em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 9px; color: rgba(255, 255, 255, .75); }
+.fx-mc-s small { margin-top: 3px; font-size: 9.5px; color: var(--text-dim); }
+.fx-mc.win .fx-mc-s em { color: #fff; } .fx-mc.l.win { box-shadow: inset 2px 0 0 var(--neon-cyan); } .fx-mc.r.win { box-shadow: inset -2px 0 0 var(--neon-purple); }
+.fx-mc.live { background: rgba(var(--neon-green-rgb), .05); } .fx-mc.live .fx-mc-s em { color: var(--neon-green); }
+.fx-mc.pre .fx-mc-s em { color: var(--text-dim); }
+.fx-k-live { color: var(--neon-green); }
 .fx-dv { display: inline-block; margin-left: 6px; padding: 1px 3px; border-radius: 3px; vertical-align: 2px; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5px; color: var(--neon-cyan); border: 1px solid rgba(var(--neon-cyan-rgb), .45); }
 .fx-fire { font-style: normal; font-size: 9px; margin-left: 2px; }
 .fx-rk { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-dim); text-align: center; }
