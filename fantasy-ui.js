@@ -389,7 +389,7 @@
     m.innerHTML = `<div class="fx-tcard"><div class="fx-thead"><span class="fx-k2">PLAYOFF RACE · SEED ${line}</span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-popbody">
       <div class="fx-rvs">${col(A, projA, "in")}<i class="fx-rv-x">VS</i>${col(B, projB, "out")}</div>
       <ul class="fx-rfacts">
-        <li><i>TIEBREAK</i><span><b>${esc(holds)}</b> · ${esc(tieWhy)}</span></li>
+        <li><i>TIEBREAK</i><span><b>${esc(holds)}</b> · ${esc(tieWhy)}${meet ? (hA !== hB ? ` · a week ${meet.week} ${esc(hA > hB ? B.owner : A.owner)} win evens it, then points for` : ` · the week ${meet.week} winner takes it`) : ""}</span></li>
         ${meet ? `<li class="hot"><i>SHOWDOWN</i><span>Week ${meet.week} head to head · <b>${esc(meet.p >= 0.5 ? A.owner : B.owner)}</b> ${pct(Math.max(meet.p, 1 - meet.p))}</span></li>` : ""}
         ${(() => { const also = s.filter((r) => r !== A && r !== B && !sd.slice(0, -1).includes(r) && (wpct(r) === wpct(A) || wpct(r) === wpct(B))); return also.length ? `<li class="hot"><i>ALSO IN IT</i><span>${also.map((r) => `<b>${esc(r.owner)}</b> ${r.wins}-${r.losses}${od(r.owner) == null ? "" : ` (${pct(od(r.owner))})`}`).join(", ")} on the same record</span></li>` : ""; })()}
         <li><i>MAGIC #</i><span>${magic ? `<b>${magic}</b> · ${esc(A.owner)} wins + ${esc(B.owner)} losses to stay ahead` : `${esc(B.owner)} can't catch ${esc(A.owner)}`}</span></li>

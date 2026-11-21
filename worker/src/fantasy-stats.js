@@ -94,15 +94,18 @@ export function playoffOdds(weekly, standings, remaining, playoffTeams = 6, runs
   const byes = playoffTeams === 6 ? 2 : playoffTeams === 4 ? 0 : Math.max(0, playoffTeams - 4);
   const play = (a, b) => { const pa = model[a].mean + model[a].sd * normal(rand), pb = model[b].mean + model[b].sd * normal(rand); return pa >= pb ? a : b; };
   for (let r = 0; r < runs; r++) {
-    const w = {}, pf = {};
+    const w = {}, pf = {}, hh = Object.fromEntries(Object.entries(h2h).map(([k, v]) => [k, { ...v }]));
     for (const s of standings) { w[s.owner] = s.wins + (s.ties || 0) / 2; pf[s.owner] = s.pointsFor; }
     for (const g of remaining || []) {
       if (!model[g.home] || !model[g.away]) continue;
       const ph = model[g.home].mean + model[g.home].sd * normal(rand), pa = model[g.away].mean + model[g.away].sd * normal(rand);
       pf[g.home] += ph; pf[g.away] += pa;
-      w[ph >= pa ? g.home : g.away] += 1;
+      const win = ph >= pa ? g.home : g.away, lose = win === g.home ? g.away : g.home;
+      w[win] += 1;
+      // Games still to play between two teams count toward their head to head.
+      hh[win] = hh[win] || {}; hh[win][lose] = (hh[win][lose] || 0) + 1;
     }
-    const seeds = seedOrder(owners, w, pf, playoffTeams, divisionOf, h2h);
+    const seeds = seedOrder(owners, w, pf, playoffTeams, divisionOf, hh);
     seeds.forEach((o, i) => { tally[o].playoffs++; tally[o].seedSum += i + 1; if (i < byes) tally[o].bye++; });
     // Fixed bracket, no reseeding (the league's setting): with 6 teams,
     // 3v6 and 4v5, then 1 meets the 4/5 winner and 2 the 3/6 winner.
