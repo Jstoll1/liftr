@@ -348,7 +348,7 @@
   const h2hWins = () => { const h = {}, wk = data.weekly || []; for (const g of wk) { const o = wk.find((y) => y.week === g.week && y.owner === g.opponent); if (o && g.points > o.points) { h[g.owner] = h[g.owner] || {}; h[g.owner][g.opponent] = (h[g.owner][g.opponent] || 0) + 1; } } return h; };
   const orderRec = (list) => { const h = h2hWins(), s = [...list].sort((x, y) => wpct(y) - wpct(x) || (y.pointsFor || 0) - (x.pointsFor || 0)), out = []; for (let i = 0; i < s.length;) { let j = i; while (j < s.length && wpct(s[j]) === wpct(s[i])) j++; const g = s.slice(i, j), hw = (r) => g.reduce((n, x) => n + (h[r.owner]?.[x.owner] || 0), 0); out.push(...g.sort((x, y) => hw(y) - hw(x) || (y.pointsFor || 0) - (x.pointsFor || 0))); i = j; } return out; };
   const seeds = (line) => { const s = stand(), dv = data.divisionOf || {}; const divs = [...new Set(s.map((r) => dv[r.owner]).filter((d) => d != null))]; if (divs.length < 2) return orderRec(s).slice(0, line); const win = orderRec(divs.map((d) => orderRec(s.filter((r) => dv[r.owner] === d))[0])); return [...win, ...orderRec(s.filter((r) => !win.includes(r)))].slice(0, line); };
-  const divWinners = () => { const s = stand(), dv = data.divisionOf || {}, by = (x, y) => wpct(y) - wpct(x) || (y.pointsFor || 0) - (x.pointsFor || 0); const divs = [...new Set(s.map((r) => dv[r.owner]).filter((d) => d != null))]; return divs.length < 2 ? new Set() : new Set(divs.map((d) => s.filter((r) => dv[r.owner] === d).sort(by)[0]?.owner)); };
+  const divWinners = () => { const s = stand(), dv = data.divisionOf || {}; const divs = [...new Set(s.map((r) => dv[r.owner]).filter((d) => d != null))]; return divs.length < 2 ? new Set() : new Set(divs.map((d) => orderRec(s.filter((r) => dv[r.owner] === d))[0]?.owner)); };
   const bubble = (line) => {
     const s = stand(), sd = seeds(line), a = sd[sd.length - 1], b = orderRec(s.filter((r) => !sd.includes(r)))[0];
     if (!a || !b) return "";
@@ -358,6 +358,14 @@
   };
   // The race sheet: every team still in doubt, its odds, projected wins,
   // and each game left with a win chance from season scoring.
+  // Playoff picture if the season ended today: seeds, byes and the
+  // first-round pairings (fixed bracket: 3v6, 4v5).
+  const picture = (line) => {
+    const sd = seeds(line); if (sd.length < 4) return "";
+    const dw = divWinners(), t = (r, n) => r ? `<span class="fx-pp-t${r.owner === me() ? " me" : ""}"><i>${n}</i><b>${esc(r.owner)}</b><small>${r.wins}-${r.losses}${dw.has(r.owner) ? " · DIV" : ""}</small></span>` : "";
+    const byes = line === 6 ? 2 : 0, pairs = []; for (let i = byes, j = sd.length - 1; i < j; i++, j--) pairs.push([i, j]);
+    return `<div class="fx-pp"><div class="fx-pp-k">IF IT ENDED TODAY</div>${byes ? `<div class="fx-pp-r"><span class="fx-pp-l">BYE</span>${sd.slice(0, byes).map((r, i) => t(r, i + 1)).join("")}</div>` : ""}${pairs.map(([i, j]) => `<div class="fx-pp-r"><span class="fx-pp-l">RD 1</span>${t(sd[i], i + 1)}<em>v</em>${t(sd[j], j + 1)}</div>`).join("")}</div>`;
+  };
   const openRace = () => {
     document.getElementById("fx-mupop")?.remove();
     const st = data.stats || {}, line = st.playoffTeams || data.playoffTeams || 6, s = stand(), rem = data.remaining || [];
@@ -414,7 +422,7 @@
     const divTables = tab === "standings" && dvs.length > 1 ? dvs.map((d) => { const rs = orderRec(stand().filter((r) => data.divisionOf?.[r.owner] === d.id)), lead = rs[0]; return `<div class="fx-sth t-standings fx-dvh"><span>${esc(String(d.name || "").toUpperCase())}</span><span>W-L</span><span>GB</span><span>PF</span><span>STRK</span></div><div class="fx-sts t-standings dv">${rs.map((r, i) => { const gb = ((lead.wins - r.wins) + (r.losses - lead.losses)) / 2, sk = st.streak?.[r.owner] || "–"; return row(r.owner, { rank: i + 1, sub: data.teams?.[r.owner]?.name, cols: [{ v: `${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}` }, { v: gb ? String(gb) : "–", cls: "pf" }, { v: pts(r.pointsFor), cls: "pf" }, { v: `${esc(sk)}${/^W([4-9]|\d\d)/.test(sk) ? '<i class="fx-fire" aria-label="hot streak">🔥</i>' : ""}`, cls: /^W/.test(sk) ? "up" : /^L/.test(sk) ? "dn" : "" }] }, 99); }).join("")}</div>`; }).join("") : "";
     const why = { standings: divW.size ? `Each division winner plus the next ${line - divW.size} best records make the playoffs (${line} teams). Cyan rank = in today.` : `Top ${line} make the playoffs.`, power: "Who's playing best right now: points, record against the whole league each week, and the last three weeks.", odds: `Chances from 4,000 simulated finishes of the season. Top ${line} make the playoffs.`, luck: "Real record against the record your points deserve. Plus means more wins than the scoring earned.", both: "Fantasy place next to pick'em place this season, best combined first." }[tab];
     return `<div class="fx-sechd"><span>LEAGUE TABLE</span></div><div class="fx-tabs" role="tablist">${[["standings", "STANDINGS"], ["power", "POWER"], ["odds", "ODDS"], ["luck", "LUCK"]].map(([k, l]) => `<button type="button" role="tab" aria-selected="${tab === k}" class="${tab === k ? "on" : ""}" data-fxtab="${k}">${l}</button>`).join("")}</div>
-      <p class="fx-why-top"><b>${{ standings: "STANDINGS", power: "POWER", odds: "ODDS", luck: "LUCK", both: "BOTH LEAGUES" }[tab]}</b> ${esc(why)}</p>${tab === "standings" ? bubble(line) : ""}
+      <p class="fx-why-top"><b>${{ standings: "STANDINGS", power: "POWER", odds: "ODDS", luck: "LUCK", both: "BOTH LEAGUES" }[tab]}</b> ${esc(why)}</p>${tab === "standings" ? picture(line) + bubble(line) : ""}
       ${divTables || `<div class="fx-sth t-${tab}"><span></span>${set.head.map((h) => `<span>${h}</span>`).join("")}</div>
       <div class="fx-sts t-${tab}">${set.rows.join("")}</div>`}<p class="fx-note">Tap an owner for their team.</p>`;
   };
