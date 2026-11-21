@@ -45,7 +45,7 @@
     if (Date.now() - nflAt > 55000) {
       try {
         const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?t=${Math.floor(Date.now() / 60000)}`);
-        if (r.ok) { const j = await r.json(); nfl = {}; for (const ev of j.events || []) { const c = ev.competitions?.[0]; const st = c?.status?.type?.state || "pre"; for (const t of c?.competitors || []) nfl[String(t.team?.abbreviation || "").toUpperCase()] = { state: st, done: !!c?.status?.type?.completed, ball: st === "in" && !!c?.situation?.possession && String(c.situation.possession) === String(t.team?.id), rz: !!c?.situation?.isRedZone }; } nflAt = Date.now(); }
+        if (r.ok) { const j = await r.json(); nfl = {}; for (const ev of j.events || []) { const c = ev.competitions?.[0]; const st = c?.status?.type?.state || "pre"; for (const t of c?.competitors || []) nfl[String(t.team?.abbreviation || "").toUpperCase()] = { state: st, done: !!c?.status?.type?.completed, ball: st === "in" && !!c?.situation?.possession && String(c.situation.possession) === String(t.team?.id), rz: !!c?.situation?.isRedZone, left: st === "in" ? Math.max(0, Math.min(1, ((4 - Math.min(4, Number(c?.status?.period) || 1)) * 900 + (Number(c?.status?.clock) || 0)) / 3600)) : st === "pre" ? 1 : 0 }; } nflAt = Date.now(); }
       } catch {}
     }
     busy = false;
@@ -58,13 +58,18 @@
   const gameOf = (p) => nfl[String(p.nfl || "").toUpperCase()] || null;
   const toPlay = (p) => { const g = gameOf(p); return g ? g.state === "pre" : null; };
   const live = (p) => { const g = gameOf(p); return !!g && g.state === "in"; };
-  const remaining = (p) => { const g = gameOf(p); const proj = p.proj ?? null; if (!g) return 0; if (g.state === "post" || g.done) return 0; if (g.state === "in") return proj != null ? Math.max(0, proj - p.pts) * 0.5 : 4; return proj != null ? proj : 9; };
+  // Share of a player's game still to play: 1 before kickoff, the clock
+  // share while on, 0 when over (overtime counts as nearly over).
+  const share = (p) => { const g = gameOf(p); if (!g) return p.proj != null && !p.pts ? 1 : 0; if (g.state === "post" || g.done) return 0; return g.state === "in" ? Math.max(0.03, g.left ?? 0.5) : 1; };
+  // ESPN's projection for the whole game, scaled by the share still to play.
+  const remaining = (p) => { const f = share(p); if (!f) return 0; return (p.proj != null ? p.proj : 9) * f; };
   const outlook = (t) => {
     const st = t?.starters || [];
     const left = st.filter((p) => toPlay(p) === true).length, now = st.filter(live).length;
     const add = st.reduce((n, p) => n + remaining(p), 0);
-    const open = st.filter((p) => { const g = gameOf(p); return g && g.state !== "post" && !g.done; }).length;
-    return { left, now, exp: (t?.points || 0) + add, sd: Math.sqrt(Math.max(1, open)) * 7 };
+    // Spread shrinks as the clock runs: about 7 points of swing per full game left.
+    const open = st.reduce((n, p) => n + share(p), 0);
+    return { left, now, exp: (t?.points || 0) + add, sd: Math.sqrt(Math.max(0.15, open)) * 7 };
   };
   const phi = (z) => 1 / (1 + Math.exp(-1.702 * z));
 
