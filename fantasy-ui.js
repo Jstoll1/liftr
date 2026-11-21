@@ -381,7 +381,12 @@
     const sd = seeds(line), race = races(line)[idx]; if (!race) return;
     const A = s.find((r) => r.owner === race.a), B = s.find((r) => r.owner === race.b);
     if (!A || !B) return;
-    const ppg = (o) => st.teams?.[o]?.ppg || 0, pWin = (a, b) => phi((ppg(a) - ppg(b)) / (26 * Math.SQRT2));
+    // Same game model as the worker's 4,000-season simulation: each team's
+    // points per game shrunk toward the league average (k = n/(n+4)), league
+    // spread per score, so game win % and the odds agree.
+    const wk = data.weekly || [], all = wk.map((x) => x.points), lgM = all.length ? all.reduce((a, b) => a + b, 0) / all.length : 100, lgSd = all.length > 1 ? Math.sqrt(all.reduce((n, x) => n + (x - lgM) ** 2, 0) / (all.length - 1)) : 20;
+    const ppg = (o) => { const mine = wk.filter((x) => x.owner === o).map((x) => x.points), n = mine.length, k = n / (n + 4); return n ? k * (mine.reduce((a, b) => a + b, 0) / n) + (1 - k) * lgM : lgM; };
+    const pWin = (a, b) => { const z = (ppg(a) - ppg(b)) / (lgSd * Math.SQRT2); return 0.5 * (1 + Math.sign(z) * Math.sqrt(1 - Math.exp(-2 * z * z / Math.PI))); };
     const games = (o) => rem.filter((g) => g.home === o || g.away === o).map((g) => { const op = g.home === o ? g.away : g.home; return { week: g.week, op, p: pWin(o, op) }; });
     const gA = games(A.owner), gB = games(B.owner), weeks = [...new Set([...gA, ...gB].map((g) => g.week))].sort((x, y) => x - y);
     const projA = wpct(A) + gA.reduce((n, g) => n + g.p, 0), projB = wpct(B) + gB.reduce((n, g) => n + g.p, 0);
@@ -397,16 +402,16 @@
     const m = document.createElement("div");
     m.id = "fx-mupop"; m.className = "fx-team"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Playoff race");
     m.innerHTML = `<div class="fx-tcard"><div class="fx-thead"><span class="fx-k2">${esc(race.label)}</span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-popbody">
-      <div class="fx-rvs">${col(A, projA, "in")}<i class="fx-rv-x">VS</i>${col(B, projB, "out")}</div>
+      <div class="fx-rvs">${col(A, projA, "in")}<i class="fx-rv-x">VS</i>${col(B, projB, "out")}</div>${od(A.owner) != null && od(B.owner) != null && od(A.owner) + od(B.owner) > 0 ? (() => { const sh = Math.min(97, Math.max(3, od(A.owner) / (od(A.owner) + od(B.owner)) * 100)); return `<span class="fx-meter fx-rmeter clear"><i class="a" style="width:${sh.toFixed(1)}%"></i><i class="b" style="width:${(100 - sh).toFixed(1)}%"></i><s style="left:${sh.toFixed(1)}%"></s></span>`; })() : ""}
       <ul class="fx-rfacts">
         <li><i>TIEBREAK</i><span><b>${esc(holds)}</b> · ${esc(tieWhy)}${meet ? (hA !== hB ? ` · a week ${meet.week} ${esc(hA > hB ? B.owner : A.owner)} win evens it, then points for` : ` · the week ${meet.week} winner takes it`) : ""}</span></li>
         ${meet ? `<li class="hot"><i>SHOWDOWN</i><span>Week ${meet.week} head to head · <b>${esc(meet.p >= 0.5 ? A.owner : B.owner)}</b> ${pct(Math.max(meet.p, 1 - meet.p))}</span></li>` : ""}
         ${(() => { const also = race.kind === "spot" ? s.filter((r) => r !== A && r !== B && !sd.slice(0, -1).includes(r) && (wpct(r) === wpct(A) || wpct(r) === wpct(B))) : s.filter((r) => r !== A && r !== B && data.divisionOf?.[r.owner] === data.divisionOf?.[A.owner] && wpct(r) >= wpct(B)); return also.length ? `<li class="hot"><i>ALSO IN IT</i><span>${also.map((r) => `<b>${esc(r.owner)}</b> ${r.wins}-${r.losses}${od(r.owner) == null ? "" : ` (${pct(od(r.owner))})`}`).join(", ")} on the same record</span></li>` : ""; })()}
-        <li><i>MAGIC #</i><span>${magic ? `<b>${magic}</b> · ${esc(A.owner)} wins + ${esc(B.owner)} losses to stay ahead` : `${esc(B.owner)} can't catch ${esc(A.owner)}`}</span></li>
+        <li><i>MAGIC #</i><span>${magic ? `<b>${magic}</b> · any mix of ${esc(A.owner)} wins and ${esc(B.owner)} losses adding to ${magic} clinches ${race.kind === "div" ? "the title" : "the spot"} over ${esc(B.owner)}` : `Clinched over ${esc(B.owner)}`}</span></li>
       </ul>
       <div class="fx-k2 fx-rsk">GAMES LEFT</div>
-      <div class="fx-rsch"><div class="fx-rsr hd"><i></i><span class="a">${esc(A.owner).toUpperCase()}</span><span class="b">${esc(B.owner).toUpperCase()}</span></div>${weeks.map((w) => `<div class="fx-rsr${meet && meet.week === w ? " meet" : ""}"><i>WK ${w}</i>${g1(gA.find((g) => g.week === w))}${g1(gB.find((g) => g.week === w))}</div>`).join("")}</div>
-      <p class="fx-whyn">Win chances from points per game this season; ${race.kind === "div" ? "title odds" : "playoff odds"} from 4,000 simulated finishes. Other teams can still change the race.</p></div></div>`;
+      <div class="fx-rsch"><div class="fx-rsr hd"><i></i><span class="a">${esc(A.owner).toUpperCase()}<em>WIN %</em></span><span class="b">${esc(B.owner).toUpperCase()}<em>WIN %</em></span></div>${weeks.map((w) => `<div class="fx-rsr${meet && meet.week === w ? " meet" : ""}"><i>WK ${w}</i>${g1(gA.find((g) => g.week === w))}${g1(gB.find((g) => g.week === w))}</div>`).join("")}</div>
+      <p class="fx-whyn" title="Other teams can still change the race.">WIN % from season points per game · ${race.kind === "div" ? "title" : "playoff"} odds from 4,000 simulated seasons</p></div></div>`;
     m.addEventListener("click", (e) => { if (e.target === m || e.target.closest("[data-fxx]")) m.remove(); });
     document.body.appendChild(m);
   };

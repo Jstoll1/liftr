@@ -10238,6 +10238,10 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-rsk { display: block; margin: 12px 0 4px; }
 .fx-rsr { display: grid; grid-template-columns: 38px 1fr 1fr; column-gap: 14px; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(255, 255, 255, .05); font-size: 11.5px; }
 .fx-rsr.hd { font-family: 'Press Start 2P', monospace; font-size: 6px; } .fx-rsr.hd .a { color: var(--neon-cyan); } .fx-rsr.hd .b { color: var(--neon-pink); }
+.fx-rmeter { display: flex; height: 6px; margin: 8px 2px 0; }
+.fx-meter.fx-rmeter i.b { background: linear-gradient(180deg, rgba(255, 255, 255, .3), rgba(255, 255, 255, 0) 55%), var(--neon-pink); }
+.fx-rsr > span + span { padding-left: 10px; border-left: 1px solid rgba(255, 255, 255, .1); }
+.fx-rsr.hd span em { margin-left: auto; font-style: normal; color: var(--text-dim); font-size: 5px; }
 .fx-rsr.meet { background: rgba(var(--arcade-gold-rgb), .06); box-shadow: inset 2px 0 0 var(--arcade-gold); }
 .fx-rsr.meet > i { color: var(--arcade-gold); padding-left: 4px; }
 .fx-rsr > i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--text-dim); }
