@@ -394,7 +394,10 @@
     const holds = hA > hB ? A.owner : hB > hA ? B.owner : (A.pointsFor || 0) >= (B.pointsFor || 0) ? A.owner : B.owner, tieWhy = hA !== hB ? `head to head ${Math.max(hA, hB)}-${Math.min(hA, hB)}` : "points for (head to head even)";
     const meet = gA.find((g) => g.op === B.owner);
     // Magic number: A's wins plus B's losses that lock A ahead of B.
-    const magic = Math.max(0, wpct(B) + gB.length - wpct(A) + (holds === A.owner ? 0 : 1));
+    // Counts the tiebreak only when it can't change: a head-to-head lead
+    // bigger than the meetings left (a points-for edge is never locked).
+    const meetsLeft = gA.filter((g) => g.op === B.owner).length, locked = holds === A.owner && hA !== hB && Math.abs(hA - hB) > meetsLeft;
+    const magic = Math.max(0, wpct(B) + gB.length - wpct(A) + (locked ? 0 : 1));
     const rec = (o) => { const r = s.find((x) => x.owner === o); return r ? `${r.wins}-${r.losses}` : ""; };
     const od = (o) => race.kind === "div" ? st.odds?.[o]?.bye : st.odds?.[o]?.playoffs;
     const col = (r, proj, cls) => `<div class="fx-rv ${cls}"><span class="fx-rv-tag">${cls === "in" ? race.tags[0] : race.tags[1]}</span><b>${esc(r.owner)} <small>${r.wins}-${r.losses}</small></b><em>${od(r.owner) == null ? "–" : pct(od(r.owner))}</em><i>${race.kind === "div" ? "TITLE + BYE ODDS" : "PLAYOFF ODDS"}</i><span>${proj.toFixed(1)} proj W · ${pts(r.pointsFor)} PF</span></div>`;
@@ -407,11 +410,11 @@
         <li><i>TIEBREAK</i><span><b>${esc(holds)}</b> · ${esc(tieWhy)}${meet ? (hA !== hB ? ` · a week ${meet.week} ${esc(hA > hB ? B.owner : A.owner)} win evens it, then points for` : ` · the week ${meet.week} winner takes it`) : ""}</span></li>
         ${meet ? `<li class="hot"><i>SHOWDOWN</i><span>Week ${meet.week} head to head · <b>${esc(meet.p >= 0.5 ? A.owner : B.owner)}</b> ${pct(Math.max(meet.p, 1 - meet.p))}</span></li>` : ""}
         ${(() => { const also = race.kind === "spot" ? s.filter((r) => r !== A && r !== B && !sd.slice(0, -1).includes(r) && (wpct(r) === wpct(A) || wpct(r) === wpct(B))) : s.filter((r) => r !== A && r !== B && data.divisionOf?.[r.owner] === data.divisionOf?.[A.owner] && wpct(r) >= wpct(B)); return also.length ? `<li class="hot"><i>ALSO IN IT</i><span>${also.map((r) => `<b>${esc(r.owner)}</b> ${r.wins}-${r.losses}${od(r.owner) == null ? "" : ` (${pct(od(r.owner))})`}`).join(", ")} on the same record</span></li>` : ""; })()}
-        <li><i>MAGIC #</i><span>${magic ? `<b>${magic}</b> · any mix of ${esc(A.owner)} wins and ${esc(B.owner)} losses adding to ${magic} clinches ${race.kind === "div" ? "the title" : "the spot"} over ${esc(B.owner)}` : `Clinched over ${esc(B.owner)}`}</span></li>
+        <li><i>MAGIC #</i><span>${magic ? `<b>${magic}</b> · Any combination of ${esc(A.owner)} wins + ${esc(B.owner)} losses clinches over ${esc(B.owner)}` : `Clinched over ${esc(B.owner)}`}</span></li>
       </ul>
       <div class="fx-k2 fx-rsk">GAMES LEFT</div>
       <div class="fx-rsch"><div class="fx-rsr hd"><i></i><span class="a">${esc(A.owner).toUpperCase()}<em>WIN %</em></span><span class="b">${esc(B.owner).toUpperCase()}<em>WIN %</em></span></div>${weeks.map((w) => `<div class="fx-rsr${meet && meet.week === w ? " meet" : ""}"><i>WK ${w}</i>${g1(gA.find((g) => g.week === w))}${g1(gB.find((g) => g.week === w))}</div>`).join("")}</div>
-      <p class="fx-whyn" title="Other teams can still change the race.">WIN % from season points per game · ${race.kind === "div" ? "title" : "playoff"} odds from 4,000 simulated seasons</p></div></div>`;
+      <p class="fx-whyn fx-rnote" title="Other teams can still change the race.">WIN % from season points per game · ${race.kind === "div" ? "title" : "playoff"} odds from 4,000 simulated seasons</p></div></div>`;
     m.addEventListener("click", (e) => { if (e.target === m || e.target.closest("[data-fxx]")) m.remove(); });
     document.body.appendChild(m);
   };
