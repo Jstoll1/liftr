@@ -419,14 +419,14 @@
         // that moved, compared with the last paint.
         const prev = fxSeen[m.id], took = prev && prev.lead && lead && prev.lead !== lead, bump = (k, v) => prev && prev[k] !== v ? " bump" : "";
         fxSeen[m.id] = { lead, a: sa, b: sb };
-        const row = (t, o, side, v) => `<span class="fx-cr s-${side}${lead === side ? " lead" : ""}${t?.owner === me() ? " me" : ""}">${badge(t)}<b>${esc(t?.owner || "")}</b><em class="fx-sc${bump(side, v)}">${pts(t?.points)}</em></span>`;
+        const row = (t, o, side, v) => `<span class="fx-cr s-${side}${lead === side ? " lead" : ""}${t?.owner === me() ? " me" : ""}">${badge(t)}<b>${esc(t?.owner || "")}${mine(m) && (t?.name || data.teams?.[t?.owner]?.name) ? `<small class="fx-tmn">${esc(t?.name || data.teams?.[t?.owner]?.name)}</small>` : ""}</b><em class="fx-sc${bump(side, v)}">${pts(t?.points)}</em></span>`;
         // Battle meter: each side's share of the points scored, a crisp
         // divider where they meet; empty and neutral before anyone scores.
         const share = tot > 0 ? Math.min(96, Math.max(4, (sa / tot) * 100)) : 50;
         const meter = `<span class="fx-meter ${state}" title="${tot > 0 ? `${esc(A?.owner)} ${pts(sa)} · ${esc(B?.owner)} ${pts(sb)}` : "No points yet"}${w != null ? ` · win chance ${esc(A?.owner)} ${pct(w)}` : ""}">${tot > 0 ? `<i class="a" style="width:${share.toFixed(1)}%"></i><i class="b" style="width:${(100 - share).toFixed(1)}%"></i><s style="left:${share.toFixed(1)}%"></s>` : ""}</span>`;
         var card = `<div class="fx-card-mu ${state}${mine(m) ? " mine" : ""}${m.final ? " final" : ""}${took ? " took" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-haspopup="dialog" aria-label="${esc(A?.owner)} ${pts(sa)} against ${esc(B?.owner)} ${pts(sb)}">
           ${mine(m) ? `<span class="fx-cmk">YOUR MATCHUP</span>` : m.final ? `<span class="fx-cmk dim">FINAL</span>` : ""}${row(A, B, "a", sa)}${mine(m) ? `<span class="fx-vs" aria-hidden="true">VS</span>` : ""}${row(B, A, "b", sb)}
-          ${meter}
+          ${mine(m) && h?.regularSeason ? `<span class="fx-mh"><i>ALL TIME</i><span>${leadOf(h.regularSeason)}${h.playoffs ? ` · playoffs ${leadOf(h.playoffs).replace(" leads", "")}` : ""}</span></span>` : ""}${meter}
         </div>`;
       }
       if (!isOpen) return { card, full: "", mine: mine(m) };
