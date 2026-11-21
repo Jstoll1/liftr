@@ -4983,7 +4983,7 @@ async function handleChiefTest(request, env, corsHeaders, url) {
   if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
   const nc = { ...corsHeaders, "Cache-Control": "no-store" };
   const read = async () => ({ cases: ((await env.LIFTR_KV.get(CASES_KEY, "json")) || []).map((c) => cleanCase(c)).filter(Boolean), runs: (await env.LIFTR_KV.get(RUNS_KEY, "json")) || [] });
-  if (request.method === "GET") return json(await read(), 200, nc);
+  if (request.method === "GET") { const r = await read(); if (url.searchParams.get("report") === "1") r.report = (await env.LIFTR_KV.get(`${RUNS_KEY}:last`, "json")) || null; return json(r, 200, nc); }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   let body; try { body = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); }
   let { cases, runs } = await read();
@@ -5008,6 +5008,13 @@ async function handleChiefTest(request, env, corsHeaders, url) {
     const i = cases.findIndex((c) => c.id === body.id); if (i < 0) return json({ error: "No such test" }, 404, corsHeaders);
     if (body.remove) { const gone = (await env.LIFTR_KV.get(`${CASES_KEY}:removed`, "json")) || []; await env.LIFTR_KV.put(`${CASES_KEY}:removed`, JSON.stringify([...new Set([...gone, cases[i].id])].slice(-200))); cases.splice(i, 1); } else cases[i] = cleanCase({ ...cases[i], ...(body.patch || {}), id: cases[i].id });
     await save(); return json({ cases }, 200, nc);
+  }
+  // The last run's report (full and failures-only), so it can be copied
+  // after Live was closed, or from another device. Admin only, like the rest.
+  if (body?.action === "report") {
+    const rep = { at: Date.now(), passed: Number(body.passed) || 0, total: Number(body.total) || 0, text: String(body.text || "").slice(0, 150000), brief: String(body.brief || "").slice(0, 60000) };
+    await env.LIFTR_KV.put(`${RUNS_KEY}:last`, JSON.stringify(rep), { expirationTtl: 30 * 86400 });
+    return json({ ok: true }, 200, nc);
   }
   if (body?.action === "save-run") {
     const results = body.results && typeof body.results === "object" ? Object.fromEntries(Object.entries(body.results).slice(0, 200).map(([k, v]) => [String(k), !!v])) : {};

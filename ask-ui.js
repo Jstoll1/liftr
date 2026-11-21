@@ -828,7 +828,11 @@
     // The short version to paste: only what failed, regressions first.
     const bad = results.filter((x) => !x.check.pass).sort((a, b) => tu.regressed.includes(b.c.id) - tu.regressed.includes(a.c.id));
     const brief = `Brochiefs Chief test brief: ${head}\n` + (bad.length ? testReport(bad).split("\n").slice(1).join("\n") : "\nEverything passed.");
-    return { passed, total: results.length, failed, regressed: tu.regressed, fixed: tu.fixed, runs: set.runs || [], brief, text: `${head}\n\n` + testReport(results) };
+    const text = `${head}\n\n` + testReport(results);
+    // Kept on the worker too, so the results can still be copied on Live
+    // after the app or Live was closed.
+    if (!set.local) ctApi("POST", { action: "report", passed, total: results.length, text, brief });
+    return { passed, total: results.length, failed, regressed: tu.regressed, fixed: tu.fixed, runs: set.runs || [], brief, text };
   }
   // The data a fair run needs: this week's slate, everyone's picks and the
   // WIN% odds worked out from them (a run on a half-loaded page graded stale
