@@ -7139,7 +7139,7 @@ function drawChalkLine(rows, results) {
   const line = document.createElement("div");
   line.className = "chalk-line";
   line.title = "Score of a card with every favorite against the spread";
-  line.innerHTML = `<span>CHALK LINE <b>${pts2(chalk)}</b></span><em>${beat} of ${rows.length} above</em>`;
+  line.innerHTML = `<span>CHALK LINE · <b>${pts2(chalk)}</b></span><em>${beat} of ${rows.length} above</em>`;
   if (i === -1 || !els[i]) rankingsList.appendChild(line);
   else rankingsList.insertBefore(line, els[i]);
   const note = document.createElement("p");
