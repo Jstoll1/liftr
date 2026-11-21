@@ -46,10 +46,12 @@
       ],
       "checks": {
         "tools": [
-          "edge|standings"
+          "standings"
         ],
         "noAsk": true
-      }
+      },
+      "regression": true,
+      "note": "Nov 21: named Robert (status out) the favourite; must read standings"
     },
     {
       "source": "seed",
@@ -62,12 +64,13 @@
       "checks": {
         "mustNot": [
           "isn'?t the top",
-          "can'?t finish (first|1st)"
+          "can'?t finish (first|1st)",
+          "You'?re right[^.]*\\. However"
         ],
         "noAsk": true
       },
       "regression": true,
-      "note": "Nov 21: doubled down on a wrong claim"
+      "note": "Nov 21: agreed ('You're right') then said the opposite"
     },
     {
       "source": "seed",
@@ -82,10 +85,14 @@
         ],
         "must": [
           "\\d+(\\.\\d+)?%"
+        ],
+        "mustNot": [
+          "not available",
+          "can.?t access"
         ]
       },
       "regression": true,
-      "note": "Nov 21: answered the effect on the asker instead of the game's odds"
+      "note": "Nov 21: gameOdds found no pick to read from; now plays the game model itself"
     },
     {
       "source": "seed",
@@ -100,8 +107,14 @@
         ],
         "must": [
           "%"
+        ],
+        "mustNot": [
+          "not available",
+          "can.?t access"
         ]
-      }
+      },
+      "regression": true,
+      "note": "Nov 21: same as odds-cover"
     },
     {
       "source": "seed",
@@ -113,8 +126,13 @@
       "checks": {
         "tools": [
           "chance|needs|scenarios"
+        ],
+        "mustNot": [
+          "^Yes, if your lock misses"
         ]
-      }
+      },
+      "regression": true,
+      "note": "Nov 21: answered a what-if as if Jake were alive while he was already out"
     },
     {
       "source": "seed",
@@ -253,8 +271,16 @@
       "checks": {
         "tools": [
           "archive"
+        ],
+        "mustNot": [
+          "don'?t have"
+        ],
+        "must": [
+          "\\d+-\\d+"
         ]
-      }
+      },
+      "regression": true,
+      "note": "Nov 21: archive was asked about 'Conlan' and refused"
     },
     {
       "source": "seed",
@@ -279,8 +305,14 @@
       "checks": {
         "tools": [
           "picks"
+        ],
+        "mustNot": [
+          "trouble accessing",
+          "try again"
         ]
-      }
+      },
+      "regression": true,
+      "note": "Nov 21: picks tool got game_id and returned 'No game undefined'"
     },
     {
       "source": "seed",
@@ -305,8 +337,13 @@
       "checks": {
         "tools": [
           "standings|needs|season|picks"
+        ],
+        "mustNot": [
+          "0 out of 10"
         ]
-      }
+      },
+      "regression": true,
+      "note": "Nov 21: rated a card 0/10 before any game was final"
     },
     {
       "source": "seed",
@@ -360,6 +397,22 @@
         ],
         "noAsk": true
       }
+    },
+    {
+      "id": "why-out",
+      "screen": "pickem",
+      "turns": [
+        "Why am I out already when no games have started?"
+      ],
+      "checks": {
+        "tools": [
+          "edge|needs|scenarios|standings"
+        ],
+        "noAsk": true
+      },
+      "source": "fix",
+      "regression": true,
+      "note": "Nov 21: 'out' before kickoff was never explained; edge now gives outBecause"
     }
   ]
 }
