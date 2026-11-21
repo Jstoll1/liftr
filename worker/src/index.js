@@ -314,14 +314,24 @@ const app = {
       const players = await Promise.all(roster.slice(0, 20).map(async (p) => {
         let news = [];
         if (p.id) {
-          const key = `fxnews:${p.id}`;
+          const key = `fxnews2:${p.id}`;
           news = await env.LIFTR_KV.get(key, "json");
           if (!news) {
             news = [];
-            try {
-              const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/news?athletes=${encodeURIComponent(p.id)}&limit=3`, { signal: AbortSignal.timeout(5000) });
-              if (r.ok) { const j = await r.json(); news = (j.articles || []).slice(0, 3).map((a) => ({ headline: String(a.headline || "").slice(0, 160), blurb: String(a.description || "").slice(0, 240), at: Date.parse(a.published || a.lastModified || "") || null, link: a.links?.web?.href || null })).filter((a) => a.headline); }
-            } catch {}
+            // Only stories ESPN tags with this player: the general feed
+            // ignores a player filter (Nov 21: one Titans story on every row),
+            // so every article is checked for the player's own athlete tag.
+            const mine = (a) => (a.categories || []).some((c) => String(c.athleteId ?? c.athlete?.id ?? "") === String(p.id)) || String(a.athleteId ?? "") === String(p.id) || (Array.isArray(a.athletes) && a.athletes.some((x) => String(x.id ?? x) === String(p.id)));
+            for (const src of [`https://site.api.espn.com/apis/fantasy/v2/games/ffl/news/players?limit=10&playerId=${encodeURIComponent(p.id)}`, `https://site.web.api.espn.com/apis/v2/sports/football/nfl/athletes/${encodeURIComponent(p.id)}/news?limit=10`]) {
+              try {
+                const r = await fetch(src, { signal: AbortSignal.timeout(5000) });
+                if (!r.ok) continue;
+                const j = await r.json();
+                const list = j.feed || j.articles || j.news || [];
+                news = list.filter(mine).slice(0, 3).map((a) => ({ headline: String(a.headline || a.title || "").slice(0, 160), blurb: String(a.description || a.story || "").replace(/<[^>]+>/g, "").slice(0, 240), at: Date.parse(a.published || a.lastModified || "") || null, link: a.links?.web?.href || a.link || null })).filter((a) => a.headline);
+                if (news.length) break;
+              } catch {}
+            }
             await env.LIFTR_KV.put(key, JSON.stringify(news), { expirationTtl: 1200 });
           }
         }
