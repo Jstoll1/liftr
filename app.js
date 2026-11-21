@@ -5653,7 +5653,12 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   } else {
     const slots = [];
     for (const r of [...rows].sort((a, b) => a.order - b.order || a.t - b.t)) { const k = r.slot; let sl = slots.find((x) => x.k === k); if (!sl) slots.push((sl = { k, list: [] })); sl.list.push(r); }
-    rowsHtml = (Object.keys(sway).length && rows.some((r) => !isFin(r)) ? `<div class="ps-cols" title="Their overall chance to win the week if this pick hits or misses, not the chance the pick itself hits"><span>WEEK WIN PROBABILITY ⓘ</span><span class="up">HIT</span><span class="dn">MISS</span></div>` : "") + fill(slots.flatMap((sl) => sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t)));
+    const all = slots.flatMap((sl) => sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t));
+    const cols = Object.keys(sway).length && rows.some((r) => !isFin(r)) ? `<div class="ps-cols" title="Their overall chance to win the week if this pick hits or misses, not the chance the pick itself hits"><span>WEEK WIN % IF</span><span class="up">HIT</span><span class="dn">MISS</span></div>` : "";
+    // Live, then upcoming, then final, each under a small count label.
+    const grp = (o) => all.filter((r) => r.order === o), lv = grp(0), up = grp(1), fn = grp(2);
+    const sec = (k, list) => list.length ? `<div class="ps-grp ${k.toLowerCase()}"><span>${k} · ${list.length}</span></div>${fill(list)}` : "";
+    rowsHtml = cols + sec("LIVE", lv) + sec("UPCOMING", up) + sec("FINAL", fn);
   }
   // Tiebreaker row: the game, the guess, the real total once final, and
   // the miss, so the tiebreak ordering on the board is explained here.
@@ -5699,7 +5704,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const terms = pk.mode === "SU" ? "to win" : `${pk.team === g.favorite ? "−" : "+"}${g.spread}`;
       const tShort = pk.team === g.away ? g.awayShort : g.homeShort, oShort = pk.team === g.away ? g.homeShort : g.awayShort;
       const rival = m ? `<b>${escapeCd(shown(m.n))}</b> picked ${escapeCd(m.tp.team === g.away ? g.awayShort : g.homeShort)}. ${m.k} of ${m.total} remaining picks match.` : "";
-      wpRow = `<div class="bs${sw.ifMiss < 0.01 ? " must" : ""}" data-rdgame="${g.id}" role="button" tabindex="0"><span class="bs-k">BIGGEST SWING${sw.ifMiss < 0.01 ? " · <em>MUST HIT</em>" : ""}</span><div class="bs-main"><img src="${logoUrl(pk.team === g.away ? g.awayId : g.homeId)}" alt="" onerror="this.style.visibility='hidden'"><span class="bs-t"><b>${escapeCd(tShort)} ${terms}${pk.lock && lockRule() ? " 🔒" : ""}</b><small>vs ${escapeCd(oShort)} · ${pickWorth(g, pk)} PT</small></span><span class="bs-o"><small>IF HIT</small><b class="up">${pc(sw.ifHit)}</b></span><span class="bs-o"><small>IF MISS</small><b class="dn">${pc(sw.ifMiss)}</b></span></div>${rival ? `<span class="bs-r">${rival}</span>` : ""}</div>`;
+      wpRow = `<div class="bs${sw.ifMiss < 0.01 ? " must" : ""}" data-rdgame="${g.id}" role="button" tabindex="0"><span class="bs-k">BIGGEST SWING${sw.ifMiss < 0.01 ? " · <em>MUST HIT</em>" : ""}</span><div class="bs-main"><img src="${logoUrl(pk.team === g.away ? g.awayId : g.homeId)}" alt="" onerror="this.style.visibility='hidden'"><span class="bs-t"><b>${escapeCd(tShort)} ${terms}${pk.lock && lockRule() ? " 🔒" : ""}</b><small>vs ${escapeCd(oShort)} · ${pickWorth(g, pk)} PT</small></span><span class="bs-o"><small>WEEK WIN % IF HIT</small><b class="up">${pc(sw.ifHit)}</b></span><span class="bs-o"><small>IF MISS</small><b class="dn">${pc(sw.ifMiss)}</b></span></div>${rival ? `<span class="bs-r">${rival}</span>` : ""}</div>`;
     } else wpRow = `<div class="rd-wp">${opts.sheet ? "" : `<span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</span>`}${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length && !opts.sheet ? `<span class="rd-wp-key">${opts.sheet ? `Impact on ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance to win the week (now ${winChanceLabel(wd.pct, wd)}): + if the pick hits, − if it misses` : `Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week`}</span>` : ""}</div>`;
   }
   // A Scouting Report published from the Creative Studio, under the week.
@@ -7371,7 +7376,7 @@ function drawRankSheet(keepScroll) {
       <button type="button" class="rs-nav" data-rs="next" aria-label="Next player">›</button>
       <button type="button" class="rs-x" data-rs="x" aria-label="Close">✕</button>
     </div>
-    ${pct != null ? `<div class="rs-hero"><div class="rs-chance"><span class="rs-k">CHANCE TO WIN</span><b class="rs-pct${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}${txt === "CLINCHED" ? " clin" : ""}">${txt}</b></div><div class="rs-btns">${vsBtn}${canPath ? `<button type="button" class="rd-path-btn rs-path" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>PATH</button>` : ""}</div></div>` : vsBtn ? `<div class="rs-wp">${vsBtn}</div>` : ""}
+    ${pct != null ? `<div class="rs-hero"><div class="rs-chance"><span class="rs-k">CHANCE TO WIN</span><b class="rs-pct${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}${txt === "CLINCHED" ? " clin" : ""}">${txt}</b><span class="rs-meter" aria-hidden="true">${Array.from({ length: 20 }, (_, k) => `<i class="${k < Math.round(Math.max(0, Math.min(100, pct)) / 5) ? "on" : ""}"></i>`).join("")}</span></div><div class="rs-btns">${vsBtn}${canPath ? `<button type="button" class="rd-path-btn rs-path" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>PATH</button>` : ""}</div></div>` : vsBtn ? `<div class="rs-wp">${vsBtn}</div>` : ""}
     ${solo}
     <span class="rs-count">${i + 1} / ${rows.length}</span><div class="rs-dots" aria-hidden="true">${rows.map((_, k) => `<i class="${k === i ? "on" : ""}"></i>`).join("")}</div>`;
   const body = el.querySelector(".rs-body"); const top = body.scrollTop;
@@ -9533,7 +9538,7 @@ function sinceState(game, pick, l) {
 // The play as a short result: "Run for 15 yds", "Pass complete for 22 yds · 1st down",
 // "Incomplete pass · Penalty, offside". Names, numbers and tacklers are dropped.
 function playSummary(t) {
-  t = String(t || "").replace(/^\(\d+:\d+\)\s*/, "").replace(/^(No Huddle-?\s*)?(Shotgun|Pistol|Under Center|Wildcat)?\s*/i, "").trim();
+  t = String(t || "").replace(/^\(\d+:\d+\)\s*/, "").replace(/^\(?(No Huddle-?\s*)?(Shotgun|Pistol|Under Center|Wildcat)?\)?\s*/i, "").trim();
   if (!t) return "";
   const yds = (n) => `${Math.abs(n)} yd${Math.abs(n) === 1 ? "" : "s"}`;
   let m;
@@ -9543,7 +9548,14 @@ function playSummary(t) {
   const pen = t.match(/PENALTY\s+([A-Z]{2,5})\s+(.+?)(?:\s*\(|,|\s+\d+\s+yards?|$)/i);
   const penTxt = pen ? `Penalty, ${pen[2].replace(/\s*\(.*$/, "").trim().toLowerCase()}` : "";
   let main = "";
+  // Who: "Dante Moore" -> "D. Moore" (ESPN starts most plays with the name).
+  const nm = (x) => { const w = String(x || "").trim().replace(/^([A-Z])\.(?=[A-Z])/, "$1. ").split(/\s+/); if (/^[A-Z]\.$/.test(w[0])) return w.join(" "); return w.length > 1 ? `${w[0][0]}. ${w.slice(1).join(" ")}` : w[0] || ""; };
+  const NAME = "((?:[A-Z]\\.\\s?[A-Z][A-Za-z'-]+)|(?:[A-Z][A-Za-z.'-]+(?:\\s[A-Z][A-Za-z.'-]+){1,2}))";
+  const lead = t.match(new RegExp(`^${NAME}\\s+(?:pass|run|rush|scrambles?|sacked|kneels?|left|right|up)`)), who = lead ? nm(lead[1]) : "";
+  const to = t.match(new RegExp(`pass (?:complete|incomplete)?\\s*(?:short |deep )?(?:left |right |middle )?to ${NAME}`)), rec = to ? nm(to[1]) : "";
   // Scoring plays come as "Evan Stewart 12 Yd pass from Dante Moore (…Kick)".
+  if ((m = t.match(new RegExp(`^${NAME}\\s+(\\d+)\\s*yd\\s+pass\\s+from\\s+${NAME}`, "i")))) return `TD! ${nm(m[3])} to ${nm(m[1])}, ${yds(+m[2])}`;
+  if ((m = t.match(new RegExp(`^${NAME}\\s+(\\d+)\\s*yd\\s+(?:run|rush)`, "i")))) return `TD! ${nm(m[1])} run, ${yds(+m[2])}`;
   if ((m = t.match(/(\d+)\s*yd\s+pass\s+(?:from|to)\b/i))) return `Touchdown pass, ${yds(+m[1])}`;
   if ((m = t.match(/(\d+)\s*yd\s+(?:run|rush)\b/i))) return `Touchdown run, ${yds(+m[1])}`;
   if ((m = t.match(/(\d+)\s*yd\s+(?:interception|fumble|punt|kickoff)\s+return/i))) return `Touchdown return, ${yds(+m[1])}`;
@@ -9554,7 +9566,7 @@ function playSummary(t) {
   else if (/pass incomplete/i.test(t)) main = "Incomplete pass";
   else if ((m = t.match(/pass complete.*?for (?:a loss of )?(-?\d+) yards?/i))) main = /for a loss of/i.test(t) ? `Pass, loss of ${yds(+m[1])}` : `Pass complete for ${yds(+m[1])}`;
   else if (/pass complete.*?for no gain/i.test(t)) main = "Pass complete, no gain";
-  else if ((m = t.match(/(?:rush|run|scramble[sd]?|kneel).*?for (?:a loss of )?(-?\d+) yards?/i))) main = /for a loss of/i.test(t) || +m[1] < 0 ? `Run, loss of ${yds(+m[1])}` : `Run for ${yds(+m[1])}`;
+  else if ((m = t.match(/(?:rush|run|scramble[sd]?|kneel|(?:left|right) (?:end|tackle|guard)|up the middle).*?for (?:a loss of )?(-?\d+) yards?/i))) main = /for a loss of/i.test(t) || +m[1] < 0 ? `Run, loss of ${yds(+m[1])}` : `Run for ${yds(+m[1])}`;
   else if (/(?:rush|run).*?for no gain/i.test(t)) main = "Run, no gain";
   else if ((m = t.match(/(\d+)\s*(?:yd|yard)s?\s+field goal\s+(?:attempt\s+)?(?:is\s+)?(good|no good|missed|blocked)/i))) main = `${m[1]}-yd field goal ${m[2].toLowerCase() === "good" ? "good" : "missed"}`;
   else if ((m = t.match(/punts?\s+(\d+)\s+yards?/i))) main = `Punt, ${yds(+m[1])}`;
@@ -9564,6 +9576,13 @@ function playSummary(t) {
   else if (/end of (\d|the)|end quarter|end of half|halftime/i.test(t)) main = t.replace(/\.$/, "");
   if (!main && penTxt) return [penTxt, ...tags].join(" · ");
   if (!main) return t.replace(/\(.*?\)/g, "").replace(/#\d+\s+/g, "").replace(/\s{2,}/g, " ").trim().slice(0, 80);
+  // Put the player on it: "J. Haynes run for 6 yds", "D. Moore to E. Stewart, 12 yds".
+  if (who) {
+    if (/^Pass complete for /.test(main) && rec) main = `${who} to ${rec}, ${main.replace(/^Pass complete for /, "")}`;
+    else if (/^Incomplete pass/.test(main)) main = `${who} incomplete${rec ? ` to ${rec}` : ""}`;
+    else if (/^(Run|Pass|Sack)/.test(main)) main = `${who} ${main[0].toLowerCase()}${main.slice(1)}`;
+    else if (/^Interception/.test(main)) main = `${who} intercepted`;
+  }
   return [main, ...(penTxt ? [penTxt] : []), ...tags].join(" · ");
 }
 // The last play each live game showed, so a new one can flash.
