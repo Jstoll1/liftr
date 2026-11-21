@@ -288,11 +288,11 @@
   // Each chip opens the games behind it: every regular-season meeting, the
   // playoff ones, a final, or the last few.
   const h2hLine = (h, mid) => {
-    const parts = [["reg", leadOf(h.regularSeason)]];
-    if (h.playoffs) parts.push(["po", `playoffs: ${leadOf(h.playoffs).replace(" leads", "")}`]);
-    for (const c of h.championshipGames || []) parts.push([`final-${c.year}`, `<b>${esc(c.winner)}</b> won the ${esc(c.year)} final`]);
+    const parts = [["reg", `<i>H2H</i> ${leadOf(h.regularSeason).replace(" leads ", " ")}`]];
+    if (h.playoffs) parts.push(["po", `<i>PO</i> ${leadOf(h.playoffs).replace(" leads", "")}`]);
+    for (const c of h.championshipGames || []) parts.push([`final-${c.year}`, `<i>'${esc(String(c.year).slice(2))} FINAL</i> <b>${esc(c.winner)}</b>`]);
     const lm = String(h.lastMeeting || "").match(/^(\d{4}) week (\d+): (\S+) ([\d.]+)-([\d.]+)/);
-    if (lm) parts.push(["last", `last: <b>${esc(lm[3])}</b> won ${pts(lm[4])}–${pts(lm[5])} (${lm[1]}, wk ${lm[2]})`]);
+    if (lm) parts.push(["last", `<i>LAST</i> <b>${esc(lm[3])}</b> +${pts(lm[4] - lm[5])}`]);
     const g = h.games || [], k = chipOpen?.mid === mid ? chipOpen.k : null;
     const chips = parts.map(([id, x]) => `<span class="fx-chip${g.length ? " tap" : ""}${k === id ? " on" : ""}"${g.length ? ` data-fxchip="${id}" data-mid="${mid}" role="button" tabindex="0"` : ""}>${x}</span>`).join("");
     if (!k) return chips;
@@ -510,8 +510,8 @@
       if (m.final) { oL.final = oR.final = true; }
       return { id: m.id, card, mine: mine(m), full: `<div class="fx-mu open${m.final ? " final" : ""}${mine(m) ? " mine" : ""}" data-fxmu="${m.id}">
         <div class="fx-row">${sideHtml(L, Rt, "a", oL)}<span class="fx-vs">${m.final ? "FINAL" : "VS"}</span>${sideHtml(Rt, L, "h", oR)}</div>
-        ${h ? `<div class="fx-ctx"><small>ALL TIME</small><span class="fx-chips">${h2hLine(h, m.id)}</span></div>` : ""}${swing({ ...m, away: L, home: Rt })}${wL != null ? `<div class="fx-ctx"><small>WIN CHANCE</small><div class="fx-wp" title="From live points and projections for players still to play"><b>${esc(L?.owner)} ${pct(wL)}</b><span><i style="width:${(wL * 100).toFixed(1)}%"></i></span><b>${pct(1 - wL)} ${esc(Rt?.owner)}</b></div></div>` : ""}
-        ${mirror(L, Rt)}<p class="fx-note fx-sdkey"><span>Big number: points</span><span>small: projection</span><span class="fx-k-live">green: playing</span><span><s class="fx-ball"></s>has the ball</span></p>
+        ${h ? `<div class="fx-ctx"><span class="fx-chips">${h2hLine(h, m.id)}</span></div>` : ""}${swing({ ...m, away: L, home: Rt })}${wL != null ? `<div class="fx-ctx"><small>WIN CHANCE</small><div class="fx-wp" title="From live points and projections for players still to play"><b>${esc(L?.owner)} ${pct(wL)}</b><span><i style="width:${(wL * 100).toFixed(1)}%"></i></span><b>${pct(1 - wL)} ${esc(Rt?.owner)}</b></div></div>` : ""}
+        ${mirror(L, Rt)}<p class="fx-note fx-sdkey"><span>points / projection</span><span class="fx-k-live">green: playing</span><span><s class="fx-ball"></s>has the ball</span></p>
       </div>` };
     });
     // Tap a card: the full breakdown opens in a pop-up.
