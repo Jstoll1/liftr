@@ -10497,7 +10497,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-tn-c span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .fx-tn-c i { flex: none; font-style: normal; }
 .fx-tn li.open .fx-tn-c { display: none; }
-.fx-tn-more { display: block; margin: 2px 0 0 auto; padding: 4px 2px; border: 0; background: none; color: var(--neon-cyan); font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .04em; cursor: pointer; }
+.fx-tn-more { position: relative; display: block; margin: -9px 12px 0 auto; padding: 4px 7px; border: 1px solid rgba(var(--neon-cyan-rgb), .35); border-radius: 5px; background: var(--bg); color: var(--neon-cyan); font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .04em; cursor: pointer; }
 /* The league table's own header, so the board hands over cleanly. */
 .fx-sechd { display: flex; align-items: center; gap: 10px; margin: 20px 0 2px; }
 .fx-sechd::before, .fx-sechd::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--neon-cyan-rgb), .45), rgba(var(--neon-purple-rgb), .45), transparent); }
