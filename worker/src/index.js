@@ -4886,7 +4886,7 @@ async function handleWeekChat(request, env, corsHeaders, url = new URL(request.u
   const prevRoute = prevUser >= 0 ? leagueRoute(messages[prevUser].content, games).route : null;
   // The screen decides an unclear question: Fantasy tab means fantasy, the pick'em screens mean the pick'em.
   const screen = body?.context?.screen === "fantasy" ? "fantasy" : body?.context?.screen === "pickem" ? "pickem" : null;
-  const route = leagueRoute(messages[lastUser]?.content, games, prevRoute || screen);
+  const route = leagueRoute(messages[lastUser]?.content, games, (prevRoute && prevRoute !== "unclear" ? prevRoute : null) || screen);
   let logId = typeof body?.logId === "string" && body.logId.startsWith(WCHAT_LOG) ? body.logId : null;
   if (messages[messages.length - 1].role === "user") {
     logId = await weekChatLog(env, null, { at: Date.now(), asker, sid, build, q: String(messages[messages.length - 1].content).slice(0, 500), a: null, status: "asked", tools: [], route: route.route, turn: messages.filter((x) => x.role === "user").length });
