@@ -10473,3 +10473,5 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .ct-b { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--card-border); background: transparent; color: var(--text-dim); font: 600 14px system-ui, sans-serif; }
 .ct-b.go { border-color: rgba(var(--neon-cyan-rgb), .6); color: var(--neon-cyan); background: rgba(var(--neon-cyan-rgb), .1); }
 .ct-out { margin: 12px 0 0; max-height: 50vh; overflow: auto; white-space: pre-wrap; font-size: 10.5px; line-height: 1.4; color: rgba(255, 255, 255, .8); user-select: text; -webkit-user-select: text; }
+.ct-bar { height: 6px; margin-top: 12px; border-radius: 3px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.ct-bar i { display: block; width: 0; height: 100%; background: var(--neon-cyan); transition: width .4s ease; }

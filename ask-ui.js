@@ -783,8 +783,8 @@
   // Live's remembered-device token on this phone (same site), for the stored set.
   const ctDevice = () => { try { return localStorage.getItem("brochiefs_live_device") || ""; } catch { return ""; } };
   async function ctApi(method, body) {
-    const d = ctDevice(); if (!d) return null;
-    try { const r = await fetch(`${WORKER_URL}/chief-test?device=${encodeURIComponent(d)}&t=${Date.now()}`, { method, cache: "no-store", ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}) }); return r.ok ? await r.json() : null; } catch { return null; }
+    const d = ctDevice(), q = ctAuth || (d ? `device=${encodeURIComponent(d)}` : ""); if (!q) return null;
+    try { const r = await fetch(`${WORKER_URL}/chief-test?${q}&t=${Date.now()}`, { method, cache: "no-store", ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}) }); return r.ok ? await r.json() : null; } catch { return null; }
   }
   async function loadSet() {
     await loadSeeds();
@@ -808,26 +808,52 @@
     const head = `Chief pressure test · ${new Date().toLocaleString()} · asker ${me()} · build ${build} · week ${typeof currentWeek !== "undefined" ? currentWeek : "?"} · ${GAMES.filter((g) => f[g.id]).length}/${GAMES.length} games final`;
     return [head, ...results.map(({ c, turns, check }) => [`\n## ${c.id} (${c.screen}) ${check ? (check.pass ? "PASS" : `FAIL: ${check.why.join("; ")}`) : ""}${c.regression ? " [regression]" : ""}`, ...turns.map((t) => [`Q: ${t.q}`, `A: ${t.a}`, ...t.tools.map((x) => `   tool ${x.name}(${JSON.stringify(x.args)}) -> ${JSON.stringify(x.out).slice(0, 700)}`)].join("\n"))].join("\n"))].join("\n");
   }
+  // One full run: the stored set (or the repo file), each case through the
+  // real Chief, graded, the score saved. progress(i, n, id) after each.
+  let ctAuth = "";
+  async function runAll(includeRetired, progress = () => {}) {
+    const set = (await loadSet()) || { cases: (SEED_CASES.length ? SEED_CASES : await loadSeeds()).map((c) => ({ source: "seed", ...c })), runs: [], local: true };
+    const todo = set.cases.filter((c) => includeRetired || !c.retired), results = [];
+    for (let i = 0; i < todo.length; i++) { progress(i, todo.length, todo[i].id); const turns = await testCase(todo[i]); results.push({ c: todo[i], turns, check: grade(todo[i], turns) }); }
+    progress(todo.length, todo.length, "");
+    const passed = results.filter((r) => r.check.pass).length, failed = results.filter((r) => !r.check.pass).map((r) => r.c.id);
+    let saved = "";
+    if (!set.local) { const st = `${GAMES.filter((g) => fins()[g.id]).length}/${GAMES.length} final${GAMES.some((g) => latestLive[g.id]?.state === "in") ? ", games live" : ""}`; const r = await ctApi("POST", { action: "save-run", results: Object.fromEntries(results.map((x) => [x.c.id, x.check.pass])), build: document.querySelector('meta[name="build"]')?.content || "", state: st, passed, total: results.length, failed }); saved = r ? "" : " (couldn't save the score)"; set.runs = r?.runs || set.runs; } else saved = " (not saved: no Live sign-in reached the test)";
+    const trend = (set.runs || []).slice(0, 6).map((x) => `${x.passed}/${x.total}`).join(" ← ");
+    return { passed, total: results.length, failed, runs: set.runs || [], text: `SCORE ${passed}/${results.length}${saved}${trend ? `\nRecent runs: ${trend}` : ""}${failed.length ? `\nFailed checks: ${failed.join(", ")}` : ""}\n\n` + testReport(results) };
+  }
+  // The data a fair run needs: this week's slate, everyone's picks and the
+  // WIN% odds worked out from them (a run on a half-loaded page graded stale
+  // numbers).
+  const ctReady = async (ms = 30000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (GAMES.length && lastGoodCloudPicks && Object.keys(lastGoodCloudPicks).length && base()?.detail) return true; await new Promise((r) => setTimeout(r, 500)); } return false; };
+  // Live runs the test in a hidden frame of the app (?ctembed=1) and shows
+  // the progress bar and report itself; the frame only does the work.
+  if (/[?&]ctembed=1\b/.test(location.search) && window.parent !== window) {
+    const post = (m) => { try { window.parent.postMessage(m, location.origin); } catch {} };
+    window.addEventListener("message", async (e) => {
+      if (e.origin !== location.origin || e.data?.type !== "ct-run") return;
+      ctAuth = String(e.data.auth || "");
+      if (me() !== "Jake") return post({ type: "ct-error", error: "The app on this device isn't signed in as Jake. Open the app here once and pick Jake." });
+      post({ type: "ct-progress", i: 0, n: 0, id: "loading this week's data" });
+      if (!(await ctReady())) return post({ type: "ct-error", error: "This week's picks and odds didn't load in 30 seconds. Try again." });
+      try { const r = await runAll(!!e.data.all, (i, n, id) => post({ type: "ct-progress", i, n, id })); post({ type: "ct-done", ...r }); } catch (err) { post({ type: "ct-error", error: String(err?.message || err).slice(0, 120) }); }
+    });
+    post({ type: "ct-hello" });
+  }
   async function runPressureTest() {
     if (me() !== "Jake") return;
     let m = document.getElementById("chief-test");
     if (!m) { m = document.createElement("div"); m.id = "chief-test"; m.className = "ct-ov"; document.body.appendChild(m); }
-    m.innerHTML = `<div class="ct-card"><div class="ct-k">CHIEF PRESSURE TEST</div><p class="ct-p">The question set through the real Chief, off the chat log. About a minute or two.</p><label class="ct-l"><input type="checkbox" id="ct-ret"> Include retired tests (the quarterly check)</label><div class="ct-row"><button type="button" class="ct-b" data-ct="close">Close</button><button type="button" class="ct-b go" data-ct="run">Run</button></div><pre class="ct-out" hidden></pre></div>`;
+    m.innerHTML = `<div class="ct-card"><div class="ct-k">CHIEF PRESSURE TEST</div><p class="ct-p">The question set through the real Chief, off the chat log. About a minute or two.</p><label class="ct-l"><input type="checkbox" id="ct-ret"> Include retired tests (the quarterly check)</label><div class="ct-row"><button type="button" class="ct-b" data-ct="close">Close</button><button type="button" class="ct-b go" data-ct="run">Run</button></div><div class="ct-bar" hidden><i></i></div><pre class="ct-out" hidden></pre></div>`;
     m.onclick = async (e) => {
       const b = e.target.closest("[data-ct]"); if (!b) return;
       if (b.dataset.ct === "close") { m.remove(); history.replaceState(null, "", location.pathname + location.search); return; }
       if (b.dataset.ct === "copy") { const t = m.querySelector(".ct-out").textContent; try { await navigator.clipboard.writeText(t); b.textContent = "Copied"; } catch { const r = document.createRange(); r.selectNodeContents(m.querySelector(".ct-out")); getSelection().removeAllRanges(); getSelection().addRange(r); b.textContent = "Selected: copy it"; } return; }
       if (b.dataset.ct !== "run") return;
-      b.disabled = true; const p = m.querySelector(".ct-p"), pre = m.querySelector(".ct-out"); const results = [];
-      const set = (await loadSet()) || { cases: (SEED_CASES.length ? SEED_CASES : await loadSeeds()).map((c) => ({ source: "seed", ...c })), runs: [], local: true };
-      const all = m.querySelector("#ct-ret")?.checked, todo = set.cases.filter((c) => all || !c.retired);
-      for (let i = 0; i < todo.length; i++) { p.textContent = `Running ${i + 1} of ${todo.length}: ${todo[i].id}…`; const turns = await testCase(todo[i]); results.push({ c: todo[i], turns, check: grade(todo[i], turns) }); }
-      const passed = results.filter((r) => r.check.pass).length, failed = results.filter((r) => !r.check.pass).map((r) => r.c.id);
-      let saved = "";
-      if (!set.local) { const st = `${GAMES.filter((g) => fins()[g.id]).length}/${GAMES.length} final${GAMES.some((g) => latestLive[g.id]?.state === "in") ? ", games live" : ""}`; const r = await ctApi("POST", { action: "save-run", results: Object.fromEntries(results.map((x) => [x.c.id, x.check.pass])), build: document.querySelector('meta[name="build"]')?.content || "", state: st, passed, total: results.length, failed }); saved = r ? "" : " (couldn't save the score)"; set.runs = r?.runs || set.runs; } else saved = " (not saved: open Live on this phone once and tick Remember this device)";
-      const trend = (set.runs || []).slice(0, 6).map((x) => `${x.passed}/${x.total}`).join(" ← ");
-      pre.textContent = `SCORE ${passed}/${results.length}${saved}${trend ? `\nRecent runs: ${trend}` : ""}${failed.length ? `\nFailed checks: ${failed.join(", ")}` : ""}\n\n` + testReport(results); pre.hidden = false; p.textContent = "Done. Copy the report and paste it to Claude."; b.dataset.ct = "copy"; b.textContent = "Copy report"; b.disabled = false; return;
-
+      b.disabled = true; const p = m.querySelector(".ct-p"), pre = m.querySelector(".ct-out"), bar = m.querySelector(".ct-bar");
+      p.textContent = "Loading this week's data…"; await ctReady(); bar.hidden = false;
+      const r = await runAll(m.querySelector("#ct-ret")?.checked, (i, n, id) => { bar.firstChild.style.width = `${n ? (i / n) * 100 : 0}%`; p.textContent = i < n ? `Running ${i + 1} of ${n}: ${id}…` : "Saving the score…"; });
+      pre.textContent = r.text; pre.hidden = false; p.textContent = "Done. Copy the report and paste it to Claude."; b.dataset.ct = "copy"; b.textContent = "Copy report"; b.disabled = false;
     };
   }
   const maybeTest = () => { if (location.hash === "#chieftest") setTimeout(runPressureTest, 1200); };
