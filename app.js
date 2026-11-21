@@ -4769,8 +4769,8 @@ function renderLiveScores(live, cloudPicks) {
             <span class="bug-status">${statusText}</span>${tvTag}
             ${myPill}
           </div>
-          ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop, feed?.awayRank ?? null, "away")}
-          ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop, feed?.homeRank ?? null, "home")}
+          ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop, feed?.awayRank ?? savedRecords(game.id)?.awayRank ?? null, "away")}
+          ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop, feed?.homeRank ?? savedRecords(game.id)?.homeRank ?? null, "home")}
         </div>
       `;
     })
