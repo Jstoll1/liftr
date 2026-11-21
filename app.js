@@ -5654,11 +5654,13 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
     const slots = [];
     for (const r of [...rows].sort((a, b) => a.order - b.order || a.t - b.t)) { const k = r.slot; let sl = slots.find((x) => x.k === k); if (!sl) slots.push((sl = { k, list: [] })); sl.list.push(r); }
     const all = slots.flatMap((sl) => sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t));
-    const cols = Object.keys(sway).length && rows.some((r) => !isFin(r)) ? `<div class="ps-cols" title="Their overall chance to win the week if this pick hits or misses, not the chance the pick itself hits"><span>WEEK WIN % IF</span><span class="up">HIT</span><span class="dn">MISS</span></div>` : "";
+    const cols = Object.keys(sway).length && rows.some((r) => !isFin(r));
     // Live, then upcoming, then final, each under a small count label.
     const grp = (o) => all.filter((r) => r.order === o), lv = grp(0), up = grp(1), fn = grp(2);
-    const sec = (k, list) => list.length ? `<div class="ps-grp ${k.toLowerCase()}"><span>${k} · ${list.length}</span></div>${fill(list)}` : "";
-    rowsHtml = cols + sec("LIVE", lv) + sec("UPCOMING", up) + sec("FINAL", fn);
+    // The first open section's label line carries the HIT / MISS heads.
+    let headed = false;
+    const sec = (k, list) => { if (!list.length) return ""; const hd = cols && k !== "FINAL" && !headed ? (headed = true) : false; return `<div class="ps-grp ${k.toLowerCase()}"${hd ? ' title="Their chance to win the week if this pick hits or misses"' : ""}><span>${k} · ${list.length}</span>${hd ? '<em class="up">HIT</em><em class="dn">MISS</em>' : ""}</div>${fill(list)}`; };
+    rowsHtml = sec("LIVE", lv) + sec("UPCOMING", up) + sec("FINAL", fn);
   }
   // Tiebreaker row: the game, the guess, the real total once final, and
   // the miss, so the tiebreak ordering on the board is explained here.

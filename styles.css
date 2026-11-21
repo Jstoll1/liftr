@@ -9889,7 +9889,8 @@ body.rs-open #ask-fab { display: none; }
    HIT / MISS on every open pick, live rows tinted, tighter rows. */
 .rs-hero { display: flex; align-items: center; gap: 12px; }
 .ps-grp { display: flex; align-items: center; gap: 8px; margin: 10px 0 2px; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .08em; color: var(--text-dim); }
-.ps-grp::after { content: ""; flex: 1; height: 1px; background: var(--card-border); }
+.ps-grp::after { content: ""; order: 1; flex: 1; height: 1px; background: var(--card-border); }
+.ps-grp em { order: 2; font-style: normal; white-space: nowrap; width: 40px; text-align: right; } .ps-grp em.up { color: var(--neon-green); } .ps-grp em.dn { color: var(--neon-pink); width: 42px; }
 .ps-grp.live { color: var(--neon-cyan); } .ps-grp.final { color: rgba(255, 255, 255, .55); }
 .ps-cols + .ps-grp { margin-top: 2px; }
 .ps-row.final .rd-pts:not(.miss):not(.none):not(.push)::before { content: "✓ "; }
@@ -9973,8 +9974,10 @@ body.rs-open #ask-fab { display: none; }
 .rs-chance { row-gap: 4px; }
 .rs-btns .rs-vs { min-height: 28px; }
 .rs-top .rs-path { min-height: 30px; }
-.bs { padding: 8px 12px; margin-bottom: 4px; }
-.bs-k { margin-bottom: 6px; }
+.bs { padding: 7px 11px; margin-bottom: 4px; }
+.ps-row.final { padding-top: 5px; padding-bottom: 5px; }
+.ps-row.final .ps-sub { font-size: 11px; }
+.bs-k { margin-bottom: 4px; }
 .bs-r { margin-top: 6px; }
 /* Header v3.4: chance to win on one balanced line: label, number, bar, VS ME. */
 .rs-hero { align-items: center; gap: 10px; }
