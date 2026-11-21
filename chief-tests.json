@@ -493,6 +493,24 @@
       "source": "miss",
       "regression": true,
       "note": "Nov 21 (Dewitt): answered fantasy only for a question with no league words; now one line per league"
+    },
+    {
+      "id": "fantasy-seeding-division",
+      "screen": "fantasy",
+      "turns": [
+        "why is Andrew the 2 seed at 5-5 ahead of Curt at 8-2"
+      ],
+      "checks": {
+        "must": [
+          "division"
+        ],
+        "mustNot": [
+          "mistake|error in the standings"
+        ],
+        "noAsk": true
+      },
+      "source": "feature",
+      "note": "Nov 21: fantasy seeding follows divisions (winners take seeds 1-2); the Chief should explain the division rule"
     }
   ]
 }
