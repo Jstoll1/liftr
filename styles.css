@@ -10443,3 +10443,24 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 /* Fantasy pop-ups: no rubber-band bounce fighting the swipe to close. */
 .fx-tcard { overscroll-behavior: contain; }
 .fx-thead { touch-action: none; }
+/* Power, Odds, Luck: one line on what the tab ranks, one visual per row. */
+.fx-why-top { margin: 8px 0 2px; font-size: 11.5px; line-height: 1.45; color: var(--text-dim); }
+.fx-sts.t-power .fx-st, .fx-sts.t-luck .fx-st { grid-template-columns: 18px 26px minmax(0, 1fr) 118px !important; }
+.fx-sth.t-power, .fx-sth.t-luck { grid-template-columns: minmax(0, 1fr) 118px !important; }
+.fx-sts.t-odds .fx-st { grid-template-columns: 18px 26px minmax(0, 1fr) 96px 40px !important; }
+.fx-sth.t-odds { grid-template-columns: minmax(0, 1fr) 96px 40px !important; }
+.fx-c.viz { display: flex; align-items: center; gap: 6px; }
+.fx-c.viz em { flex: none; min-width: 30px; font-style: normal; text-align: right; }
+.fx-c.viz em.up { color: var(--neon-green); } .fx-c.viz em.dn { color: var(--neon-pink); } .fx-c.viz em.dim { color: var(--text-dim); }
+.fx-bar { flex: 1; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.fx-bar i { display: block; height: 100%; border-radius: 3px; background: var(--neon-cyan); }
+.fx-st.me .fx-bar i { box-shadow: 0 0 6px var(--neon-cyan); }
+.fx-in, .fx-out { margin-left: auto; padding: 2px 6px; border-radius: 4px; font-size: 6.5px; }
+.fx-in { color: var(--neon-green); border: 1px solid rgba(var(--neon-green-rgb), .55); } .fx-out { color: var(--text-dim); border: 1px solid var(--card-border); }
+.fx-luck { position: relative; flex: 1; height: 8px; }
+.fx-luck::before { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: rgba(255, 255, 255, .3); }
+.fx-luck i { position: absolute; top: 1px; height: 6px; border-radius: 3px; }
+.fx-luck i.up { left: 50%; background: var(--neon-green); } .fx-luck i.dn { right: 50%; background: var(--neon-pink); }
+.fx-sts.t-standings .fx-st.cut, .fx-sts.t-odds .fx-st.cut { position: relative; }
+.fx-sts.t-standings .fx-st.cut::after, .fx-sts.t-odds .fx-st.cut::after { content: "PLAYOFF LINE"; position: absolute; right: 0; bottom: -5px; padding-left: 6px; background: var(--card-bg); font-family: 'Press Start 2P', monospace; font-size: 5px; line-height: 9px; color: var(--neon-cyan); }
+.fx-sth.t-power span:last-child, .fx-sth.t-luck span:last-child, .fx-sth.t-odds span:nth-child(2) { text-align: center; }
