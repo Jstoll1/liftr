@@ -4715,7 +4715,7 @@ function renderLiveScores(live, cloudPicks) {
         <div class="bug-row ${lead ? "leading" : ""} ${myPick && myPick.team === team ? `mine${isFinal && Number.isFinite(g?.awayScore) ? ((scorePick(game, myPick, { awayScore: g.awayScore, homeScore: g.homeScore }) || 0) > 0 ? " hit" : " miss") : ""}` : ""}">
           <span class="bug-mark">
             <img class="bug-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
-            
+            ${myPick && myPick.team === team ? `<i class="bug-chk" aria-label="Your pick"></i>` : ""}
           </span>
           <span class="bug-team"><span class="tm-nm" title="${escapeCd(short)}">${bugName(short)}</span>${rankBadge(rank)}${ballHtml(side)}</span>
           ${fav ? `<span class="bug-fav">-${game.spread}</span>` : `<span class="bug-fav dog"></span>`}
