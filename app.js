@@ -11481,19 +11481,22 @@ async function checkForUpdate(quiet = false) {
     if (!res.ok) return;
     const data = await res.json();
     if (!(data && typeof data.v === "string" && data.v && data.v !== APP_VERSION)) return;
-    let already = "";
-    try { already = sessionStorage.getItem(RELOADED_KEY) || ""; } catch { /* private mode */ }
-    // One automatic reload per build. If the cache still hands back the
-    // old index.html after that, the bar takes over rather than a loop.
-    // Found mid-session: reload too, but only once the person is idle, so
-    // nobody is yanked out of a pick or a sheet. Until then the bar shows.
-    if (already !== data.v && (quiet || !userBusy(8000))) {
-      try { sessionStorage.setItem(RELOADED_KEY, data.v); } catch { /* private mode */ }
+    // Reload on its own, while nobody is mid-tap. GitHub Pages can keep
+    // handing back the old index.html for up to ten minutes after a deploy,
+    // so one reload is not always enough (Nov 21: the bar sat there): try
+    // again every two minutes, up to six times per build, then leave the
+    // bar for a tap rather than loop.
+    let tried = { v: "", n: 0, at: 0 };
+    try { tried = JSON.parse(sessionStorage.getItem(RELOADED_KEY) || "null") || tried; } catch { /* private mode */ }
+    if (tried.v !== data.v) tried = { v: data.v, n: 0, at: 0 };
+    const due = tried.n < 6 && Date.now() - tried.at > (tried.n ? 120000 : 0);
+    if (due && (quiet || !userBusy(8000))) {
+      try { sessionStorage.setItem(RELOADED_KEY, JSON.stringify({ v: data.v, n: tried.n + 1, at: Date.now() })); } catch { /* private mode */ }
       reloadFresh();
       return;
     }
     showUpdateBar();
-    if (already !== data.v) updateWaiting = true;
+    if (tried.n < 6) updateWaiting = true;
   } catch { /* offline, or the file is not there yet: say nothing */ }
 }
 
