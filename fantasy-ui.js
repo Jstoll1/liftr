@@ -349,13 +349,17 @@
   const orderRec = (list) => { const h = h2hWins(), s = [...list].sort((x, y) => wpct(y) - wpct(x) || (y.pointsFor || 0) - (x.pointsFor || 0)), out = []; for (let i = 0; i < s.length;) { let j = i; while (j < s.length && wpct(s[j]) === wpct(s[i])) j++; const g = s.slice(i, j), hw = (r) => g.reduce((n, x) => n + (h[r.owner]?.[x.owner] || 0), 0); out.push(...g.sort((x, y) => hw(y) - hw(x) || (y.pointsFor || 0) - (x.pointsFor || 0))); i = j; } return out; };
   const seeds = (line) => { const s = stand(), dv = data.divisionOf || {}; const divs = [...new Set(s.map((r) => dv[r.owner]).filter((d) => d != null))]; if (divs.length < 2) return orderRec(s).slice(0, line); const win = orderRec(divs.map((d) => orderRec(s.filter((r) => dv[r.owner] === d))[0])); return [...win, ...orderRec(s.filter((r) => !win.includes(r)))].slice(0, line); };
   const divWinners = () => { const s = stand(), dv = data.divisionOf || {}; const divs = [...new Set(s.map((r) => dv[r.owner]).filter((d) => d != null))]; return divs.length < 2 ? new Set() : new Set(divs.map((d) => orderRec(s.filter((r) => dv[r.owner] === d))[0]?.owner)); };
-  const bubble = (line) => {
-    const s = stand(), sd = seeds(line), a = sd[sd.length - 1], b = orderRec(s.filter((r) => !sd.includes(r)))[0];
-    if (!a || !b) return "";
-    const gap = wpct(a) - wpct(b), reg = data.regularSeasonWeeks || 13, left = Math.max(0, reg - ((a.wins || 0) + (a.losses || 0) + (a.ties || 0)));
-    const tag = gap === 0 ? `TIED · ${tieRule()}` : `${gap} WIN${gap === 1 ? "" : "S"} APART`;
-    return `<div class="fx-race" data-fxrace="1" role="button" tabindex="0" aria-haspopup="dialog"><span class="fx-race-k">PLAYOFF RACE</span><span class="fx-race-t"><span class="in">${owner(a.owner)} <em>${a.wins}-${a.losses}</em></span><i>${tag}</i><span class="out">${owner(b.owner)} <em>${b.wins}-${b.losses}</em></span></span><small>${left ? `${left} week${left === 1 ? "" : "s"} left` : "Final week"} ▸</small></div>`;
+  // Races worth showing: the last playoff spot and each division title,
+  // only while the chaser is within one win and can still catch up.
+  const races = (line) => {
+    const s = stand(), sd = seeds(line), reg = data.regularSeasonWeeks || 13, out = [];
+    const left = (r) => Math.max(0, reg - ((r.wins || 0) + (r.losses || 0) + (r.ties || 0)));
+    const add = (a, b, kind, label, tags) => { if (!a || !b) return; const gap = wpct(a) - wpct(b); if (gap > 1 || gap > left(b)) return; out.push({ a: a.owner, b: b.owner, kind, label, tags, gap, left: left(a) }); };
+    add(sd[sd.length - 1], orderRec(s.filter((r) => !sd.includes(r)))[0], "spot", `LAST PLAYOFF SPOT · SEED ${line}`, ["IN", "OUT"]);
+    for (const d of data.divisions || []) { const rs = orderRec(s.filter((r) => data.divisionOf?.[r.owner] === d.id)); if (rs.length > 1) add(rs[0], rs[1], "div", `${String(d.name || "DIVISION").toUpperCase()} TITLE · BYE`, ["LEADS", "CHASES"]); }
+    return out.sort((x, y) => x.gap - y.gap);
   };
+  const bubble = (line) => races(line).map((r, i) => { const A = stand().find((x) => x.owner === r.a), B = stand().find((x) => x.owner === r.b); const tag = r.gap === 0 ? `TIED · ${tieRule()}` : `${r.gap} WIN APART`; return `<div class="fx-race" data-fxrace="${i}" role="button" tabindex="0" aria-haspopup="dialog"><span class="fx-race-k">${esc(r.label)}</span><span class="fx-race-t"><span class="in">${owner(A.owner)} <em>${A.wins}-${A.losses}</em></span><i>${tag}</i><span class="out">${owner(B.owner)} <em>${B.wins}-${B.losses}</em></span></span><small>${r.left ? `${r.left} week${r.left === 1 ? "" : "s"} left` : "Final week"} ▸</small></div>`; }).join("");
   // The race sheet: every team still in doubt, its odds, projected wins,
   // and each game left with a win chance from season scoring.
   // Playoff picture if the season ended today: seeds, byes and the
@@ -366,10 +370,11 @@
     const byes = line === 6 ? 2 : 0, pairs = []; for (let i = byes, j = sd.length - 1; i < j; i++, j--) pairs.push([i, j]);
     return `<div class="fx-pp"><div class="fx-pp-k">IF IT ENDED TODAY</div>${byes ? `<div class="fx-pp-r"><span class="fx-pp-l">BYE</span>${sd.slice(0, byes).map((r, i) => t(r, i + 1)).join("")}</div>` : ""}${pairs.map(([i, j]) => `<div class="fx-pp-r"><span class="fx-pp-l">RD 1</span>${t(sd[i], i + 1)}<em>v</em>${t(sd[j], j + 1)}</div>`).join("")}</div>`;
   };
-  const openRace = () => {
+  const openRace = (idx = 0) => {
     document.getElementById("fx-mupop")?.remove();
     const st = data.stats || {}, line = st.playoffTeams || data.playoffTeams || 6, s = stand(), rem = data.remaining || [];
-    const sd = seeds(line), A = sd[sd.length - 1], B = orderRec(s.filter((r) => !sd.includes(r)))[0];
+    const sd = seeds(line), race = races(line)[idx]; if (!race) return;
+    const A = s.find((r) => r.owner === race.a), B = s.find((r) => r.owner === race.b);
     if (!A || !B) return;
     const ppg = (o) => st.teams?.[o]?.ppg || 0, pWin = (a, b) => phi((ppg(a) - ppg(b)) / (26 * Math.SQRT2));
     const games = (o) => rem.filter((g) => g.home === o || g.away === o).map((g) => { const op = g.home === o ? g.away : g.home; return { week: g.week, op, p: pWin(o, op) }; });
@@ -381,22 +386,22 @@
     // Magic number: A's wins plus B's losses that lock A ahead of B.
     const magic = Math.max(0, wpct(B) + gB.length - wpct(A) + (holds === A.owner ? 0 : 1));
     const rec = (o) => { const r = s.find((x) => x.owner === o); return r ? `${r.wins}-${r.losses}` : ""; };
-    const od = (o) => st.odds?.[o]?.playoffs;
-    const col = (r, proj, cls) => `<div class="fx-rv ${cls}"><span class="fx-rv-tag">${cls === "in" ? "IN" : "OUT"}</span><b>${esc(r.owner)} <small>${r.wins}-${r.losses}</small></b><em>${od(r.owner) == null ? "–" : pct(od(r.owner))}</em><i>PLAYOFF ODDS</i><span>${proj.toFixed(1)} proj W · ${pts(r.pointsFor)} PF</span></div>`;
+    const od = (o) => race.kind === "div" ? st.odds?.[o]?.bye : st.odds?.[o]?.playoffs;
+    const col = (r, proj, cls) => `<div class="fx-rv ${cls}"><span class="fx-rv-tag">${cls === "in" ? race.tags[0] : race.tags[1]}</span><b>${esc(r.owner)} <small>${r.wins}-${r.losses}</small></b><em>${od(r.owner) == null ? "–" : pct(od(r.owner))}</em><i>${race.kind === "div" ? "TITLE + BYE ODDS" : "PLAYOFF ODDS"}</i><span>${proj.toFixed(1)} proj W · ${pts(r.pointsFor)} PF</span></div>`;
     const g1 = (g) => g ? `<span class="${g.op === (g === gA.find((x) => x.week === g.week) ? B.owner : A.owner) ? "vs" : ""}"><b>${esc(g.op)}</b> <small>${esc(rec(g.op))}</small> <i class="${g.p >= 0.55 ? "up" : g.p <= 0.45 ? "dn" : ""}">${pct(g.p)}</i></span>` : "<span>–</span>";
     const m = document.createElement("div");
     m.id = "fx-mupop"; m.className = "fx-team"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Playoff race");
-    m.innerHTML = `<div class="fx-tcard"><div class="fx-thead"><span class="fx-k2">PLAYOFF RACE · SEED ${line}</span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-popbody">
+    m.innerHTML = `<div class="fx-tcard"><div class="fx-thead"><span class="fx-k2">${esc(race.label)}</span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-popbody">
       <div class="fx-rvs">${col(A, projA, "in")}<i class="fx-rv-x">VS</i>${col(B, projB, "out")}</div>
       <ul class="fx-rfacts">
         <li><i>TIEBREAK</i><span><b>${esc(holds)}</b> · ${esc(tieWhy)}${meet ? (hA !== hB ? ` · a week ${meet.week} ${esc(hA > hB ? B.owner : A.owner)} win evens it, then points for` : ` · the week ${meet.week} winner takes it`) : ""}</span></li>
         ${meet ? `<li class="hot"><i>SHOWDOWN</i><span>Week ${meet.week} head to head · <b>${esc(meet.p >= 0.5 ? A.owner : B.owner)}</b> ${pct(Math.max(meet.p, 1 - meet.p))}</span></li>` : ""}
-        ${(() => { const also = s.filter((r) => r !== A && r !== B && !sd.slice(0, -1).includes(r) && (wpct(r) === wpct(A) || wpct(r) === wpct(B))); return also.length ? `<li class="hot"><i>ALSO IN IT</i><span>${also.map((r) => `<b>${esc(r.owner)}</b> ${r.wins}-${r.losses}${od(r.owner) == null ? "" : ` (${pct(od(r.owner))})`}`).join(", ")} on the same record</span></li>` : ""; })()}
+        ${(() => { const also = race.kind === "spot" ? s.filter((r) => r !== A && r !== B && !sd.slice(0, -1).includes(r) && (wpct(r) === wpct(A) || wpct(r) === wpct(B))) : s.filter((r) => r !== A && r !== B && data.divisionOf?.[r.owner] === data.divisionOf?.[A.owner] && wpct(r) >= wpct(B)); return also.length ? `<li class="hot"><i>ALSO IN IT</i><span>${also.map((r) => `<b>${esc(r.owner)}</b> ${r.wins}-${r.losses}${od(r.owner) == null ? "" : ` (${pct(od(r.owner))})`}`).join(", ")} on the same record</span></li>` : ""; })()}
         <li><i>MAGIC #</i><span>${magic ? `<b>${magic}</b> · ${esc(A.owner)} wins + ${esc(B.owner)} losses to stay ahead` : `${esc(B.owner)} can't catch ${esc(A.owner)}`}</span></li>
       </ul>
       <div class="fx-k2 fx-rsk">GAMES LEFT</div>
       <div class="fx-rsch"><div class="fx-rsr hd"><i></i><span class="a">${esc(A.owner).toUpperCase()}</span><span class="b">${esc(B.owner).toUpperCase()}</span></div>${weeks.map((w) => `<div class="fx-rsr${meet && meet.week === w ? " meet" : ""}"><i>WK ${w}</i>${g1(gA.find((g) => g.week === w))}${g1(gB.find((g) => g.week === w))}</div>`).join("")}</div>
-      <p class="fx-whyn">Win chances from points per game this season; playoff odds from 4,000 simulated finishes. Other teams can still change the race.</p></div></div>`;
+      <p class="fx-whyn">Win chances from points per game this season; ${race.kind === "div" ? "title odds" : "playoff odds"} from 4,000 simulated finishes. Other teams can still change the race.</p></div></div>`;
     m.addEventListener("click", (e) => { if (e.target === m || e.target.closest("[data-fxx]")) m.remove(); });
     document.body.appendChild(m);
   };
@@ -582,7 +587,7 @@
     if (e.target.closest("[data-fxnewsall]")) { newsAll = !newsAll; return paint(); }
     const hx = e.target.closest("[data-fxh]");
     if (hx && !e.target.closest(".fx-why")) { histOpen = histOpen === hx.dataset.fxh ? null : hx.dataset.fxh; try { window.noteUse?.("fantasy-history", hx.dataset.fxh.split("|")[0]); } catch {} return paint(); }
-    if (e.target.closest("[data-fxrace]")) { try { window.noteUse?.("fantasy-race"); } catch {} return openRace(); }
+    if (e.target.closest("[data-fxrace]")) { try { window.noteUse?.("fantasy-race"); } catch {} return openRace(Number(e.target.closest("[data-fxrace]").dataset.fxrace) || 0); }
     const mu = e.target.closest("[data-fxmu]");
     if (mu) { const id = Number(mu.dataset.fxmu); openMu(id); try { const mm = data.live?.matchups?.find((x) => x.id === id); window.noteUse?.("fantasy-matchup", mm ? `${mm.away?.owner} vs ${mm.home?.owner}` : ""); } catch {} paint(); }
   });
