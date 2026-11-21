@@ -127,7 +127,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=848887010903", "lightning-ui.js?v=812074492059", "attract-facts.js?v=621767480045", "history.js?v=451197308157", "fantasy-ui.js?v=312415991824", "sim.js?v=374204176553", "gridcard.js?v=867340868336"];
+const EXTRAS = ["ask-ui.js?v=848887010903", "lightning-ui.js?v=812074492059", "attract-facts.js?v=621767480045", "history.js?v=451197308157", "fantasy-ui.js?v=297631366016", "sim.js?v=374204176553", "gridcard.js?v=867340868336"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -6124,11 +6124,20 @@ async function archiveWeekIfFinal(results) {
   let done = [];
   try { done = JSON.parse(localStorage.getItem(SEALED_KEY) || "[]"); } catch {}
   if (done.includes(currentWeek)) return;
+  // Sending the finals is background work: a dropped call ("Load failed",
+  // Nov 20) tries once more after a pause, is logged only if that misses
+  // while the page is on screen, and otherwise waits for the next refresh.
+  // Safe to repeat: the Worker stores the same finals again.
+  const send = () => fetch(`${WORKER_URL}/season`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", soft: true,
+    body: JSON.stringify({ week: currentWeek, results }),
+  });
   try {
-    const res = await fetch(`${WORKER_URL}/season`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
-      body: JSON.stringify({ week: currentWeek, results }),
-    });
+    let res;
+    try { res = await send(); } catch {
+      await new Promise((r) => setTimeout(r, 2500));
+      try { res = await send(); } catch (e2) { if (!document.hidden && navigator.onLine !== false) { try { opsEvent("worker-fail", `/season ${String(e2?.message || "network").slice(0, 40)} (after retry)`); } catch {} } return; }
+    }
     if (!res.ok) return;
     try { localStorage.setItem(SEALED_KEY, JSON.stringify([...done, currentWeek])); } catch {}
     await loadWeekSummaries();
