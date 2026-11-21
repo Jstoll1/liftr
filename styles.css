@@ -10256,6 +10256,26 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-pp-t i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--arcade-gold); }
 .fx-pp-t b { font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; } .fx-pp-t.me b { color: var(--neon-cyan); }
 .fx-pp-t small { font-size: 10px; color: var(--text-dim); }
+.fx-br { margin-top: 10px; padding: 8px 10px 10px; border-radius: 8px; border: 1px solid var(--card-border); background: rgba(0, 0, 0, .2); }
+.fx-br-k { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); margin-bottom: 6px; }
+.fx-br-g { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) 34px; grid-template-rows: auto auto auto; column-gap: 14px; row-gap: 6px; align-items: center; }
+.fx-br-h { font-family: 'Press Start 2P', monospace; font-size: 5px; color: var(--neon-cyan); }
+.fx-br-h:nth-child(3) { text-align: center; color: var(--arcade-gold); }
+.fx-br-m { position: relative; display: flex; flex-direction: column; border-radius: 6px; border: 1px solid var(--card-border); background: rgba(255, 255, 255, .03); }
+.fx-br-m > span + span { border-top: 1px solid rgba(255, 255, 255, .06); }
+.fx-br-m.sf { border-color: rgba(var(--arcade-gold-rgb), .35); }
+.fx-br-m.r1::after { content: ""; position: absolute; right: -14px; top: 50%; width: 14px; border-top: 1px solid rgba(var(--neon-cyan-rgb), .45); }
+.fx-br-m.sf::after { content: ""; position: absolute; right: -14px; width: 7px; border-right: 1px solid rgba(var(--arcade-gold-rgb), .45); }
+.fx-br-m.sf.a::after { top: 50%; height: calc(50% + 3px); border-top: 1px solid rgba(var(--arcade-gold-rgb), .45); }
+.fx-br-m.sf.b::after { bottom: 50%; height: calc(50% + 3px); border-bottom: 1px solid rgba(var(--arcade-gold-rgb), .45); }
+.fx-br-f { grid-column: 3; grid-row: 2 / 4; align-self: center; justify-self: center; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 6px; border: 1px solid rgba(var(--arcade-gold-rgb), .5); font-size: 14px; box-shadow: 0 0 8px rgba(var(--arcade-gold-rgb), .2); }
+.fx-br-g > .fx-br-m.r1.b { grid-column: 1; grid-row: 3; } .fx-br-g > .fx-br-m.sf.b { grid-column: 2; grid-row: 3; }
+.fx-br-t { display: flex; align-items: baseline; gap: 4px; min-width: 0; padding: 4px 6px; white-space: nowrap; font-size: 11.5px; }
+.fx-br-t i { flex: none; width: 8px; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--arcade-gold); }
+.fx-br-t b { min-width: 0; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; } .fx-br-t.me b { color: var(--neon-cyan); }
+.fx-br-t small { font-size: 9.5px; color: var(--text-dim); }
+.fx-br-t u { margin-left: auto; flex: none; text-decoration: none; font-family: 'Press Start 2P', monospace; font-size: 4.5px; padding: 2px 3px; border-radius: 3px; color: var(--arcade-gold); border: 1px solid rgba(var(--arcade-gold-rgb), .45); align-self: center; }
+.fx-br-t.tbd b { font-weight: 500; font-size: 10px; color: var(--text-dim); font-style: italic; }
 .fx-dv { display: inline-block; margin-left: 6px; padding: 1px 3px; border-radius: 3px; vertical-align: 2px; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5px; color: var(--neon-cyan); border: 1px solid rgba(var(--neon-cyan-rgb), .45); }
 .fx-fire { font-style: normal; font-size: 9px; margin-left: 2px; }
 .fx-rk { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-dim); text-align: center; }
@@ -10661,8 +10681,9 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-race small { font-size: 10px; color: var(--text-dim); }
 .fx-race-t { flex-basis: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; font-size: 12px; order: 3; }
 .fx-race-t .out { justify-self: end; opacity: .8; }
+.fx-race-t > span { white-space: nowrap; }
 .fx-race-t em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff; margin-left: 4px; }
-.fx-race-t i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; text-align: center; padding: 3px 5px; border-radius: 4px; color: var(--arcade-gold); border: 1px solid rgba(var(--arcade-gold-rgb), .4); background: rgba(var(--arcade-gold-rgb), .08); }
+.fx-race-t i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; line-height: 1.6; text-align: center; padding: 3px 5px; border-radius: 4px; color: var(--arcade-gold); border: 1px solid rgba(var(--arcade-gold-rgb), .4); background: rgba(var(--arcade-gold-rgb), .08); }
 .fx-sts.t-power .fx-st, .fx-sts.t-luck .fx-st { grid-template-columns: 18px 26px minmax(0, 1fr) 118px !important; }
 .fx-sth.t-power, .fx-sth.t-luck { grid-template-columns: minmax(0, 1fr) 118px !important; }
 .fx-sts.t-odds .fx-st { grid-template-columns: 18px 26px minmax(0, 1fr) 96px 40px !important; }
