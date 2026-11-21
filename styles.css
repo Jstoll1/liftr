@@ -8522,10 +8522,9 @@ i.lk.nm-lk, .rp-chip i.lk.nm-lk { top: -7px; left: -5px; font-size: 9px; filter:
 .pick-cell i.lk.pick-lk { top: 1px; right: 2px; font-size: 9px; }
 i.lk.rd-lk { top: 5px; right: 6px; font-size: 11px; }
 .lks-st i.lk { font-size: 11px; margin-right: 3px; }
-/* your scoreboard card: the gold circle it had */
-.scorebug i.lk.bug-lk, .scorebug i.lk.bug-lk.lk-pend, .scorebug i.lk.bug-lk.lk-up, .scorebug i.lk.bug-lk.lk-dn, .scorebug i.lk.bug-lk.lk-hit, .scorebug i.lk.bug-lk.lk-miss { position: absolute; top: -9px; right: -9px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--arcade-gold); box-shadow: 0 0 8px rgba(255, 210, 63, .6); font-size: 12px; filter: none; opacity: 1; }
-.scorebug i.lk.bug-lk.lk-hit::after, .scorebug i.lk.bug-lk.lk-miss::after { position: absolute; top: -4px; right: -5px; display: grid; place-items: center; width: 12px; height: 12px; border-radius: 50%; font-size: 8px; color: #0a0014; content: "✓"; background: var(--neon-green, #39ff88); margin: 0; }
-.scorebug i.lk.bug-lk.lk-miss::after { content: "✗"; background: var(--neon-pink, #ff2079); }
+/* your scoreboard card: just the lock on the corner, no circle */
+.scorebug i.lk.bug-lk, .scorebug i.lk.bug-lk.lk-pend, .scorebug i.lk.bug-lk.lk-up, .scorebug i.lk.bug-lk.lk-dn, .scorebug i.lk.bug-lk.lk-hit, .scorebug i.lk.bug-lk.lk-miss { position: absolute; top: -9px; right: -6px; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 0; background: none; box-shadow: none; font-size: 15px; filter: drop-shadow(0 0 2px rgba(0, 0, 0, .9)); opacity: 1; }
+.scorebug i.lk.bug-lk::after { content: none !important; }
 i.lk.nm-lk, i.lk.pick-lk, i.lk.rd-lk, .lks-st i.lk { display: inline-flex; align-items: center; white-space: nowrap; }
 /* Leaderboard: a live lock sits on a faint green (covering) or pink (not
    covering) pill. */
