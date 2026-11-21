@@ -9530,6 +9530,42 @@ function sinceState(game, pick, l) {
   if (pick.mode === "ATS" && resultOutcome(game, res)?.push) return "push";
   return scorePick(game, pick, res) > 0 ? "up" : "down";
 }
+// The play as a short result: "Run for 15 yds", "Pass complete for 22 yds · 1st down",
+// "Incomplete pass · Penalty, offside". Names, numbers and tacklers are dropped.
+function playSummary(t) {
+  t = String(t || "").replace(/^\(\d+:\d+\)\s*/, "").replace(/^(No Huddle-?\s*)?(Shotgun|Pistol|Under Center|Wildcat)?\s*/i, "").trim();
+  if (!t) return "";
+  const yds = (n) => `${Math.abs(n)} yd${Math.abs(n) === 1 ? "" : "s"}`;
+  let m;
+  const tags = [];
+  if (/touchdown/i.test(t)) tags.push("Touchdown");
+  else if (/1st down|first down/i.test(t)) tags.push("1st down");
+  const pen = t.match(/PENALTY\s+([A-Z]{2,5})\s+(.+?)(?:\s*\(|,|\s+\d+\s+yards?|$)/i);
+  const penTxt = pen ? `Penalty, ${pen[2].replace(/\s*\(.*$/, "").trim().toLowerCase()}` : "";
+  let main = "";
+  // Scoring plays come as "Evan Stewart 12 Yd pass from Dante Moore (…Kick)".
+  if ((m = t.match(/(\d+)\s*yd\s+pass\s+(?:from|to)\b/i))) return `Touchdown pass, ${yds(+m[1])}`;
+  if ((m = t.match(/(\d+)\s*yd\s+(?:run|rush)\b/i))) return `Touchdown run, ${yds(+m[1])}`;
+  if ((m = t.match(/(\d+)\s*yd\s+(?:interception|fumble|punt|kickoff)\s+return/i))) return `Touchdown return, ${yds(+m[1])}`;
+  if (/intercepted/i.test(t)) main = "Interception";
+  else if (/fumble/i.test(t) && /recovered by/i.test(t)) main = "Fumble";
+  else if ((m = t.match(/sacked.*?for a loss of (\d+) yards?/i))) main = `Sack, loss of ${yds(+m[1])}`;
+  else if (/sacked/i.test(t)) main = "Sack";
+  else if (/pass incomplete/i.test(t)) main = "Incomplete pass";
+  else if ((m = t.match(/pass complete.*?for (?:a loss of )?(-?\d+) yards?/i))) main = /for a loss of/i.test(t) ? `Pass, loss of ${yds(+m[1])}` : `Pass complete for ${yds(+m[1])}`;
+  else if (/pass complete.*?for no gain/i.test(t)) main = "Pass complete, no gain";
+  else if ((m = t.match(/(?:rush|run|scramble[sd]?|kneel).*?for (?:a loss of )?(-?\d+) yards?/i))) main = /for a loss of/i.test(t) || +m[1] < 0 ? `Run, loss of ${yds(+m[1])}` : `Run for ${yds(+m[1])}`;
+  else if (/(?:rush|run).*?for no gain/i.test(t)) main = "Run, no gain";
+  else if ((m = t.match(/(\d+)\s*(?:yd|yard)s?\s+field goal\s+(?:attempt\s+)?(?:is\s+)?(good|no good|missed|blocked)/i))) main = `${m[1]}-yd field goal ${m[2].toLowerCase() === "good" ? "good" : "missed"}`;
+  else if ((m = t.match(/punts?\s+(\d+)\s+yards?/i))) main = `Punt, ${yds(+m[1])}`;
+  else if (/extra point.*good|kick\)?\s*$/i.test(t) && /extra point|PAT/i.test(t)) main = /no good|missed|blocked/i.test(t) ? "Extra point missed" : "Extra point good";
+  else if ((m = t.match(/kicks?(?:off)?\s+(\d+)\s+yards?/i))) main = /touchback/i.test(t) ? "Kickoff, touchback" : "Kickoff";
+  else if ((m = t.match(/^timeout\s+([A-Z][A-Za-z.&' ]+?)(?:,|$)/i))) main = `Timeout ${m[1].trim()}`;
+  else if (/end of (\d|the)|end quarter|end of half|halftime/i.test(t)) main = t.replace(/\.$/, "");
+  if (!main && penTxt) return [penTxt, ...tags].join(" · ");
+  if (!main) return t.replace(/\(.*?\)/g, "").replace(/#\d+\s+/g, "").replace(/\s{2,}/g, " ").trim().slice(0, 80);
+  return [main, ...(penTxt ? [penTxt] : []), ...tags].join(" · ");
+}
 // The last play each live game showed, so a new one can flash.
 const lvnSeen = {}, lvnScore = {};
 function liveNowHtml(games, live, mine) {
@@ -9557,7 +9593,7 @@ function liveNowHtml(games, live, mine) {
     const pid = sit.lastPlayTeamId;
     const plogo = pid ? `<img class="lvn-pl" src="${logoUrl(pid)}" alt="" loading="lazy" onerror="this.style.display='none'">` : "";
     // Still text, up to two lines: several games at once stay readable.
-    const ticker = play ? `<span class="lvn-tk">${plogo}<span>${escapeCd(play)}</span></span>` : `<span class="lvn-tk dim">${escapeCd(sit.downDistance || "Waiting on the next play")}</span>`;
+    const ticker = play ? `<span class="lvn-tk" title="${escapeCd(play)}">${plogo}<span>${escapeCd(playSummary(play))}</span></span>` : `<span class="lvn-tk dim">${escapeCd(sit.downDistance || "Waiting on the next play")}</span>`;
     // Your points in play: what the pick scores if it ended now, out of
     // what it is worth (a losing lock shows its penalty).
     const pk = mine[g.id];
