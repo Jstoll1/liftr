@@ -4858,7 +4858,20 @@ async function handleWeekChat(request, env, corsHeaders, url = new URL(request.u
     if (!e) return json({ error: "No such entry" }, 404, corsHeaders);
     if (body.flagged) { e.flagged = Date.now(); e.note = String(body.note || "").slice(0, 300) || undefined; } else { delete e.flagged; delete e.note; }
     await env.LIFTR_KV.put(id, JSON.stringify(e), { expirationTtl: Math.max(60, Math.round((e.at + 30 * 86400000 - Date.now()) / 1000)), metadata: { at: e.at, asker: e.asker, sid: e.sid } });
-    return json({ ok: true, chat: { ...e, id } }, 200, corsHeaders);
+    // A flagged answer joins the pressure test as a regression test (once
+    // per question), so the next run checks it was fixed and stays fixed.
+    let addedTest = null;
+    if (body.flagged && e.q) {
+      try {
+        const cases = ((await env.LIFTR_KV.get(CASES_KEY, "json")) || []).map((c) => cleanCase(c)).filter(Boolean);
+        const q = String(e.q).trim().toLowerCase();
+        if (!cases.some((c) => c.turns[0].trim().toLowerCase() === q)) {
+          const r = addCase(cases, { turns: [e.q], screen: e.route === "fantasy" ? "fantasy" : "pickem", source: "miss", regression: true, note: `flagged ${new Date().toISOString().slice(0, 10)}${e.note ? `: ${e.note}` : ""}` });
+          if (r.added) { await env.LIFTR_KV.put(CASES_KEY, JSON.stringify(r.cases.slice(0, 200))); addedTest = r.added.id; }
+        }
+      } catch {}
+    }
+    return json({ ok: true, chat: { ...e, id }, addedTest }, 200, corsHeaders);
   }
   // The phone gave up (too many steps, lost connection): note it on a
   // question still waiting. Nothing else about the entry can be changed.
