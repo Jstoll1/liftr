@@ -9893,7 +9893,6 @@ body.rs-open #ask-fab { display: none; }
 .ps-grp em { order: 2; font-style: normal; white-space: nowrap; width: 40px; text-align: right; } .ps-grp em.up { color: var(--neon-green); } .ps-grp em.dn { color: var(--neon-pink); width: 42px; }
 .ps-grp.live { color: var(--neon-cyan); } .ps-grp.final { color: rgba(255, 255, 255, .55); }
 .ps-cols + .ps-grp { margin-top: 2px; }
-.ps-row.final .rd-pts:not(.miss):not(.none):not(.push)::before { content: "✓ "; }
 .rs-chance { flex: 1; min-width: 0; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; row-gap: 6px; align-items: end; }
 .rs-k { grid-column: 1 / -1; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .08em; color: rgba(255, 255, 255, .5); }
 .rs-pct { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 30px; line-height: 1; color: var(--neon-cyan); text-shadow: 0 0 10px rgba(var(--neon-cyan-rgb), .35); }
