@@ -120,6 +120,34 @@
   // maths; the assistant only words it. Odds are fractions 0..1.
   const r3 = (p) => Math.round(p * 1000) / 1000;
   const gName = (g) => `G${g.id} ${g.awayShort} at ${g.homeShort}`;
+  // The insight behind a chance, worked out here so the Chief explains a
+  // conclusion instead of reading numbers: where a member differs from each
+  // member ahead (the only games they can gain on), the points gap, their
+  // solo picks, and one headline reason picked from those.
+  function storyOf(who, memo, all, f) {
+    const pick = (n, g) => all[n]?.picks?.[g.id];
+    const same = (a, b) => a && b && !a.hidden && !b.hidden && a.team === b.team && a.mode === b.mode;
+    const term = (g, x) => `${short(g, x.team)} ${x.mode === "ATS" ? `${x.team === g.favorite ? "−" : "+"}${g.spread}` : "to win"}${x.lock ? " (lock)" : ""}`;
+    const open = GAMES.filter((g) => !f[g.id] && pick(who, g)?.team);
+    const chance = (n) => memo?.detail?.[n]?.pct ?? 0;
+    const mine = chance(who), b = banked(who);
+    const ahead = MANAGERS.filter((n) => n !== who && chance(n) > mine).sort((x, y) => chance(y) - chance(x));
+    const vs = ahead.slice(0, 3).map((n) => {
+      const diff = open.filter((g) => !same(pick(who, g), pick(n, g)));
+      const bn = banked(n);
+      return { member: n, chance: r3(chance(n)), samePicks: open.length - diff.length, of: open.length, canOnlyGainOn: diff.map((g) => `${gName(g)}: you ${term(g, pick(who, g))}${pick(n, g)?.team ? `, ${n} ${pick(n, g).hidden ? "hidden" : term(g, pick(n, g))}` : `, ${n} no pick`}`), pointsNow: `${b.pts} to ${bn.pts}`, mostPossible: `${b.max} to ${bn.max}` };
+    });
+    const solo = open.filter((g) => MANAGERS.every((n) => n === who || !same(pick(who, g), pick(n, g)))).map((g) => `${gName(g)} ${term(g, pick(who, g))}`);
+    const top = vs[0];
+    let headline;
+    if (!memo?.detail?.[who]) headline = null; // no odds yet: nothing to explain
+    else if (!ahead.length) headline = `${who} is the favourite: nobody has a better chance.`;
+    else if (top && top.of && top.samePicks / top.of >= 0.7) headline = `${who} matches ${top.member} on ${top.samePicks} of ${top.of} open picks, so ${who} can only gain on ${top.of - top.samePicks} game${top.of - top.samePicks === 1 ? "" : "s"}; ${top.member} also has more banked or more to play for.`;
+    else if (top && b.max < banked(top.member).max) headline = `${who} can reach ${b.max} points at most, ${top.member} ${banked(top.member).max}: ${who} needs ${top.member}'s different picks to miss.`;
+    else if (top && b.pts < banked(top.member).pts) headline = `${who} trails ${top.member} by ${banked(top.member).pts - b.pts} points already banked, with ${b.picksLeft} picks left to make it up.`;
+    else headline = `${who}'s picks split from the leaders on several games; ${who} needs most of those to land.`;
+    return { headline, againstTheMembersAhead: vs, soloPicks: solo };
+  }
   function banked(who) {
     const st = (lastGoodCloudPicks || {})[who]?.picks || {}, f = fins();
     let pts = 0, open = 0, left = 0;
@@ -426,10 +454,12 @@
       // answered by comparison, and the ceiling stated for what it is: the
       // most points this member can still reach, ranked against the others'
       // most. It is not a finishing place: anyone with a chance can finish 1st.
+      const story = storyOf(who, memo, all, f);
       const field = MANAGERS.map((n) => ({ member: n, chanceToWin: memo?.detail?.[n] ? r3(memo.detail[n].pct) : null, points: banked(n).pts, mostPossible: banked(n).max, picksLeft: banked(n).picksLeft })).sort((a, b) => (b.chanceToWin ?? 0) - (a.chanceToWin ?? 0));
       const pct0 = d ? d.pct : null;
       return { member: who, chanceToWin: pct0 != null ? r3(pct0) : null, canStillFinishFirst: pct0 == null ? null : pct0 > 0, chanceRank: field.findIndex((x) => x.member === who) + 1, of: MANAGERS.length,
         points: banked(who).pts, mostPointsPossible: banked(who).max, mostPointsPossibleRank: maxes.findIndex(([n]) => n === who) + 1,
+        story,
         mostPointsPossibleMeans: "the most points this member can still reach if every open pick hits, ranked against every member's own most; NOT their best finishing place",
         field,
         lock: lockG ? { game: gName(lockG), pick: `${short(lockG, all[who].picks[lockG.id].team)}` } : null,
