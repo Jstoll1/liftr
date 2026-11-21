@@ -474,6 +474,25 @@
       "source": "miss",
       "regression": true,
       "note": "flagged Nov 21: asked which odds twice; bare 'odds' now means the asker's chance this week"
+    },
+    {
+      "id": "highest-week-both",
+      "screen": "pickem",
+      "turns": [
+        "what is Robert's highest scoring week"
+      ],
+      "checks": {
+        "tools": [
+          "season"
+        ],
+        "must": [
+          "pick.?em"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 21 (Dewitt): answered fantasy only for a question with no league words; now one line per league"
     }
   ]
 }
