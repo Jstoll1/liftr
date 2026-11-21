@@ -318,22 +318,10 @@ const app = {
       // source answered, to check the sources from a browser.
       const debug = url.searchParams.get("debug") === "1";
       const dbgTop = [];
-      // Fresh injury status for the whole roster in one call to ESPN's
-      // fantasy player API (the site athlete record answers the worker 403).
-      const ids = roster.map((p) => p.id).filter((x) => Number(x) > 0);
-      let inj = debug ? null : await env.LIFTR_KV.get(`fxinj2:${owner}`, "json");
-      if (!inj && ids.length) {
-        inj = {};
-        try {
-          const yr = new Date().getUTCFullYear();
-          // The league's player view carries injuryStatus (players_wl answers without it).
-          const r = await fetch(`https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${yr}/segments/0/leagues/${env.ESPN_LEAGUE_ID}?view=kona_player_info`, { headers: { Accept: "application/json", "X-Fantasy-Filter": JSON.stringify({ players: { filterIds: { value: ids }, limit: ids.length } }) }, signal: AbortSignal.timeout(6000) });
-          let n = 0, k = 0;
-          if (r.ok) for (const e of (await r.json())?.players || []) { const x = e?.player; if (!x?.id) continue; n++; const st = x.injuryStatus && x.injuryStatus !== "ACTIVE" ? x.injuryStatus : null; if (st) k++; inj[x.id] = { status: st, injured: !!x.injured }; }
-          dbgTop.push(`kona_player_info ${r.status}: ${n} players, ${k} injured`);
-        } catch (e) { dbgTop.push(`players_wl ${String(e?.message || e).slice(0, 40)}`); }
-        if (!debug) await env.LIFTR_KV.put(`fxinj2:${owner}`, JSON.stringify(inj), { expirationTtl: 900 });
-      }
+      // Injury status is the league roster's own ESPN tag (p.injury); the
+      // site athlete record answers the worker 403 and the fantasy player
+      // views answer without it or 400.
+      const inj = null;
       const players = await Promise.all(roster.slice(0, 20).map(async (p) => {
         if (!p.id) return { ...p, news: [] };
         const key = `fxnews4:${p.id}`;
