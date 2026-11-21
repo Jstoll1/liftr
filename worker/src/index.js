@@ -324,7 +324,7 @@ const app = {
       const inj = null;
       const players = await Promise.all(roster.slice(0, 20).map(async (p) => {
         if (!p.id) return { ...p, news: [] };
-        const key = `fxnews4:${p.id}`;
+        const key = `fxnews5:${p.id}`;
         let hit = debug ? null : await env.LIFTR_KV.get(key, "json");
         if (!hit) {
           const dbg = [];
@@ -338,7 +338,7 @@ const app = {
           if (Number(p.id) > 0) for (const src of [`https://site.api.espn.com/apis/fantasy/v2/games/ffl/news/players?limit=10&playerId=${encodeURIComponent(p.id)}`, `https://site.api.espn.com/apis/site/v2/sports/football/nfl/news?athletes=${encodeURIComponent(p.id)}&limit=10`]) {
             const j = await get(src); const list = j?.feed || j?.articles || [];
             dbg.push(`${list.length} stories, ${list.filter(mine).length} his`);
-            news = list.filter(mine).slice(0, 3).map((x) => ({ headline: String(x.headline || "").slice(0, 160), note: String(x.description || "").slice(0, 300), at: Date.parse(x.published || x.lastModified || "") || null, link: x.links?.web?.href || null })).filter((x) => x.headline);
+            news = list.filter(mine).slice(0, 5).map((x) => ({ headline: String(x.headline || "").slice(0, 160), note: String(x.description || x.story || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 900), at: Date.parse(x.published || x.lastModified || "") || null, link: x.links?.web?.href || null })).filter((x) => x.headline);
             if (news.length) break;
           }
           hit = { news, ...(debug ? { dbg } : {}) };
