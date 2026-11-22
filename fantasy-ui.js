@@ -521,6 +521,38 @@
     if (!newsMarked) { newsMarked = true; if (!window.__liveView) setTimeout(() => { try { localStorage.setItem("brochiefs_fx_newsseen", String(Date.now())); } catch {} }, 4000); }
     return `<div class="fx-sechd"><span>YOUR TEAM · UPDATES</span></div>${items.length ? `<ul class="fx-tn">${shown.map(row).join("")}</ul>${items.length > 3 ? `<button type="button" class="fx-tn-more" data-fxnewsall="1">${newsAll ? "SHOW FEWER ▴" : `+${items.length - 3} MORE ▾`}</button>` : ""}` : `<p class="fx-note">No injuries or news on your roster in the last three days.</p>`}`;
   }
+  // One line under your matchup: how it stands (tag) and what flips it.
+  const insightLine = (A, B, pa, pb, odds, fin) => {
+    if (fin || odds == null) return "";
+    const tag = odds >= 0.85 ? ["IN CONTROL", "up"] : odds <= 0.15 ? ["LONG SHOT", "dn"] : Math.abs(odds - 0.5) < 0.12 ? ["PHOTO FINISH", "gd"] : odds > 0.5 ? ["YOUR EDGE", "up"] : ["THEIR EDGE", "dn"];
+    const d = pa.exp - pb.exp, trail = d >= 0 ? B : A, ahead = d >= 0 ? A : B;
+    const top = (trail?.starters || []).filter((p) => remaining(p) > 0).sort((x, y) => remaining(y) - remaining(x))[0];
+    const need = top ? (top.pts || 0) + Math.abs(d) + remaining(top) : 0;
+    const txt = top ? `${short(top.name)} ${Math.ceil(need)}+ flips it for ${trail === A ? "you" : trail?.owner}` : `Projected ${ahead === A ? "win" : "loss"} by ${pts(Math.abs(d))}`;
+    return `<span class="fx-ins1"><i class="${tag[1]}">${tag[0]}</i><span>${esc(txt)}</span><em>proj ${d >= 0 ? "+" : "−"}${pts(Math.abs(d))}</em></span>`;
+  };
+  // A story tag on each other card, in its top-left tab (no extra height).
+  const storyTag = (sa, sb, odds) => {
+    if (odds == null || sa + sb <= 0) return "";
+    const upset = (sa > sb && odds < 0.4) || (sb > sa && odds > 0.6);
+    const t = upset ? ["UPSET ALERT", "dn"] : Math.abs(odds - 0.5) < 0.1 ? ["CLOSE WATCH", "gd"] : Math.abs(odds - 0.5) > 0.38 ? ["BLOWOUT", "up"] : null;
+    return t ? `<span class="fx-cmk st ${t[1]}">${t[0]}</span>` : "";
+  };
+  // League pulse: what's happening now, one line each, worked out from the board.
+  const pulseHtml = () => {
+    const ms = (data.live?.matchups || []).filter((m) => !m.final && m.home && m.away), out = [];
+    const sc = (t) => Number(t?.points) || 0, live = ms.filter((m) => sc(m.home) + sc(m.away) > 0);
+    if (!live.length) return "";
+    const big = [...live].sort((a, b) => Math.abs(sc(b.home) - sc(b.away)) - Math.abs(sc(a.home) - sc(a.away)))[0];
+    if (big) { const [w, l] = sc(big.home) >= sc(big.away) ? [big.home, big.away] : [big.away, big.home]; out.push(`<b>${esc(w.owner)}</b> leads ${esc(l.owner)} by <b>${pts(sc(w) - sc(l))}</b>, the biggest lead`); }
+    const wpOf = (m) => { const a = outlook(m.away), h = outlook(m.home); return phi((a.exp - h.exp) / Math.sqrt(a.sd ** 2 + h.sd ** 2)); };
+    const close = [...ms].sort((a, b) => Math.abs(wpOf(a) - 0.5) - Math.abs(wpOf(b) - 0.5))[0];
+    if (close && close !== big) { const p0 = wpOf(close); out.push(`<b>${esc(close.away.owner)} vs ${esc(close.home.owner)}</b> is the closest: ${pct(p0)}–${pct(1 - p0)}`); }
+    const all = []; for (const m of data.live?.matchups || []) for (const t of [m.away, m.home]) for (const p of t?.starters || []) all.push({ ...p, owner: t.owner });
+    const hot = all.sort((a, b) => (b.pts || 0) - (a.pts || 0))[0];
+    if (hot && hot.pts > 0) out.push(`<b>${esc(short(hot.name))}</b> tops every starter: ${pts(hot.pts)} for ${esc(hot.owner)}`);
+    return out.length ? `<div class="fx-sechd"><span>LEAGUE PULSE</span></div><ul class="fx-pulse">${out.map((x) => `<li>${x}</li>`).join("")}</ul>` : "";
+  };
   const fxSeen = {}; // matchup id -> last painted leader and scores
   const openMu = (id) => {
     document.getElementById("fx-mupop")?.remove();
@@ -579,8 +611,8 @@
         const mstate = odds == null ? "zero" : Math.abs(odds - 0.5) < 0.12 ? "close" : "clear";
         const meter = `<span class="fx-meter ${mstate}" title="${odds == null ? "No odds yet" : `Win chance: ${esc(A?.owner)} ${pct(odds)} · ${esc(B?.owner)} ${pct(1 - odds)}`}" aria-label="${odds == null ? "" : `Win chance ${esc(A?.owner)} ${pct(odds)}`}">${odds != null ? `<i class="a" style="width:${share.toFixed(1)}%"></i><i class="b" style="width:${(100 - share).toFixed(1)}%"></i><s style="left:${share.toFixed(1)}%"></s>` : ""}</span>`;
         var card = `<div class="fx-card-mu ${state}${mine(m) ? " mine" : ""}${m.final ? " final" : ""}${took ? " took" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-haspopup="dialog" aria-label="${esc(A?.owner)} ${pts(sa)} against ${esc(B?.owner)} ${pts(sb)}">
-          ${mine(m) ? `<span class="fx-cmk">YOUR MATCHUP</span>` : m.final ? `<span class="fx-cmk dim">FINAL</span>` : ""}${row(A, B, "a", sa)}${mine(m) ? `<span class="fx-vs" aria-hidden="true">VS</span>` : ""}${row(B, A, "b", sb)}
-          ${mine(m) && h?.regularSeason ? `<span class="fx-mh">${allTime(h, A?.owner || true)}</span>` : ""}${meter}
+          ${mine(m) ? `<span class="fx-cmk">YOUR MATCHUP</span>` : m.final ? `<span class="fx-cmk dim">FINAL</span>` : storyTag(sa, sb, odds)}${row(A, B, "a", sa)}${mine(m) ? `<span class="fx-vs" aria-hidden="true">VS</span>` : ""}${row(B, A, "b", sb)}
+          ${mine(m) && h?.regularSeason ? `<span class="fx-mh">${allTime(h, A?.owner || true)}</span>` : ""}${meter}${mine(m) ? insightLine(A, B, pa, pb, odds, m.final) : ""}
         </div>`;
       }
       if (!isOpen) return { card, full: "", mine: mine(m) };
@@ -600,7 +632,7 @@
       <div class="fx-head"><span class="fx-k">FANTASY · ${esc(data.year)}</span><span class="fx-wk">${anyLive ? `<i class="fx-dot"></i>LIVE · ` : ""}WEEK ${esc(week)}</span></div>
       ${data.take?.text ? `<button type="button" class="fx-take-btn${(() => { try { return localStorage.getItem(`brochiefs_fx_take_${data.take.week}`) ? " read" : ""; } catch { return ""; } })()}" data-fxtake="1"><img src="assets/images/chief/chief2-96.webp" alt=""><span class="fx-k2">WEEK ${esc(data.take.week)} RECAP</span><em>from the Chief</em><i>▸</i></button>` : ""}
       ${games ? `<div class="fx-mus">${games}</div>` : `<p class="fx-note">This week's matchups show once ESPN posts them.</p>`}
-      ${teamNewsHtml()}
+      ${pulseHtml()}${teamNewsHtml()}
       ${tables()}
       ${historyHtml()}
       ${performers()}
