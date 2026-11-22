@@ -104,7 +104,7 @@
   const keyBattle = (L, Rt) => { const top = (t) => (t?.starters || []).filter((p) => remaining(p) > 0).sort((x, y) => remaining(y) - remaining(x))[0]; const p = top(L), q = top(Rt); if (!p && !q) return ""; const rp = p ? remaining(p) : 0, rq = q ? remaining(q) : 0, net = rp - rq;
     const one = (x, k, r) => x ? `<span class="fx-kb-p ${k}">${k === "b" ? `<em>+${pts(r)}</em>` : nflLogo(x.nfl)}<b>${esc(short(x.name))}</b>${k === "b" ? nflLogo(x.nfl) : `<em>+${pts(r)}</em>`}</span>` : `<span class="fx-kb-p ${k}"><small>all played</small></span>`;
     return `<div class="fx-kb"><span class="fx-kb-k">MOST POINTS LEFT<em>${Math.abs(net) < 0.5 ? "even" : `edge ${esc((net > 0 ? L : Rt)?.owner || "")} +${pts(Math.abs(net))}`}</em></span><div class="fx-kb-r">${one(p, "a", rp)}<i>VS</i>${one(q, "b", rq)}</div></div>`; };
-  const mirror = (L, Rt) => { const a = L?.starters || [], b = Rt?.starters || [], n = Math.max(a.length, b.length); let rows = ""; for (let i = 0; i < n; i++) { const p = a[i], q = b[i], done = (x) => x && stOf(x) !== "pre"; const wa = done(p) && done(q) && (p.pts || 0) > (q.pts || 0), wb = done(p) && done(q) && (q.pts || 0) > (p.pts || 0); rows += `<div class="fx-mr">${cell(p, "l", wa)}<i class="fx-ms">${esc((p || q)?.slot || "")}</i>${cell(q, "r", wb)}</div>`; } return `<div class="fx-mir">${rows}</div>`; };
+  const mirror = (L, Rt) => { const a = L?.starters || [], b = Rt?.starters || [], n = Math.max(a.length, b.length); let rows = ""; for (let i = 0; i < n; i++) { const p = a[i], q = b[i], done = (x) => x && stOf(x) !== "pre"; const wa = done(p) && done(q) && (p.pts || 0) > (q.pts || 0), wb = done(p) && done(q) && (q.pts || 0) > (p.pts || 0); rows += `<div class="fx-mr" data-fxpi="${i}" data-fxl="${esc(L?.owner || "")}" data-fxr="${esc(Rt?.owner || "")}">${cell(p, "l", wa)}<i class="fx-ms">${esc((p || q)?.slot || "")}</i>${cell(q, "r", wb)}</div>`; } return `<div class="fx-mir">${rows}</div>`; };
   const sparkline = (o) => {
     const wk = (data.weekly || []), mine = wk.filter((x) => x.owner === o).sort((a, b) => a.week - b.week);
     if (mine.length < 2) return "";
@@ -606,6 +606,25 @@
     if (lo.length === 3) out.push([`🏁 <span class="fx-pk">RACE TO LAST</span> ${lo.map((r) => `<b>${esc(r.owner)}</b> ${r.wins}-${r.losses}`).join(" · ")}`, `data-fxpulse="last"`]);
     return out.length ? `<div class="fx-sechd"><span>LEAGUE PULSE</span></div><ul class="fx-pulse">${out.map(([x, a]) => `<li ${a} role="button" tabindex="0">${x}<span class="fx-px">▸</span></li>`).join("")}</ul>` : "";
   };
+  // Tap a player in the live lineup: his card opens under that row (tap
+  // again to close): game, points against projection, season numbers.
+  const playerCard = (pc) => {
+    const row = pc.closest(".fx-mr"), side = pc.classList.contains("l") ? "l" : "r", key = `${row.dataset.fxpi}${side}`;
+    const box = row.closest(".fx-mir"), old = box.querySelector(".fx-pc"); old?.remove();
+    box.querySelectorAll(".fx-mc.on").forEach((x) => x.classList.remove("on"));
+    if (old?.dataset.k === key) return;
+    const owner = side === "l" ? row.dataset.fxl : row.dataset.fxr, mm = (data.live?.matchups || []).find((m) => m.away?.owner === owner || m.home?.owner === owner), t = mm?.away?.owner === owner ? mm.away : mm?.home;
+    const p = t?.starters?.[Number(row.dataset.fxpi)]; if (!p) return;
+    const r = (data.rosters?.[owner] || []).find((x) => x.name === p.name) || {}, st = stOf(p), left = remaining(p), g = gameLine(p);
+    const n = (teamNews?.players || []).find((x) => x.name === p.name)?.news?.find((x) => x.headline);
+    const d = document.createElement("div"); d.className = `fx-pc ${side}`; d.dataset.k = key;
+    d.innerHTML = `<div class="fx-pc-h">${nflLogo(p.nfl)}<b>${esc(p.name)}</b><small>${esc(p.pos || "")} · ${esc(p.nfl || "")} · ${esc(owner)}</small>${p.injury ? `<u class="sev">${esc(statusTxt(p.injury))}</u>` : ""}</div>
+      ${g ? `<div class="fx-pc-g ${st}">${st === "live" ? '<i>LIVE</i>' : st === "done" ? "<i>FINAL</i>" : "<i>UP NEXT</i>"}<span>${g}</span></div>` : ""}
+      <div class="fx-pc-s">${st === "pre" ? "" : `<span><b>${pts(p.pts)}</b><small>PTS</small></span>`}<span><b>${p.proj != null ? pts(p.proj) : "–"}</b><small>PROJ</small></span>${st === "pre" ? "" : `<span><b class="${(p.pts || 0) >= (p.proj || 0) && st !== "pre" ? "up" : ""}">${st === "done" ? `${(p.pts || 0) - (p.proj || 0) >= 0 ? "+" : "−"}${pts(Math.abs((p.pts || 0) - (p.proj || 0)))}` : `+${pts(left)}`}</b><small>${st === "done" ? "VS PROJ" : "LEFT"}</small></span>`}${r.season != null ? `<span><b>${pts(r.season)}</b><small>SEASON</small></span><span><b>${pts(r.avg)}</b><small>AVG</small></span>` : ""}</div>
+      ${n ? `<p class="fx-pc-n">${kindPill(`${n.headline} ${n.note || ""}`)}${esc(n.headline)}</p>` : ""}`;
+    row.after(d); pc.classList.add("on");
+    try { window.noteUse?.("fantasy-player", p.name); } catch {}
+  };
   const fxSeen = {}; // matchup id -> last painted leader and scores
   const openMu = (id) => {
     document.getElementById("fx-mupop")?.remove();
@@ -621,6 +640,7 @@
     m.addEventListener("keydown", (e) => { if (e.key === "ArrowRight") go(1); else if (e.key === "ArrowLeft") go(-1); });
     m.addEventListener("click", (e) => {
       const dot = e.target.closest("[data-fxgo]"); if (dot) return openMu(Number(dot.dataset.fxgo));
+      const pc = e.target.closest(".fx-mr .fx-mc:not(.empty)"); if (pc) return playerCard(pc);
       if (e.target === m || e.target.closest("[data-fxx]")) { chipOpen = null; return m.remove(); }
       const ch = e.target.closest("[data-fxchip]");
       if (ch) { const k = ch.dataset.fxchip, mid = Number(ch.dataset.mid); chipOpen = chipOpen?.mid === mid && chipOpen.k === k ? null : { mid, k }; try { window.noteUse?.("fantasy-h2h", k); } catch {} return paint(); }
