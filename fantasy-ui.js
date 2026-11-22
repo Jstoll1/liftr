@@ -709,16 +709,16 @@
     fullById = Object.fromEntries(cards.map((g) => [g.id, g.full]));
     const pop = document.querySelector("#fx-mupop .fx-tcard");
     if (pop && fullById[pop.dataset.id]) pop.querySelector(".fx-popbody").innerHTML = fullById[pop.dataset.id];
-    root.innerHTML = `
+    root.innerHTML = `<div class="fx-l">
       <div class="fx-head"><span class="fx-k">FANTASY · ${esc(data.year)}</span><span class="fx-wk">${anyLive ? `<i class="fx-dot"></i>LIVE · ` : ""}WEEK ${esc(week)}</span></div>
       ${data.take?.text ? `<button type="button" class="fx-take-btn${(() => { try { return localStorage.getItem(`brochiefs_fx_take_${data.take.week}`) ? " read" : ""; } catch { return ""; } })()}" data-fxtake="1"><img src="assets/images/chief/chief2-96.webp" alt=""><span class="fx-k2">WEEK ${esc(data.take.week)} RECAP</span><em>from the Chief</em><i>▸</i></button>` : ""}
       ${games ? `<div class="fx-mus">${games}</div>` : `<p class="fx-note">This week's matchups show once ESPN posts them.</p>`}
-      ${pulseHtml()}${teamNewsHtml()}
+      </div><aside class="fx-rail">${pulseHtml()}${teamNewsHtml()}</aside><div class="fx-l2">
       ${tables()}
       ${historyHtml()}
       ${performers()}
       ${awards()}
-      <p class="fx-note">From ESPN · updated ${esc(new Date(data.exportedAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }))}</p>`;
+      <p class="fx-note">From ESPN · updated ${esc(new Date(data.exportedAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }))}</p></div>`;
   }
 
   root.addEventListener("click", (e) => {
