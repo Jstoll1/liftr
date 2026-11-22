@@ -481,7 +481,7 @@
         }
         combos = next;
       }
-      const rows = combos.map((c) => { const others = MANAGERS.filter((n) => n !== who).map((n) => c.pts[n]); const lead = c.pts[who] - Math.max(...others); const place = 1 + others.filter((x) => x > c.pts[who]).length; return { outcome: c.says.join("; "), yourPoints: c.pts[who], leadOverNextBest: lead, place, tiedWith: others.filter((x) => x === c.pts[who]).length }; }).sort((a, b) => b.leadOverNextBest - a.leadOverNextBest);
+      const rows = combos.map((c) => { const others = MANAGERS.filter((n) => n !== who).map((n) => c.pts[n]); const lead = c.pts[who] - Math.max(...others); const place = 1 + others.filter((x) => x > c.pts[who]).length; return { outcome: c.says.join("; "), yourPoints: c.pts[who], leadOverNextBest: lead, place, tiedWith: others.filter((x) => x === c.pts[who]).length, finish: MANAGERS.map((n) => ({ member: n, points: c.pts[n] })).sort((x, y) => y.points - x.points).slice(0, 4).map((x, i) => `${i + 1}. ${x.member} ${x.points}`) }; }).sort((a, b) => b.leadOverNextBest - a.leadOverNextBest);
       return { member: who, slot: slot.map(gName), pointsNow: base0[who], best: rows[0], worst: rows[rows.length - 1], outcomes: rows.slice(0, 12), note: "Leads count banked points only; outcome odds are not given." };
     },
     // Why someone's odds are what they are: where their card differs from the
