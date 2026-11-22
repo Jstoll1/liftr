@@ -10234,6 +10234,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-pc-s { display: flex; margin-top: 7px; } .fx-pc-s span { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; } .fx-pc-s span + span { border-left: 1px solid rgba(255, 255, 255, .08); }
 .fx-pc-s b { font-family: "Press Start 2P", monospace; font-size: 8.5px; color: #fff; } .fx-pc-s b.up { color: var(--neon-green); } .fx-pc-s small { margin-top: 4px; font-size: 8.5px; color: var(--text-dim); letter-spacing: .04em; }
 .fx-pc-n { margin: 7px 0 0; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fx-pc-l { margin: 8px 0 0; font-size: 11px; color: var(--text); text-align: center; }
 .fx-mc-s em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 10px; color: rgba(255, 255, 255, .8); }
 .fx-mc-s small { margin-top: 2px; font-size: 9.5px; color: rgba(255, 255, 255, .58); }
 .fx-mc.win .fx-mc-s em { color: #fff; } .fx-mc.l.win { box-shadow: inset 2px 0 0 var(--neon-cyan); } .fx-mc.r.win { box-shadow: inset -2px 0 0 var(--neon-purple); }

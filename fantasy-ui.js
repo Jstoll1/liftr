@@ -89,7 +89,7 @@
   // ESPN-style mirrored lineup: one row per slot, the position in a centre
   // spine, each side's player with his game, points and projection.
   const short = (n) => { const w = String(n || "").split(" "); return /D\/ST$/.test(n) || w.length < 2 ? String(n || "") : `${w[0][0]}. ${w.slice(1).join(" ")}`; };
-  const gameLine = (p) => { const g = gameOf(p); if (!g) return ""; const at = `${g.away ? "@" : ""}${esc(g.opp)}`; return g.state === "pre" ? `${at} ${esc(g.detail.replace(/ - .*$/, ""))}` : `${at} ${g.away ? `${g.their}-${g.my}` : `${g.my}-${g.their}`} ${esc(g.state === "in" ? g.detail : "Final")}`; };
+  const gameLine = (p, raw) => { const g = gameOf(p); if (!g) return ""; if (!raw && (g.state === "post" || g.done) && p.line) return esc(p.line); const at = `${g.away ? "@" : ""}${esc(g.opp)}`; return g.state === "pre" ? `${at} ${esc(g.detail.replace(/ - .*$/, ""))}` : `${at} ${g.away ? `${g.their}-${g.my}` : `${g.my}-${g.their}`} ${esc(g.state === "in" ? g.detail : "Final")}`; };
   const cell = (p, side, win) => { if (!p) return `<div class="fx-mc ${side} empty"></div>`; const st = stOf(p), g = gameOf(p); return `<div class="fx-mc ${side} ${st}${win ? " win" : ""}"><span class="fx-mc-n">${side === "r" ? "" : nflLogo(p.nfl)}<b>${esc(short(p.name))}</b>${side === "r" ? nflLogo(p.nfl) : ""}</span><span class="fx-mc-g">${st === "live" && g?.ball ? '<s class="fx-ball"></s>' : ""}${gameLine(p)}${status(p)}</span><span class="fx-mc-s"><em>${st === "pre" ? "–" : pts(p.pts)}</em><small>${p.proj != null ? pts(p.proj) : ""}</small></span></div>`; };
   // Battle screen header: split cyan/purple panel, big scores, then
   // projections, then names; the leader's score lit.
@@ -612,12 +612,12 @@
     const row = pc.closest(".fx-mr"), side = pc.classList.contains("l") ? "l" : "r";
     const owner = side === "l" ? row.dataset.fxl : row.dataset.fxr, mm = (data.live?.matchups || []).find((m) => m.away?.owner === owner || m.home?.owner === owner), t = mm?.away?.owner === owner ? mm.away : mm?.home;
     const p = t?.starters?.[Number(row.dataset.fxpi)]; if (!p) return;
-    const r = (data.rosters?.[owner] || []).find((x) => x.name === p.name) || {}, st = stOf(p), left = remaining(p), g = gameLine(p);
+    const r = (data.rosters?.[owner] || []).find((x) => x.name === p.name) || {}, st = stOf(p), left = remaining(p), g = gameLine(p, true);
     const n = (teamNews?.players || []).find((x) => x.name === p.name)?.news?.find((x) => x.headline);
     const html = `<div class="fx-pc-h">${nflLogo(p.nfl)}<b>${esc(p.name)}</b><small>${esc(p.pos || "")} · ${esc(p.nfl || "")} · ${esc(owner)}</small>${p.injury ? `<u class="sev">${esc(statusTxt(p.injury))}</u>` : ""}</div>
       ${g ? `<div class="fx-pc-g ${st}">${st === "live" ? '<i>LIVE</i>' : st === "done" ? "<i>FINAL</i>" : "<i>UP NEXT</i>"}<span>${g}</span></div>` : ""}
       <div class="fx-pc-s">${st === "pre" ? "" : `<span><b>${pts(p.pts)}</b><small>PTS</small></span>`}<span><b>${p.proj != null ? pts(p.proj) : "–"}</b><small>PROJ</small></span>${st === "pre" ? "" : `<span><b class="${(p.pts || 0) >= (p.proj || 0) && st !== "pre" ? "up" : ""}">${st === "done" ? `${(p.pts || 0) - (p.proj || 0) >= 0 ? "+" : "−"}${pts(Math.abs((p.pts || 0) - (p.proj || 0)))}` : `+${pts(left)}`}</b><small>${st === "done" ? "VS PROJ" : "LEFT"}</small></span>`}${r.season != null ? `<span><b>${pts(r.season)}</b><small>SEASON</small></span><span><b>${pts(r.avg)}</b><small>AVG</small></span>` : ""}</div>
-      ${n ? `<p class="fx-pc-n">${kindPill(`${n.headline} ${n.note || ""}`)}${esc(n.headline)}</p>` : ""}`;
+      ${st === "done" && p.line ? `<p class="fx-pc-l">${esc(p.line)}</p>` : ""}${n ? `<p class="fx-pc-n">${kindPill(`${n.headline} ${n.note || ""}`)}${esc(n.headline)}</p>` : ""}`;
     document.getElementById("fx-plpop")?.remove();
     const m = document.createElement("div");
     m.id = "fx-plpop"; m.className = "fx-team fx-plpop"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", p.name);
