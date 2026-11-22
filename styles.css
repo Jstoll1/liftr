@@ -10827,3 +10827,6 @@ html:not(.pro) .scorebug .bug-mark, html:not(.pro) .scorebug .bug-mark .bug-logo
 html:not(.pro) .scorebug .bug-team { min-width: 0; overflow: hidden; white-space: nowrap; }
 html:not(.pro) .scorebug .bug-team > :first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 html:not(.pro) .scorebug .bug-score { width: 3.2em; text-align: right; }
+
+/* Leaderboard lock in its hit/miss box: the padlock centred in a fixed square. */
+i.lk.rank-lk.lk-up, i.lk.rank-lk.lk-dn { display: inline-grid; place-items: center; box-sizing: border-box; width: 22px; height: 18px; padding: 0; line-height: 1; font-size: 11px; vertical-align: middle; top: -1px; }
