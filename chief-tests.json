@@ -604,6 +604,26 @@
       "source": "miss",
       "regression": true,
       "note": "Nov 22 (Curt): versus answer listed 'swings by 7 points, his edge' for a shared Utah pick that was Robert's lock; versus now returns rootFor and why, and the Chief says what to root for"
+    },
+    {
+      "id": "cover-vs-outright",
+      "screen": "pickem",
+      "turns": [
+        "Utah has to lose straight up or just lose the cover for me to win?"
+      ],
+      "checks": {
+        "tools": [
+          "window|scenarios"
+        ],
+        "must": [
+          "cover",
+          "(straight up|outright|loses)"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 22 (Curt): said a missed cover is enough, then 'your chance jumps to 67.4%' without saying why it isn't 100% or whether an outright loss differs; now answers each way the game can finish"
     }
   ]
 }
