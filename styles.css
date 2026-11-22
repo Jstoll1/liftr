@@ -10133,21 +10133,21 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .lvn-tm:last-child { flex-direction: row-reverse; justify-content: flex-end; text-align: right; }
 .lvn-tm img { width: 20px; height: 20px; object-fit: contain; flex: none; }
 .lvn-tm b { font-size: 12px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lvn-tm em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 11px; margin-left: 4px; color: rgba(255, 255, 255, .45); }
+.lvn-tm em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 14px; margin-left: 4px; color: rgba(255, 255, 255, .45); }
 .lvn-tm:last-child em { margin-left: 0; margin-right: 4px; }
 .lvn-tm.lead, .lvn-tm.lead em { color: #fff; }
 .lvn-tm.me b { color: var(--neon-cyan); }
 .lvn-mid { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.lvn-al { font-family: 'Press Start 2P', monospace; font-size: 5.5px; padding: 3px 4px; border-radius: 4px; white-space: nowrap; animation: lvn-blink .9s steps(1) infinite; }
-.lvn-al.rz { background: var(--neon-pink); color: #fff; }
-.lvn-al.score { background: var(--arcade-gold); color: var(--ink); }
-.lvn-al.turn { background: var(--neon-orange); color: var(--ink); }
+.lvn-al { font-family: 'Press Start 2P', monospace; font-size: 4.5px; padding: 2px 3px; border-radius: 3px; white-space: nowrap; animation: none; }
+.lvn-al.rz { background: none; color: var(--neon-pink); border: 1px solid rgba(var(--neon-pink-rgb), .6); }
+.lvn-al.score { background: none; color: var(--arcade-gold); border: 1px solid rgba(var(--arcade-gold-rgb), .6); }
+.lvn-al.turn { background: none; color: var(--neon-orange); border: 1px solid rgba(var(--neon-orange-rgb), .6); }
 @keyframes lvn-blink { 50% { opacity: .25; } }
-.lvn-row.al-rz, .lvn-row.al-rz.fresh { background: rgba(var(--neon-pink-rgb), .2); box-shadow: inset 3px 0 0 var(--neon-pink); animation: lvn-rz 1.6s ease-in-out infinite; }
+.lvn-row.al-rz, .lvn-row.al-rz.fresh { background: none; box-shadow: inset 3px 0 0 var(--neon-pink); animation: none; }
 @keyframes lvn-rz { 50% { background: rgba(var(--neon-pink-rgb), .32); } }
 @media (prefers-reduced-motion: reduce) { .lvn-row.al-rz { animation: none; } }
-.lvn-row.al-score { animation: lvn-gold 1.2s ease-in-out 3; box-shadow: inset 3px 0 0 var(--arcade-gold); background: rgba(var(--arcade-gold-rgb), .08); }
-.lvn-row.al-turn { animation: lvn-turn 1.2s ease-in-out 3; box-shadow: inset 3px 0 0 var(--neon-orange); background: rgba(var(--neon-orange-rgb), .08); }
+.lvn-row.al-score { animation: none; box-shadow: inset 3px 0 0 var(--arcade-gold); background: none; }
+.lvn-row.al-turn { animation: none; box-shadow: inset 3px 0 0 var(--neon-orange); background: none; }
 /* Fireworks on a touchdown: two pixel bursts of gold, cyan and pink sparks
    that pop, spread and fade three times, behind the row's text. */
 .lvn-row { position: relative; overflow: hidden; }
@@ -10167,7 +10167,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .lvn-tk { display: flex; align-items: flex-start; gap: 6px; min-width: 0; overflow: hidden; font-size: 11.5px; line-height: 1.4; color: rgba(255, 255, 255, .8); border-top: 1px solid rgba(255, 255, 255, .06); padding-top: 5px; }
 .lvn-tk.dim { color: var(--text-dim); }
 .lvn-pl { width: 14px; height: 14px; object-fit: contain; flex: none; }
-.lvn-tk > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-width: 0; overflow: hidden; }
+.lvn-tk > span { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .lvn-tk .lvn-pl { margin-top: 2px; } .lvn-row.fresh .lvn-tk::before { margin-top: 6px; }
 
 /* ==== RETRO: fantasy (top of the History tab) ==== */
