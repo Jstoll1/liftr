@@ -1685,6 +1685,13 @@ function enterScreen(name) {
 // roster and land where the action is — your picks before the first
 // kickoff, the live board once games are underway. First-timers get the
 // rules once, then "Who are you?".
+// NFL Sunday: from 11 AM Eastern on Sunday through Monday night, the app
+// opens on Fantasy (where the week's games are).
+function fantasyDay(now = new Date()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", hour12: false }).formatToParts(now).map((x) => [x.type, x.value]));
+  const h = Number(p.hour) % 24;
+  return (p.weekday === "Sun" && h >= 11) || p.weekday === "Mon";
+}
 function goToPlayerSelect() {
   rememberScroll();
   logoScreen.classList.add("hidden");
@@ -1695,6 +1702,7 @@ function goToPlayerSelect() {
   const me = loadMe();
   if (me) {
     currentManager = me;
+    if (fantasyDay()) { loginScreen.classList.add("hidden"); showHistory(); return; }
     if (!picksStillOpen()) {
       loginScreen.classList.add("hidden");
       showScoreboard();
@@ -11643,7 +11651,7 @@ function goToScoresNow() {
   // Picks while any game can still be picked or changed; Scores once all are locked.
   // A game on right now (kicked off in the last four hours) opens Scores.
   const now = Date.now(), liveNow = GAMES.some((g) => { const k = new Date(g.kickoff).getTime(); return k <= now && now - k < 4 * 3600e3; });
-  if (picksStillOpen() && !liveNow) showPicksScreen(); else showScoreboard();
+  if (fantasyDay()) showHistory(); else if (picksStillOpen() && !liveNow) showPicksScreen(); else showScoreboard();
   document.documentElement.classList.remove("known");
 }
 (async () => {
@@ -11677,7 +11685,7 @@ function goToScoresNow() {
     // from the one this phone had (a new week, a changed game).
     // The saved slate was last week's: the new one is open for picks, so
     // go there instead of the old board.
-    if (picksStillOpen() && !scoreboardScreen.classList.contains("hidden")) { showPicksScreen(); return; }
+    if (!fantasyDay() && picksStillOpen() && !scoreboardScreen.classList.contains("hidden")) { showPicksScreen(); return; }
     if (slateChanged && !scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
     return;
   }
