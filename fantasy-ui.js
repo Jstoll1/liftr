@@ -553,6 +553,9 @@
     // 👀 Whoever is on a record pace this season (points and/or wins).
     const pace = {}; for (const r of data.history?.record || []) { const t = String(r.text || ""); if (!/^on pace for/.test(t) || /fewest/.test(t)) continue; const mp = t.match(/on pace for ([\d.]+) points/), mw = t.match(/on pace for (\d+) wins/); const x = pace[r.owner] = pace[r.owner] || {}; if (mp) { x.pf = Number(mp[1]); x.pfRec = /past the record/.test(t); } if (mw) { x.w = Number(mw[1]); x.wRec = /past the record/.test(t); } }
     for (const [o, x] of Object.entries(pace).slice(0, 2)) { const bits = [x.pf ? `<b>${Math.round(x.pf).toLocaleString("en-US")}</b> pts` : "", x.w ? `<b>${x.w}</b> wins` : ""].filter(Boolean); if (bits.length) out.unshift(`👀 <b>${esc(o)}</b> on ${x.pfRec || x.wRec ? "record" : "historic"} pace: ${bits.join(" · ")}`); }
+    // 🏁 The race to last: the three worst records (fewest points breaks a tie).
+    const lo = [...(data.standings || [])].sort((x, y) => (x.wins + (x.ties || 0) / 2) - (y.wins + (y.ties || 0) / 2) || (x.pointsFor || 0) - (y.pointsFor || 0)).slice(0, 3);
+    if (lo.length === 3) out.push(`🏁 <span class="fx-pk">RACE TO LAST</span> ${lo.map((r) => `<b>${esc(r.owner)}</b> ${r.wins}-${r.losses}`).join(" · ")}`);
     return out.length ? `<div class="fx-sechd"><span>LEAGUE PULSE</span></div><ul class="fx-pulse">${out.map((x) => `<li>${x}</li>`).join("")}</ul>` : "";
   };
   const fxSeen = {}; // matchup id -> last painted leader and scores
