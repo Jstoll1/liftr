@@ -542,15 +542,17 @@
   const pulseHtml = () => {
     const ms = (data.live?.matchups || []).filter((m) => !m.final && m.home && m.away), out = [];
     const sc = (t) => Number(t?.points) || 0, live = ms.filter((m) => sc(m.home) + sc(m.away) > 0);
-    if (!live.length) return "";
-    const big = [...live].sort((a, b) => Math.abs(sc(b.home) - sc(b.away)) - Math.abs(sc(a.home) - sc(a.away)))[0];
+    const big = live.length && [...live].sort((a, b) => Math.abs(sc(b.home) - sc(b.away)) - Math.abs(sc(a.home) - sc(a.away)))[0];
     if (big) { const [w, l] = sc(big.home) >= sc(big.away) ? [big.home, big.away] : [big.away, big.home]; out.push(`<b>${esc(w.owner)}</b> leads ${esc(l.owner)} by <b>${pts(sc(w) - sc(l))}</b>, the biggest lead`); }
     const wpOf = (m) => { const a = outlook(m.away), h = outlook(m.home); return phi((a.exp - h.exp) / Math.sqrt(a.sd ** 2 + h.sd ** 2)); };
     const close = [...ms].sort((a, b) => Math.abs(wpOf(a) - 0.5) - Math.abs(wpOf(b) - 0.5))[0];
-    if (close && close !== big) { const p0 = wpOf(close); out.push(`<b>${esc(close.away.owner)} vs ${esc(close.home.owner)}</b> is the closest: ${pct(p0)}–${pct(1 - p0)}`); }
+    if (live.length && close && close !== big) { const p0 = wpOf(close); out.push(`<b>${esc(close.away.owner)} vs ${esc(close.home.owner)}</b> is the closest: ${pct(p0)}–${pct(1 - p0)}`); }
     const all = []; for (const m of data.live?.matchups || []) for (const t of [m.away, m.home]) for (const p of t?.starters || []) all.push({ ...p, owner: t.owner });
     const hot = all.sort((a, b) => (b.pts || 0) - (a.pts || 0))[0];
     if (hot && hot.pts > 0) out.push(`<b>${esc(short(hot.name))}</b> tops every starter: ${pts(hot.pts)} for ${esc(hot.owner)}`);
+    // 👀 Whoever is on a record pace this season (points and/or wins).
+    const pace = {}; for (const r of data.history?.record || []) { const t = String(r.text || ""); if (!/^on pace for/.test(t) || /fewest/.test(t)) continue; const mp = t.match(/on pace for ([\d.]+) points/), mw = t.match(/on pace for (\d+) wins/); const x = pace[r.owner] = pace[r.owner] || {}; if (mp) { x.pf = Number(mp[1]); x.pfRec = /past the record/.test(t); } if (mw) { x.w = Number(mw[1]); x.wRec = /past the record/.test(t); } }
+    for (const [o, x] of Object.entries(pace).slice(0, 2)) { const bits = [x.pf ? `<b>${Math.round(x.pf).toLocaleString("en-US")}</b> pts` : "", x.w ? `<b>${x.w}</b> wins` : ""].filter(Boolean); if (bits.length) out.unshift(`👀 <b>${esc(o)}</b> on ${x.pfRec || x.wRec ? "record" : "historic"} pace: ${bits.join(" · ")}`); }
     return out.length ? `<div class="fx-sechd"><span>LEAGUE PULSE</span></div><ul class="fx-pulse">${out.map((x) => `<li>${x}</li>`).join("")}</ul>` : "";
   };
   const fxSeen = {}; // matchup id -> last painted leader and scores
