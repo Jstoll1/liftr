@@ -374,7 +374,12 @@
     for (const d of data.divisions || []) { const rs = orderRec(s.filter((r) => data.divisionOf?.[r.owner] === d.id)); if (rs.length > 1) add(rs[0], rs[1], "div", `${String(d.name || "DIVISION").toUpperCase()} TITLE · BYE`, ["LEADS", "CHASES"]); }
     return out.sort((x, y) => x.gap - y.gap);
   };
-  const bubble = (line) => races(line).map((r, i) => { const A = stand().find((x) => x.owner === r.a), B = stand().find((x) => x.owner === r.b); const tag = r.gap === 0 ? `TIED IN RECORD<br>${tieRule()}` : `${r.gap} WIN APART`; return `<div class="fx-race" data-fxrace="${i}" role="button" tabindex="0" aria-haspopup="dialog"><span class="fx-race-k">${esc(r.label)}</span><span class="fx-race-t"><span class="in">${owner(A.owner)} <em>${A.wins}-${A.losses}</em></span><i>${tag}</i><span class="out">${owner(B.owner)} <em>${B.wins}-${B.losses}</em></span></span><small>${r.left ? `${r.left} week${r.left === 1 ? "" : "s"} left` : "Final week"} ▸</small></div>`; }).join("");
+  // One PLAYOFF RACES panel, a row per race: what is at stake, the two
+  // teams, and the gap or who holds the tie (the seeding rules decide it).
+  const bubble = (line) => { const rs = races(line); if (!rs.length) return ""; const st = stand();
+    const rows = rs.map((r, i) => { const A = st.find((x) => x.owner === r.a), B = st.find((x) => x.owner === r.b); const k = r.kind === "spot" ? `SEED ${line}` : r.label.split(" ")[0]; const tag = r.gap === 0 ? `${esc(A.owner).toUpperCase()} HOLDS${r.kind === "spot" ? ` #${line}` : ""}` : `${r.gap} GAME${r.gap === 1 ? "" : "S"}`;
+      return `<button type="button" class="fx-rr" data-fxrace="${i}"><span class="fx-rr-k">${esc(k)}</span><span class="fx-rr-t"><b>${esc(A.owner)}</b> <em>${A.wins}-${A.losses}</em><i>vs</i><b>${esc(B.owner)}</b> <em>${B.wins}-${B.losses}</em></span><span class="fx-rr-g${r.gap === 0 ? " tie" : ""}">${tag}</span><span class="fx-rr-x">▸</span></button>`; }).join("");
+    const left = rs[0].left; return `<div class="fx-races"><div class="fx-races-h"><span>PLAYOFF RACES</span><small>${left ? `${left} week${left === 1 ? "" : "s"} left` : "final week"}</small></div>${rows}</div>`; };
   // The race sheet: every team still in doubt, its odds, projected wins,
   // and each game left with a win chance from season scoring.
   // Playoff picture if the season ended today: seeds, byes and the
