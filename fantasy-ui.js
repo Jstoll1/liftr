@@ -515,7 +515,7 @@
     const shown = newsAll ? items : items.slice(0, 3);
     const full = (p) => { const all = (p.news || []).filter((x) => x.headline); return `<div class="fx-tn-full">${all.length ? all.map((x) => `<div class="fx-tn-it"><p>${kindPill(`${x.headline} ${x.note || ""}`)}${esc(x.note && x.note.length > x.headline.length ? x.note : x.headline)}</p><span>${x.at ? `${ago(x.at)} ago` : ""}${x.link ? ` · <a href="${esc(x.link)}" target="_blank" rel="noopener" data-fxlink="1">ESPN ›</a>` : ""}</span></div>`).join("") : `<p class="fx-note">No ESPN notes on him this week.</p>`}</div>`; };
     const row = ({ p, n, starter }) => `<li${n?.at && newsSeen && n.at > newsSeen ? ' data-new="1"' : n?.at && newsSeen ? ' data-old="1"' : ""} data-fxnp="${esc(p.id)}" role="button" tabindex="0" aria-expanded="${newsOpen === String(p.id)}"${newsOpen === String(p.id) ? ' class="open"' : ""}>${nflLogo(p.nfl)}<span class="fx-tn-m"><span class="fx-tn-h"><b>${esc(p.name)}</b><small>${esc(p.pos || "")}${starter ? "" : " · bench"}</small>${p.injury ? `<u class="sev${SEV[p.injury] >= 3 ? " hi" : ""}">${statusTxt(p.injury)}</u>` : ""}</span>${n ? (() => { const [h, c] = noteSplit(n.headline); return `<span class="fx-tn-one">${kindPill(`${n.headline} ${n.note || ""}`)}<b class="fx-tn-hl">${esc(h)}</b>${n.at ? `<i>${ago(n.at)}</i>` : ""}</span>`; })() : ""}${newsOpen === String(p.id) ? full(p) : ""}</span></li>`;
-    if (!newsMarked) { newsMarked = true; setTimeout(() => { try { localStorage.setItem("brochiefs_fx_newsseen", String(Date.now())); } catch {} }, 4000); }
+    if (!newsMarked) { newsMarked = true; if (!window.__liveView) setTimeout(() => { try { localStorage.setItem("brochiefs_fx_newsseen", String(Date.now())); } catch {} }, 4000); }
     return `<div class="fx-sechd"><span>YOUR TEAM · UPDATES</span></div>${items.length ? `<ul class="fx-tn">${shown.map(row).join("")}</ul>${items.length > 3 ? `<button type="button" class="fx-tn-more" data-fxnewsall="1">${newsAll ? "SHOW FEWER ▴" : `+${items.length - 3} MORE ▾`}</button>` : ""}` : `<p class="fx-note">No injuries or news on your roster in the last three days.</p>`}`;
   }
   const fxSeen = {}; // matchup id -> last painted leader and scores
@@ -608,7 +608,7 @@
   root.addEventListener("click", (e) => {
     if (e.target.closest("[data-fxtake]")) {
       // The Chief's recap in a pop-up, so it never pushes the matchups down.
-      try { localStorage.setItem(`brochiefs_fx_take_${data.take.week}`, "1"); } catch {}
+      if (!window.__liveView) try { localStorage.setItem(`brochiefs_fx_take_${data.take.week}`, "1"); } catch {}
       document.getElementById("fx-team")?.remove();
       const m = document.createElement("div");
       m.id = "fx-team"; m.className = "fx-team"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "The Chief's recap");
