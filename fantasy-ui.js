@@ -503,6 +503,7 @@
   // (when, where, against whom), cut at the first such phrase.
   const noteSplit = (t) => { const x = String(t || "").replace(/\s+/g, " ").trim(); const m = x.slice(20).match(/\s(?:during|in (?:the|Sunday|Monday|Thursday|Saturday|Week)|against|on (?:Sunday|Monday|Thursday|Saturday|Friday|Wednesday|Tuesday)|for (?:Sunday|Monday|Thursday|Saturday)|ahead of|after|before|,\s(?:but|and|while|though)|,\s|;\s)/); if (!m) return [x.replace(/\.$/, ""), ""]; const i = 20 + m.index; return [x.slice(0, i).replace(/[,;]$/, ""), x.slice(i).replace(/^[\s,;]+/, "").replace(/^(but|and|while|though)\s/, "").replace(/\.$/, "")]; };
   const kindPill = (t) => { const [l, c] = newsKind(t); return `<span class="fx-nk ${c}">${l}</span>`; };
+  let newsSeen = (() => { try { return Number(localStorage.getItem("brochiefs_fx_newsseen")) || 0; } catch { return 0; } })(), newsMarked = false;
   function teamNewsHtml() {
     if (!teamNews?.players || (teamNews.owner && teamNews.owner !== me())) { if (teamNews && teamNews.owner !== me()) { teamNews = null; teamNewsAt = 0; } loadTeamNews(); return ""; }
     const fresh = (n) => n && n.at && Date.now() - n.at < 3 * 86400000;
@@ -513,7 +514,8 @@
       .filter((x) => x.p.injury || x.n).sort((a, b) => b.score - a.score || (b.n?.at || 0) - (a.n?.at || 0));
     const shown = newsAll ? items : items.slice(0, 3);
     const full = (p) => { const all = (p.news || []).filter((x) => x.headline); return `<div class="fx-tn-full">${all.length ? all.map((x) => `<div class="fx-tn-it"><p>${kindPill(`${x.headline} ${x.note || ""}`)}${esc(x.note && x.note.length > x.headline.length ? x.note : x.headline)}</p><span>${x.at ? `${ago(x.at)} ago` : ""}${x.link ? ` · <a href="${esc(x.link)}" target="_blank" rel="noopener" data-fxlink="1">ESPN ›</a>` : ""}</span></div>`).join("") : `<p class="fx-note">No ESPN notes on him this week.</p>`}</div>`; };
-    const row = ({ p, n, starter }) => `<li data-fxnp="${esc(p.id)}" role="button" tabindex="0" aria-expanded="${newsOpen === String(p.id)}"${newsOpen === String(p.id) ? ' class="open"' : ""}>${nflLogo(p.nfl)}<span class="fx-tn-m"><span class="fx-tn-h"><b>${esc(p.name)}</b><small>${esc(p.pos || "")}${starter ? "" : " · bench"}</small>${p.injury ? `<u class="sev${SEV[p.injury] >= 3 ? " hi" : ""}">${statusTxt(p.injury)}</u>` : ""}</span>${n ? (() => { const [h, c] = noteSplit(n.headline); return `<span class="fx-tn-n">${kindPill(`${n.headline} ${n.note || ""}`)}<b class="fx-tn-hl">${esc(h)}</b></span><span class="fx-tn-c">${c ? `<span>${esc(c[0].toUpperCase() + c.slice(1))}</span>` : ""}${n.at ? `<i>${c ? "· " : ""}${ago(n.at)} ago</i>` : ""}</span>`; })() : ""}${newsOpen === String(p.id) ? full(p) : ""}</span></li>`;
+    const row = ({ p, n, starter }) => `<li${n?.at && newsSeen && n.at > newsSeen ? ' data-new="1"' : n?.at && newsSeen ? ' data-old="1"' : ""} data-fxnp="${esc(p.id)}" role="button" tabindex="0" aria-expanded="${newsOpen === String(p.id)}"${newsOpen === String(p.id) ? ' class="open"' : ""}>${nflLogo(p.nfl)}<span class="fx-tn-m"><span class="fx-tn-h"><b>${esc(p.name)}</b><small>${esc(p.pos || "")}${starter ? "" : " · bench"}</small>${p.injury ? `<u class="sev${SEV[p.injury] >= 3 ? " hi" : ""}">${statusTxt(p.injury)}</u>` : ""}</span>${n ? (() => { const [h, c] = noteSplit(n.headline); return `<span class="fx-tn-n">${kindPill(`${n.headline} ${n.note || ""}`)}<b class="fx-tn-hl">${esc(h)}</b></span><span class="fx-tn-c">${c ? `<span>${esc(c[0].toUpperCase() + c.slice(1))}</span>` : ""}${n.at ? `<i>${c ? "· " : ""}${ago(n.at)} ago</i>` : ""}</span>`; })() : ""}${newsOpen === String(p.id) ? full(p) : ""}</span></li>`;
+    if (!newsMarked) { newsMarked = true; setTimeout(() => { try { localStorage.setItem("brochiefs_fx_newsseen", String(Date.now())); } catch {} }, 4000); }
     return `<div class="fx-sechd"><span>YOUR TEAM · UPDATES</span></div>${items.length ? `<ul class="fx-tn">${shown.map(row).join("")}</ul>${items.length > 3 ? `<button type="button" class="fx-tn-more" data-fxnewsall="1">${newsAll ? "SHOW FEWER ▴" : `+${items.length - 3} MORE ▾`}</button>` : ""}` : `<p class="fx-note">No injuries or news on your roster in the last three days.</p>`}`;
   }
   const fxSeen = {}; // matchup id -> last painted leader and scores
@@ -557,7 +559,7 @@
         // that moved, compared with the last paint.
         const prev = fxSeen[m.id], took = prev && prev.lead && lead && prev.lead !== lead, bump = (k, v) => prev && prev[k] !== v ? " bump" : "";
         fxSeen[m.id] = { lead, a: sa, b: sb };
-        const row = (t, o, side, v) => `<span class="fx-cr s-${side}${lead === side ? " lead" : ""}${t?.owner === me() ? " me" : ""}">${badge(t)}<b>${esc(t?.owner || "")}${mine(m) && (t?.name || data.teams?.[t?.owner]?.name) ? `<small class="fx-tmn" title="${esc(t?.name || data.teams?.[t?.owner]?.name)}">${esc(t?.name || data.teams?.[t?.owner]?.name)}</small>` : ""}</b><em class="fx-sc${bump(side, v)}">${pts(t?.points)}</em></span>`;
+        const row = (t, o, side, v) => `<span class="fx-cr s-${side}${lead === side ? " lead" : ""}${t?.owner === me() ? " me" : ""}">${badge(t)}<b>${esc(t?.owner || "")}${mine(m) && (t?.name || data.teams?.[t?.owner]?.name) ? `<small class="fx-tmn" title="${esc(t?.name || data.teams?.[t?.owner]?.name)}">${esc(t?.name || data.teams?.[t?.owner]?.name)}</small>` : ""}</b><em class="fx-sc${bump(side, v)}">${pts(t?.points)}</em>${mine(m) && !m.final ? (() => { const o = outlook(t), n = (o.left || 0) + (o.now || 0); return `<small class="fx-lft">${n ? `${n} left` : "all played"} · proj ${pts(o.exp)}</small>`; })() : ""}</span>`;
         // Battle meter: each side's chance to win, a crisp
         // divider where they meet; empty and neutral before anyone scores.
         // The bar is the chance to win: live odds while it is on, settled once final, score share only when no odds exist.
@@ -585,7 +587,7 @@
     if (pop && fullById[pop.dataset.id]) pop.querySelector(".fx-popbody").innerHTML = fullById[pop.dataset.id];
     root.innerHTML = `
       <div class="fx-head"><span class="fx-k">FANTASY · ${esc(data.year)}</span><span class="fx-wk">${anyLive ? `<i class="fx-dot"></i>LIVE · ` : ""}WEEK ${esc(week)}</span></div>
-      ${data.take?.text ? `<button type="button" class="fx-take-btn" data-fxtake="1"><img src="assets/images/chief/chief2-96.webp" alt=""><span class="fx-k2">WEEK ${esc(data.take.week)} RECAP</span><em>from the Chief</em><i>▸</i></button>` : ""}
+      ${data.take?.text ? `<button type="button" class="fx-take-btn${(() => { try { return localStorage.getItem(`brochiefs_fx_take_${data.take.week}`) ? " read" : ""; } catch { return ""; } })()}" data-fxtake="1"><img src="assets/images/chief/chief2-96.webp" alt=""><span class="fx-k2">WEEK ${esc(data.take.week)} RECAP</span><em>from the Chief</em><i>▸</i></button>` : ""}
       ${games ? `<div class="fx-mus">${games}</div>` : `<p class="fx-note">This week's matchups show once ESPN posts them.</p>`}
       ${teamNewsHtml()}
       ${tables()}
@@ -598,6 +600,7 @@
   root.addEventListener("click", (e) => {
     if (e.target.closest("[data-fxtake]")) {
       // The Chief's recap in a pop-up, so it never pushes the matchups down.
+      try { localStorage.setItem(`brochiefs_fx_take_${data.take.week}`, "1"); } catch {}
       document.getElementById("fx-team")?.remove();
       const m = document.createElement("div");
       m.id = "fx-team"; m.className = "fx-team"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "The Chief's recap");
