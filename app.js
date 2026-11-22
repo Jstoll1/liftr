@@ -9577,6 +9577,9 @@ function playSummary(t) {
   else if ((m = t.match(/kicks?(?:off)?\s+(\d+)\s+yards?/i))) main = /touchback/i.test(t) ? "Kickoff, touchback" : "Kickoff";
   else if ((m = t.match(/^timeout\s+([A-Z][A-Za-z.&' ]+?)(?:,|$)/i))) main = `Timeout ${m[1].trim()}`;
   else if (/end of (\d|the)|end quarter|end of half|halftime/i.test(t)) main = t.replace(/\.$/, "");
+  // A bare extra-point fragment: "Tom McGough KICK)" / "(T.McGough KICK)".
+  if (!main && (m = t.match(/^\(?\s*(.+?)\s+(KICK|PAT)\)?\s*$/i))) return `${nm(m[1])} extra point good`;
+  if (!main && (m = t.match(/^\(?\s*(.+?)\s+(KICK|PAT)\s+(failed|no good|blocked|missed)\)?\s*$/i))) return `${nm(m[1])} extra point missed`;
   if (!main && penTxt) return [penTxt, ...tags].join(" · ");
   if (!main) return t.replace(/\(.*?\)/g, "").replace(/#\d+\s+/g, "").replace(/\s{2,}/g, " ").trim().slice(0, 80);
   // Put the player on it: "J. Haynes run for 6 yds", "D. Moore to E. Stewart, 12 yds".
