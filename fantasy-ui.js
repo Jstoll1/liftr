@@ -497,7 +497,7 @@
   const noteSplit = (t) => { const x = String(t || "").replace(/\s+/g, " ").trim(); const m = x.slice(20).match(/\s(?:during|in (?:the|Sunday|Monday|Thursday|Saturday|Week)|against|on (?:Sunday|Monday|Thursday|Saturday|Friday|Wednesday|Tuesday)|for (?:Sunday|Monday|Thursday|Saturday)|ahead of|after|before|,\s(?:but|and|while|though)|,\s|;\s)/); if (!m) return [x.replace(/\.$/, ""), ""]; const i = 20 + m.index; return [x.slice(0, i).replace(/[,;]$/, ""), x.slice(i).replace(/^[\s,;]+/, "").replace(/^(but|and|while|though)\s/, "").replace(/\.$/, "")]; };
   const kindPill = (t) => { const [l, c] = newsKind(t); return `<span class="fx-nk ${c}">${l}</span>`; };
   function teamNewsHtml() {
-    if (!teamNews?.players) { loadTeamNews(); return ""; }
+    if (!teamNews?.players || (teamNews.owner && teamNews.owner !== me())) { if (teamNews && teamNews.owner !== me()) { teamNews = null; teamNewsAt = 0; } loadTeamNews(); return ""; }
     const fresh = (n) => n && n.at && Date.now() - n.at < 3 * 86400000;
     // ESPN's live injury (status and its own short note) wins over the
     // fantasy roster's tag, which can be hours old.
@@ -639,6 +639,7 @@
   });
 
   const visible = () => !document.getElementById("history-screen")?.classList.contains("hidden") && !document.hidden;
+  window.fantasyMeChanged = () => { teamNews = null; teamNewsAt = 0; newsOpen = null; newsAll = false; card = null; chipOpen = null; document.getElementById("fx-mupop")?.remove(); document.getElementById("fx-team")?.remove(); paint(); };
   window.paintFantasy = async (force) => { paint(); await load(force); paint(); };
   if (visible()) window.paintFantasy();
   setInterval(() => { if (visible()) load().then(paint); }, 60000);
