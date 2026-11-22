@@ -24,5 +24,5 @@ test("route: both leagues, or none (then the Chief asks)", () => {
   assert.equal(leagueRoute("Did Jake's lock hit and who leads fantasy?", games).route, "both");
   const none = leagueRoute("Who's winning this year?", games);
   assert.equal(none.route, "unclear");
-  assert.match(routeNote(none), /fantasy league or the pick'em/i);
+  assert.match(routeNote(none), /fantasy or the pick'em/i);
 });

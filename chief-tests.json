@@ -145,11 +145,11 @@
         "What do I need to win?"
       ],
       "checks": {
-        "tools": [
-          "needs|scenarios"
+        "must": [
+          "fantasy|pick.?em"
         ]
       },
-      "note": "scenarios answers this well too (Nov 21 run)"
+      "note": "scenarios answers this well too (Nov 21 run); Nov 22: could be either league, so the Chief asks which"
     },
     {
       "source": "seed",
@@ -172,12 +172,15 @@
         "Who is leading?"
       ],
       "checks": {
-        "noAsk": true,
-        "tools": [
-          "standings"
+        "must": [
+          "fantasy|pick.?em"
+        ],
+        "mustNot": [
+          "all-play|luck number"
         ]
       },
-      "regression": true
+      "regression": true,
+      "note": "Nov 22: no league word and could be either league, so the Chief asks fantasy or pick'em (the page no longer decides)"
     },
     {
       "source": "seed",
@@ -187,19 +190,22 @@
         "Who is leading?"
       ],
       "checks": {
-        "noAsk": true,
-        "tools": [
-          "archive"
+        "must": [
+          "fantasy|pick.?em"
+        ],
+        "mustNot": [
+          "all-play|luck number"
         ]
       },
-      "regression": true
+      "regression": true,
+      "note": "Nov 22: no league word and could be either league, so the Chief asks fantasy or pick'em (the page no longer decides)"
     },
     {
       "source": "seed",
       "id": "route-followup",
       "screen": "pickem",
       "turns": [
-        "How is Curt doing?",
+        "How is Curt doing in the pick'em?",
         "And Logan?"
       ],
       "checks": {
@@ -564,17 +570,16 @@
         "Hey Chief - what needs to happen for me to beat Robert?"
       ],
       "checks": {
-        "tools": [
-          "needs|edge|window|picks"
+        "must": [
+          "fantasy|pick.?em"
         ],
         "mustNot": [
-          "all-play|luck number|schedule|2025"
-        ],
-        "noAsk": true
+          "all-play|luck number"
+        ]
       },
       "source": "miss",
       "regression": true,
-      "note": "Nov 22 (Curt): Saturday night with pick'em games open, 'what needs to happen to beat Robert' went to the fantasy archive (all-play, luck); no-league-word race questions now route to this week's pick'em while games are open"
+      "note": "Nov 22 (Curt): Saturday night with pick'em games open, 'what needs to happen to beat Robert' went to the fantasy archive (all-play, luck); no-league-word race questions now route to this week's pick'em while games are open; Nov 22: no league word and could be either league, so the Chief asks fantasy or pick'em (the page no longer decides)"
     }
   ]
 }
