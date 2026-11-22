@@ -5161,10 +5161,11 @@ body:has(#insights-modal.gc-full:not(.hidden)) .bottom-nav { display: none; }
 .story-next b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6.5px; letter-spacing: .1em; color: #fff; background: #c8102e; padding: 4px 5px; border-radius: 3px; }
 .story-next em { font-style: normal; font-weight: 500; color: #6b5f4f; }
 .story-logo { width: 18px; height: 18px; object-fit: contain; }
-.pot-row { grid-template-columns: 42px minmax(0, 1fr) 36px 44px 46px 56px; column-gap: 3px; }
+.pot-row { grid-template-columns: 34px minmax(0, 1fr) 28px 38px 32px 36px 46px; column-gap: 2px; }
+.pot-pct { text-align: center; font-variant-numeric: tabular-nums; color: var(--text-dim); font-size: 11px; }
 .pot-rec { text-align: center; font-variant-numeric: tabular-nums; color: var(--text-dim); font-size: 11px; }
 .pot-row.head .pot-rec, .pot-row.head span:nth-child(4) { text-align: center; }
-@media (max-width: 360px) { .pot-row { grid-template-columns: 40px minmax(0, 1fr) 32px 40px 40px 50px; } }
+@media (max-width: 360px) { .pot-row { grid-template-columns: 34px minmax(0, 1fr) 28px 32px 38px 46px; } .pot-row .pot-rec, .pot-row.head > :nth-child(4) { display: none !important; } }
 
 /* ===== Week over: recap, pot, leaderboard, scores, in that order ===== */
 #scores-toggle { display: none; }
@@ -5284,8 +5285,8 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 #scoreboard-screen .lb-head { margin-top: 14px; }
 /* Header cells match the six columns under them: # · NAME · PTS · REC · WON · EARNED. */
 .pot-row.head > :nth-child(3) { text-align: right; padding-right: 0; }
-.pot-row.head > :nth-child(4), .pot-row.head > :nth-child(5) { text-align: center; }
-.pot-row.head > :nth-child(6) { text-align: right; }
+.pot-row.head > :nth-child(4), .pot-row.head > :nth-child(5), .pot-row.head > :nth-child(6) { text-align: center; }
+.pot-row.head > :nth-child(7) { text-align: right; }
 .pot-won { display: flex; justify-content: center; align-items: center; gap: 1px; text-align: center; }
 .pot-row > .pot-pts { justify-content: flex-end; }
 /* Question of the week */
@@ -9139,9 +9140,9 @@ html:root .tpoll-card .tpoll-opts button b { font-size: 11.5px !important; }
 html:root .tpoll-card .tpoll-opts button[data-tv="retro"] b { font-size: 7.5px !important; }
 /* Pot table: sortable headers */
 .pot-row.head .pot-sort { all: unset; display: block; font: inherit; color: inherit; letter-spacing: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; white-space: nowrap; }
-.pot-row.head > .pot-sort:nth-child(3), .pot-row.head > .pot-sort:nth-child(6) { text-align: right; }
+.pot-row.head > .pot-sort:nth-child(3), .pot-row.head > .pot-sort:nth-child(7) { text-align: right; }
 .pot-row.head > .pot-sort:nth-child(3) { padding-right: 8px; } /* clears the live dot slot after the points */
-.pot-row.head > .pot-sort:nth-child(4), .pot-row.head > .pot-sort:nth-child(5) { text-align: center; }
+.pot-row.head > .pot-sort:nth-child(4), .pot-row.head > .pot-sort:nth-child(5), .pot-row.head > .pot-sort:nth-child(6) { text-align: center; }
 .pot-row.head .pot-sort.on { color: var(--neon-yellow); }
 html.pro .pot-row.head .pot-sort.on { color: var(--acc) !important; }
 .pot-row.head .pot-sort i { font-style: normal; margin-left: 3px; font-size: .85em; }
@@ -10834,3 +10835,5 @@ html:not(.pro) .scorebug .bug-score { width: 3.2em; text-align: right; }
 i.lk.rank-lk.lk-up, i.lk.rank-lk.lk-dn { display: inline-block; box-sizing: border-box; width: 24px; height: 20px; padding: 0; font-size: 0; line-height: 0; color: transparent; vertical-align: middle; top: -1px; filter: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 14'%3E%3Cpath d='M3.2 6V4.2a2.8 2.8 0 0 1 5.6 0V6' fill='none' stroke='%23c9ccd6' stroke-width='1.6'/%3E%3Crect x='1' y='6' width='10' height='7.4' rx='1.4' fill='%23ffd23f'/%3E%3Ccircle cx='6' cy='9.2' r='1.1' fill='%235a4300'/%3E%3Crect x='5.5' y='9.4' width='1' height='2.1' fill='%235a4300'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: center; background-size: 10px 12px; }
+
+.pot-row:not(.head) .pot-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
