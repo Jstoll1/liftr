@@ -521,16 +521,6 @@
     if (!newsMarked) { newsMarked = true; if (!window.__liveView) setTimeout(() => { try { localStorage.setItem("brochiefs_fx_newsseen", String(Date.now())); } catch {} }, 4000); }
     return `<div class="fx-sechd"><span>YOUR TEAM · UPDATES</span></div>${items.length ? `<ul class="fx-tn">${shown.map(row).join("")}</ul>${items.length > 3 ? `<button type="button" class="fx-tn-more" data-fxnewsall="1">${newsAll ? "SHOW FEWER ▴" : `+${items.length - 3} MORE ▾`}</button>` : ""}` : `<p class="fx-note">No injuries or news on your roster in the last three days.</p>`}`;
   }
-  // One line under your matchup: how it stands (tag) and what flips it.
-  const insightLine = (A, B, pa, pb, odds, fin) => {
-    if (fin || odds == null) return "";
-    const tag = odds >= 0.85 ? ["IN CONTROL", "up"] : odds <= 0.15 ? ["LONG SHOT", "dn"] : Math.abs(odds - 0.5) < 0.12 ? ["PHOTO FINISH", "gd"] : odds > 0.5 ? ["YOUR EDGE", "up"] : ["THEIR EDGE", "dn"];
-    const d = pa.exp - pb.exp, trail = d >= 0 ? B : A, ahead = d >= 0 ? A : B;
-    const top = (trail?.starters || []).filter((p) => remaining(p) > 0).sort((x, y) => remaining(y) - remaining(x))[0];
-    const need = top ? (top.pts || 0) + Math.abs(d) + remaining(top) : 0;
-    const txt = top ? `${short(top.name)} ${Math.ceil(need)}+ flips it for ${trail === A ? "you" : trail?.owner}` : `Projected ${ahead === A ? "win" : "loss"} by ${pts(Math.abs(d))}`;
-    return `<span class="fx-ins1"><i class="${tag[1]}">${tag[0]}</i><span>${esc(txt)}</span><em>proj ${d >= 0 ? "+" : "−"}${pts(Math.abs(d))}</em></span>`;
-  };
   // A story tag on each other card, in its top-left tab (no extra height).
   const storyTag = (sa, sb, odds) => {
     if (odds == null || sa + sb <= 0) return "";
@@ -543,20 +533,20 @@
     const ms = (data.live?.matchups || []).filter((m) => !m.final && m.home && m.away), out = [];
     const sc = (t) => Number(t?.points) || 0, live = ms.filter((m) => sc(m.home) + sc(m.away) > 0);
     const big = live.length && [...live].sort((a, b) => Math.abs(sc(b.home) - sc(b.away)) - Math.abs(sc(a.home) - sc(a.away)))[0];
-    if (big) { const [w, l] = sc(big.home) >= sc(big.away) ? [big.home, big.away] : [big.away, big.home]; out.push(`<b>${esc(w.owner)}</b> leads ${esc(l.owner)} by <b>${pts(sc(w) - sc(l))}</b>, the biggest lead`); }
+    if (big) { const [w, l] = sc(big.home) >= sc(big.away) ? [big.home, big.away] : [big.away, big.home]; out.push([`<b>${esc(w.owner)}</b> leads ${esc(l.owner)} by <b>${pts(sc(w) - sc(l))}</b>, the biggest lead`, `data-fxmu="${big.id}"`]); }
     const wpOf = (m) => { const a = outlook(m.away), h = outlook(m.home); return phi((a.exp - h.exp) / Math.sqrt(a.sd ** 2 + h.sd ** 2)); };
     const close = [...ms].sort((a, b) => Math.abs(wpOf(a) - 0.5) - Math.abs(wpOf(b) - 0.5))[0];
-    if (live.length && close && close !== big) { const p0 = wpOf(close); out.push(`<b>${esc(close.away.owner)} vs ${esc(close.home.owner)}</b> is the closest: ${pct(p0)}–${pct(1 - p0)}`); }
-    const all = []; for (const m of data.live?.matchups || []) for (const t of [m.away, m.home]) for (const p of t?.starters || []) all.push({ ...p, owner: t.owner });
+    if (live.length && close && close !== big) { const p0 = wpOf(close); out.push([`<b>${esc(close.away.owner)} vs ${esc(close.home.owner)}</b> is the closest: ${pct(p0)}–${pct(1 - p0)}`, `data-fxmu="${close.id}"`]); }
+    const all = []; for (const m of data.live?.matchups || []) for (const t of [m.away, m.home]) for (const p of t?.starters || []) all.push({ ...p, owner: t.owner, mu: m.id });
     const hot = all.sort((a, b) => (b.pts || 0) - (a.pts || 0))[0];
-    if (hot && hot.pts > 0) out.push(`<b>${esc(short(hot.name))}</b> tops every starter: ${pts(hot.pts)} for ${esc(hot.owner)}`);
+    if (hot && hot.pts > 0) out.push([`<b>${esc(short(hot.name))}</b> tops every starter: ${pts(hot.pts)} for ${esc(hot.owner)}`, `data-fxmu="${hot.mu}"`]);
     // 👀 Whoever is on a record pace this season (points and/or wins).
     const pace = {}; for (const r of data.history?.record || []) { const t = String(r.text || ""); if (!/^on pace for/.test(t) || /fewest/.test(t)) continue; const mp = t.match(/on pace for ([\d.]+) points/), mw = t.match(/on pace for (\d+) wins/); const x = pace[r.owner] = pace[r.owner] || {}; if (mp) { x.pf = Number(mp[1]); x.pfRec = /past the record/.test(t); } if (mw) { x.w = Number(mw[1]); x.wRec = /past the record/.test(t); } }
-    for (const [o, x] of Object.entries(pace).slice(0, 2)) { const st = (data.standings || []).find((r) => r.owner === o); const bits = [st ? `<b>${st.wins}-${st.losses}${st.ties ? `-${st.ties}` : ""}</b> · <b>${Math.round(st.pointsFor || 0).toLocaleString("en-US")}</b> pts now` : "", x.pf || x.w ? `pace ${[x.pf ? `<b>${Math.round(x.pf).toLocaleString("en-US")}</b> pts` : "", x.w ? `<b>${x.w}</b> wins` : ""].filter(Boolean).join(" · ")}` : ""].filter(Boolean); if (bits.length) out.unshift(`👀 <span class="fx-pk">RACE TO HISTORY</span> <b>${esc(o)}</b><span class="fx-psub">${bits.join(" · ")}</span>`); }
+    for (const [o, x] of Object.entries(pace).slice(0, 2)) { const st = (data.standings || []).find((r) => r.owner === o); const bits = [st ? `<b>${st.wins}-${st.losses}${st.ties ? `-${st.ties}` : ""}</b> · <b>${Math.round(st.pointsFor || 0).toLocaleString("en-US")}</b> pts now` : "", x.pf || x.w ? `pace ${[x.pf ? `<b>${Math.round(x.pf).toLocaleString("en-US")}</b> pts` : "", x.w ? `<b>${x.w}</b> wins` : ""].filter(Boolean).join(" · ")}` : ""].filter(Boolean); if (bits.length) out.unshift([`👀 <span class="fx-pk">RACE TO HISTORY</span> <b>${esc(o)}</b><span class="fx-psub">${bits.join(" · ")}</span>`, `data-fxteam="${esc(o)}"`]); }
     // 🏁 The race to last: the three worst records (fewest points breaks a tie).
     const lo = [...(data.standings || [])].sort((x, y) => (x.wins + (x.ties || 0) / 2) - (y.wins + (y.ties || 0) / 2) || (x.pointsFor || 0) - (y.pointsFor || 0)).slice(0, 3);
-    if (lo.length === 3) out.push(`🏁 <span class="fx-pk">RACE TO LAST</span> ${lo.map((r) => `<b>${esc(r.owner)}</b> ${r.wins}-${r.losses}`).join(" · ")}`);
-    return out.length ? `<div class="fx-sechd"><span>LEAGUE PULSE</span></div><ul class="fx-pulse">${out.map((x) => `<li>${x}</li>`).join("")}</ul>` : "";
+    if (lo.length === 3) out.push([`🏁 <span class="fx-pk">RACE TO LAST</span> ${lo.map((r) => `<b data-fxteam="${esc(r.owner)}">${esc(r.owner)}</b> ${r.wins}-${r.losses}`).join(" · ")}`, `data-fxpulse="last"`]);
+    return out.length ? `<div class="fx-sechd"><span>LEAGUE PULSE</span></div><ul class="fx-pulse">${out.map(([x, a]) => `<li ${a} role="button" tabindex="0">${x}<span class="fx-px">▸</span></li>`).join("")}</ul>` : "";
   };
   const fxSeen = {}; // matchup id -> last painted leader and scores
   const openMu = (id) => {
@@ -617,7 +607,7 @@
         const meter = `<span class="fx-meter ${mstate}" title="${odds == null ? "No odds yet" : `Win chance: ${esc(A?.owner)} ${pct(odds)} · ${esc(B?.owner)} ${pct(1 - odds)}`}" aria-label="${odds == null ? "" : `Win chance ${esc(A?.owner)} ${pct(odds)}`}">${odds != null ? `<i class="a" style="width:${share.toFixed(1)}%"></i><i class="b" style="width:${(100 - share).toFixed(1)}%"></i><s style="left:${share.toFixed(1)}%"></s>` : ""}</span>`;
         var card = `<div class="fx-card-mu ${state}${mine(m) ? " mine" : ""}${m.final ? " final" : ""}${took ? " took" : ""}" data-fxmu="${m.id}" role="button" tabindex="0" aria-haspopup="dialog" aria-label="${esc(A?.owner)} ${pts(sa)} against ${esc(B?.owner)} ${pts(sb)}">
           ${mine(m) ? `<span class="fx-cmk">YOUR MATCHUP</span>` : m.final ? `<span class="fx-cmk dim">FINAL</span>` : storyTag(sa, sb, odds)}${row(A, B, "a", sa)}${mine(m) ? `<span class="fx-vs" aria-hidden="true">VS</span>` : ""}${row(B, A, "b", sb)}
-          ${mine(m) && h?.regularSeason ? `<span class="fx-mh">${allTime(h, A?.owner || true)}</span>` : ""}${meter}${mine(m) ? insightLine(A, B, pa, pb, odds, m.final) : ""}
+          ${mine(m) && h?.regularSeason ? `<span class="fx-mh">${allTime(h, A?.owner || true)}</span>` : ""}${meter}
         </div>`;
       }
       if (!isOpen) return { card, full: "", mine: mine(m) };
@@ -671,10 +661,11 @@
     const hx = e.target.closest("[data-fxh]");
     if (hx && !e.target.closest(".fx-why")) { histOpen = histOpen === hx.dataset.fxh ? null : hx.dataset.fxh; try { window.noteUse?.("fantasy-history", hx.dataset.fxh.split("|")[0]); } catch {} return paint(); }
     if (e.target.closest("[data-fxrace]")) { try { window.noteUse?.("fantasy-race"); } catch {} return openRace(Number(e.target.closest("[data-fxrace]").dataset.fxrace) || 0); }
+    if (e.target.closest("[data-fxpulse]")) { try { window.noteUse?.("fantasy-pulse", "last"); } catch {} tab = "standings"; paint(); return document.querySelector(".fx-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" }); }
     const mu = e.target.closest("[data-fxmu]");
     if (mu) { const id = Number(mu.dataset.fxmu); openMu(id); try { const mm = data.live?.matchups?.find((x) => x.id === id); window.noteUse?.("fantasy-matchup", mm ? `${mm.away?.owner} vs ${mm.home?.owner}` : ""); } catch {} paint(); }
   });
-  root.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.closest("[data-fxmu],[data-fxo],[data-fxh],[data-fxrace]")) { e.preventDefault(); e.target.click(); } });
+  root.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.closest("[data-fxmu],[data-fxo],[data-fxh],[data-fxrace],[data-fxpulse],.fx-pulse [data-fxteam]")) { e.preventDefault(); e.target.click(); } });
 
   // Swipe a fantasy pop-up down to close it: from the top of its scroll,
   // the card follows the finger and closes past 90px (as its ✕ would).
