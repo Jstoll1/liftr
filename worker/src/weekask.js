@@ -102,6 +102,11 @@ export function leagueRoute(question, games = [], prev = null) {
   }
   const uniq = (a) => [...new Set(a.map((x) => String(x).toLowerCase()))];
   const fs = uniq(f), ks = uniq(k);
+  // "What needs to happen for me to beat / catch / pass X" with no league
+  // words, while this week's pick'em games are still open, is the week's race.
+  const raceQ = /\b(what (needs|has) to happen|what do i need|beat|catch|pass|overtake|get past|finish (ahead|above))\b/i.test(q);
+  const open = (games || []).some((g) => !/final/i.test(String(g.status || "")));
+  if (!fs.length && !ks.length && raceQ && open) return { route: "pickem", signals: { fantasy: [], pickem: ["this week's race (games still open)"] }, inherited: false, race: true };
   let route = fs.length && ks.length ? (fs.length >= ks.length * 2 ? "fantasy" : ks.length >= fs.length * 2 ? "pickem" : "both")
     : fs.length ? "fantasy" : ks.length ? "pickem" : (prev && prev !== "unclear" ? prev : "unclear");
   return { route, signals: { fantasy: fs.slice(0, 6), pickem: ks.slice(0, 6) }, inherited: !fs.length && !ks.length && !!prev };
