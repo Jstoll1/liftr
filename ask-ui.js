@@ -533,7 +533,14 @@
       const term = (g, x) => !x ? "no pick" : x.hidden ? "hidden" : `${x.team === g.home ? g.homeShort : g.awayShort} ${x.mode === "ATS" ? `${x.team === g.favorite ? "−" : "+"}${g.spread}` : "to win"}${x.lock ? " (lock)" : ""}`;
       const differ = GAMES.filter((g) => !f[g.id]).map((g) => { const a = all[me_]?.picks?.[g.id], b = all[them]?.picks?.[g.id]; return { g, a, b }; })
         .filter(({ a, b }) => !(a && b && a.team === b.team && a.mode === b.mode && !!a.lock === !!b.lock))
-        .map(({ g, a, b }) => { const wa = a?.team && !a.hidden ? pickWorth(g, a) : 0, wb = b?.team && !b.hidden ? pickWorth(g, b) : 0; return { game: gName(g), [me_]: term(g, a), [them]: term(g, b), worth: { [me_]: wa, [them]: wb }, biggestSwing: wa + wb }; })
+        .map(({ g, a, b }) => { const wa = a?.team && !a.hidden ? pickWorth(g, a) : 0, wb = b?.team && !b.hidden ? pickWorth(g, b) : 0; // Which way the member should root: score both picks if the member's
+          // side (or, with no pick, the rival's) wins big and if it loses big.
+          const side = (a?.team && !a.hidden ? a : b)?.team, res = (big) => side === g.home ? { awayScore: 0, homeScore: big ? 60 : 0, ...(big ? {} : { awayScore: 60 }) } : { awayScore: big ? 60 : 0, homeScore: big ? 0 : 60 };
+          const sc = (x, r) => x?.team && !x.hidden ? Number(scorePick(g, x, r)) || 0 : 0;
+          const hit = res(true), miss = res(false), netHit = sc(a, hit) - sc(b, hit), netMiss = sc(a, miss) - sc(b, miss);
+          const tShort = side === g.home ? g.homeShort : g.awayShort, sameSide = a?.team && b?.team && a.team === b.team;
+          const rootFor = netHit === netMiss ? "either way" : `${tShort} to ${netHit > netMiss ? "cover" : "miss"}`;
+          return { game: gName(g), [me_]: term(g, a), [them]: term(g, b), worth: { [me_]: wa, [them]: wb }, biggestSwing: wa + wb, rootFor, whatHappens: { [`if ${tShort} covers`]: `${me_} ${netHit >= 0 ? "+" : ""}${netHit} vs ${them}`, [`if ${tShort} misses`]: `${me_} ${netMiss >= 0 ? "+" : ""}${netMiss} vs ${them}` }, ...(sameSide && netHit !== netMiss ? { why: `Same pick, but ${!!a.lock !== !!b.lock ? `${a.lock ? me_ : them} has it as a lock` : "worth different points"}, so ${netHit > netMiss ? "a cover" : "a miss"} helps ${me_} more.` } : {}) }; })
         .sort((x, y) => y.biggestSwing - x.biggestSwing);
       const ch = (n) => { const d = memo?.detail?.[n]; return d ? r3(d.pct) : null; };
       return { member: me_, rival: them, chanceToFinishAhead: p == null ? null : r3(p), chanceToWinWeek: { [me_]: ch(me_), [them]: ch(them) }, pointsNow: { [me_]: banked(me_).pts, [them]: banked(them).pts }, ceiling: { [me_]: banked(me_).max, [them]: banked(them).max }, gamesThatSplitThem: differ };

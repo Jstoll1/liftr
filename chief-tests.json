@@ -582,6 +582,28 @@
       "source": "miss",
       "regression": true,
       "note": "Nov 22 (Curt): Saturday night with pick'em games open, 'what needs to happen to beat Robert' went to the fantasy archive (all-play, luck); no-league-word race questions now route to this week's pick'em while games are open; Nov 22: no league word and could be either league, so the Chief asks fantasy or pick'em (the page no longer decides)"
+    },
+    {
+      "id": "versus-root-for",
+      "screen": "pickem",
+      "turns": [
+        "What needs to happen for me to beat Robert in the pick'em?"
+      ],
+      "checks": {
+        "tools": [
+          "versus"
+        ],
+        "must": [
+          "root|need .* to (cover|miss|win|lose)|want"
+        ],
+        "mustNot": [
+          "his edge|your edge|\\bswing\\b"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 22 (Curt): versus answer listed 'swings by 7 points, his edge' for a shared Utah pick that was Robert's lock; versus now returns rootFor and why, and the Chief says what to root for"
     }
   ]
 }
