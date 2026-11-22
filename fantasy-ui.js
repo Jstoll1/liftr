@@ -407,7 +407,10 @@
     const wk = data.weekly || [], all = wk.map((x) => x.points), lgM = all.length ? all.reduce((a, b) => a + b, 0) / all.length : 100, lgSd = all.length > 1 ? Math.sqrt(all.reduce((n, x) => n + (x - lgM) ** 2, 0) / (all.length - 1)) : 20;
     const ppg = (o) => { const mine = wk.filter((x) => x.owner === o).map((x) => x.points), n = mine.length, k = n / (n + 4); return n ? k * (mine.reduce((a, b) => a + b, 0) / n) + (1 - k) * lgM : lgM; };
     const pWin = (a, b) => { const z = (ppg(a) - ppg(b)) / (lgSd * Math.SQRT2); return 0.5 * (1 + Math.sign(z) * Math.sqrt(1 - Math.exp(-2 * z * z / Math.PI))); };
-    const games = (o) => rem.filter((g) => g.home === o || g.away === o).map((g) => { const op = g.home === o ? g.away : g.home; return { week: g.week, op, p: pWin(o, op) }; });
+    // This week's game is already being played: use its live chance (points
+    // so far plus projections for who is left), like the matchup cards.
+    const liveP = (o, op) => { const mm = (data.live?.matchups || []).find((m) => [m.away?.owner, m.home?.owner].includes(o) && [m.away?.owner, m.home?.owner].includes(op)); if (!mm) return null; const mine = mm.away?.owner === o ? mm.away : mm.home, th = mine === mm.away ? mm.home : mm.away; if (mm.final) return (mine.points || 0) > (th.points || 0) ? 1 : (mine.points || 0) < (th.points || 0) ? 0 : 0.5; const a = outlook(mine), b = outlook(th); return phi((a.exp - b.exp) / Math.sqrt(a.sd ** 2 + b.sd ** 2)); };
+    const games = (o) => rem.filter((g) => g.home === o || g.away === o).map((g) => { const op = g.home === o ? g.away : g.home; const lv = Number(g.week) === Number(data.live?.week) ? liveP(o, op) : null; return { week: g.week, op, p: lv ?? pWin(o, op), live: lv != null }; });
     const gA = games(A.owner), gB = games(B.owner), weeks = [...new Set([...gA, ...gB].map((g) => g.week))].sort((x, y) => x - y);
     const projA = wpct(A) + gA.reduce((n, g) => n + g.p, 0), projB = wpct(B) + gB.reduce((n, g) => n + g.p, 0);
     const h = h2hWins(), hA = h[A.owner]?.[B.owner] || 0, hB = h[B.owner]?.[A.owner] || 0;
@@ -433,8 +436,8 @@
         <li><i>MAGIC #</i><span>${magic ? `<b>${magic}</b> · Any combination of ${esc(A.owner)} wins + ${esc(B.owner)} losses clinches over ${esc(B.owner)}` : `Clinched over ${esc(B.owner)}`}</span></li>
       </ul>
       <div class="fx-k2 fx-rsk">GAMES LEFT</div>
-      <div class="fx-rsch"><div class="fx-rsr hd"><i></i><span class="a">${esc(A.owner).toUpperCase()}<em>WIN %</em></span><span class="b">${esc(B.owner).toUpperCase()}<em>WIN %</em></span></div>${weeks.map((w) => `<div class="fx-rsr${meet && meet.week === w ? " meet" : ""}"><i>WK ${w}</i>${g1(gA.find((g) => g.week === w))}${g1(gB.find((g) => g.week === w))}</div>`).join("")}</div>
-      <p class="fx-whyn fx-rnote" title="Other teams can still change the race.">WIN % from season points per game · ${race.kind === "div" ? "title" : "playoff"} odds from 4,000 simulated seasons</p></div></div>`;
+      <div class="fx-rsch"><div class="fx-rsr hd"><i></i><span class="a">${esc(A.owner).toUpperCase()}<em>WIN %</em></span><span class="b">${esc(B.owner).toUpperCase()}<em>WIN %</em></span></div>${weeks.map((w) => `<div class="fx-rsr${meet && meet.week === w ? " meet" : ""}"><i${Number(w) === Number(data.live?.week) ? ' class="lv" title="Being played now: live chance"' : ""}>WK ${w}</i>${g1(gA.find((g) => g.week === w))}${g1(gB.find((g) => g.week === w))}</div>`).join("")}</div>
+      <p class="fx-whyn fx-rnote" title="Other teams can still change the race.">WIN % from season points per game (this week: live points + projections) · ${race.kind === "div" ? "title" : "playoff"} odds from 4,000 simulated seasons</p></div></div>`;
     m.addEventListener("click", (e) => { if (e.target === m || e.target.closest("[data-fxx]")) m.remove(); });
     document.body.appendChild(m);
   };

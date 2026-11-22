@@ -10268,6 +10268,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-popbody .fx-whyn.fx-rnote { font-size: 9.5px; color: rgba(255, 255, 255, .38); }
 .fx-rsr.meet { background: rgba(var(--arcade-gold-rgb), .06); box-shadow: inset 2px 0 0 var(--arcade-gold); }
 .fx-rsr.meet > i { color: var(--arcade-gold); padding-left: 4px; }
+.fx-rsr > i.lv { color: var(--neon-cyan); }
 .fx-rsr > i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--text-dim); }
 .fx-rsr span { display: flex; align-items: baseline; gap: 4px; min-width: 0; white-space: nowrap; }
 .fx-rsr span.vs b { color: var(--arcade-gold); }
