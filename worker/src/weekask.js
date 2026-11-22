@@ -94,6 +94,11 @@ export function leagueRoute(question, games = [], prev = null) {
   const fm = q.match(new RegExp(FANTASY_WORDS.source, "gi")); if (fm) f.push(...fm);
   const nm = q.match(new RegExp(NFL_TEAMS.source, "gi")); if (nm) f.push(...nm);
   const pm = q.match(new RegExp(PICKEM_WORDS.source, "gi")); if (pm) k.push(...pm);
+  // Ideas only one league has, though no league word is used.
+  // (Only for a first question: a follow-up keeps the league before it.)
+  const hard = f.length + k.length;
+  const pk1 = prev || hard ? null : q.match(/\bwin ?(%|percent|chance)|\b(am i|i'?m|is \w+|really) out\b|\bout already\b|\bcooked\b|\bpath\b|\bthe week\b|\bmax(imum)? points?\b|\bfavou?rites?\b|\bunderdogs?\b|\bcard\b|\bbuying the beer\b|\bthis week\b|\bright now\b|\bodds\b/gi); if (pk1) k.push(...pk1);
+  const fn1 = prev || hard ? null : q.match(/\b(\d(st|nd|rd|th)? seed|seed(ed|ing)?|division|bracket|matchup|projected|luck(y|iest)?|all-play)\b/gi); if (fn1) f.push(...fn1);
   // A college team on this week's slate is a pick'em signal.
   const low = q.toLowerCase();
   for (const g of games || []) for (const t of [g.away, g.home, g.awayShort, g.homeShort]) {
@@ -102,13 +107,8 @@ export function leagueRoute(question, games = [], prev = null) {
   }
   const uniq = (a) => [...new Set(a.map((x) => String(x).toLowerCase()))];
   const fs = uniq(f), ks = uniq(k);
-  // "What needs to happen for me to beat / catch / pass X" with no league
-  // words, while this week's pick'em games are still open, is the week's race.
-  const raceQ = /\b(what (needs|has) to happen|what do i need|beat|catch|pass|overtake|get past|finish (ahead|above))\b/i.test(q);
-  const open = (games || []).some((g) => !/final/i.test(String(g.status || "")));
-  if (!fs.length && !ks.length && raceQ && open) return { route: "pickem", signals: { fantasy: [], pickem: ["this week's race (games still open)"] }, inherited: false, race: true };
   let route = fs.length && ks.length ? (fs.length >= ks.length * 2 ? "fantasy" : ks.length >= fs.length * 2 ? "pickem" : "both")
-    : fs.length ? "fantasy" : ks.length ? "pickem" : (prev && prev !== "unclear" ? prev : "unclear");
+    : fs.length ? "fantasy" : ks.length ? "pickem" : (prev && prev !== "unclear" ? prev : /\b(highest|lowest|best|worst|most|fewest|record|all[- ]time|ever)\b/i.test(q) ? "both" : "unclear");
   return { route, signals: { fantasy: fs.slice(0, 6), pickem: ks.slice(0, 6) }, inherited: !fs.length && !ks.length && !!prev };
 }
 // The line the Chief gets with each question: what the router decided.
@@ -117,7 +117,7 @@ export function routeNote(r) {
   if (r.route === "fantasy") return `Router: this question is about the FANTASY league (${why}). Answer from archive; do not answer from the pick'em tools unless it also asks about the pick'em.`;
   if (r.route === "pickem") return `Router: this question is about the PICK'EM (${why}). Answer from the pick'em tools; do not use archive unless it asks about fantasy.`;
   if (r.route === "both") return `Router: this question touches BOTH leagues (${why}). Answer the part for each league from its own tools, and label which is which.`;
-  return "Router: no league words in this question or the one before it. If the answer differs by league (titles, standings, odds, records, 'this year'), ask one short question back: 'The fantasy league or the pick'em?' Answer directly only when the question makes sense in one league alone.";
+  return "Router: this could be either league and nothing in it says which (the page the member is on does not decide). Ask one short question back and nothing else: 'Fantasy or the pick'em?' Call no tools first.";
 }
 
 export function weekChatSystem(ctx) {
