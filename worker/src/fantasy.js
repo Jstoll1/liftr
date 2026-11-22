@@ -127,6 +127,18 @@ export function buildLiveWeek(league, ownerMap) {
     team[t.id] = { owner, name: t.name || [t.location, t.nickname].filter(Boolean).join(" ") || owner, abbrev: t.abbrev || null, logo: t.logo || null,
       record: t.record?.overall ? `${t.record.overall.wins}-${t.record.overall.losses}${t.record.overall.ties ? `-${t.record.overall.ties}` : ""}` : null };
   }
+  // A player's box score in a few words (ESPN stat ids), e.g. "22/31 280 yd 2 TD".
+  const statLine = (a, pos) => {
+    if (!a) return null; const v = (k) => Math.round(Number(a[k]) || 0), out = [];
+    const td = (n, w) => n ? `${n > 1 ? n + " " : ""}${w}` : "";
+    if (pos === "K") return v(84) || v(87) ? `FG ${v(83)}/${v(84)} · XP ${v(86)}/${v(87)}` : null;
+    if (pos === "D/ST") return [`${v(120)} PA`, v(99) && `${v(99)} sk`, v(95) && `${v(95)} INT`, v(96) && `${v(96)} FR`].filter(Boolean).join(" · ");
+    if (v(0)) out.push(`${v(1)}/${v(0)} ${v(3)} yd`, td(v(4), "TD"), td(v(20), "INT"));
+    if (v(23)) out.push(`${v(23)} car ${v(24)} yd`, td(v(25), "TD"));
+    if (v(53) || v(58)) out.push(`${v(53)} rec ${v(42)} yd`, td(v(43), "TD"));
+    if (v(72)) out.push(td(v(72), "FUM"));
+    const t = out.filter(Boolean).join(" · "); return t || (pos === "QB" || pos === "RB" || pos === "WR" || pos === "TE" ? "No stats" : null);
+  };
   const r2 = (x) => Math.round((Number(x) || 0) * 100) / 100;
   const side = (s) => {
     if (!s) return null;
@@ -137,7 +149,8 @@ export function buildLiveWeek(league, ownerMap) {
       const slot = SLOT[e.lineupSlotId] || "BE";
       const sp = Number(league.scoringPeriodId || week);
       const proj = (p.stats || []).find((x) => x.statSourceId === 1 && Number(x.scoringPeriodId) === sp)?.appliedTotal;
-      return { id: p.id || null, name: p.fullName || "Player", pos: POS[p.defaultPositionId] || slot, slot, pts: r2(e.playerPoolEntry?.appliedStatTotal),
+      const act = (p.stats || []).find((x) => x.statSourceId === 0 && Number(x.scoringPeriodId) === sp)?.stats;
+      return { id: p.id || null, name: p.fullName || "Player", pos: POS[p.defaultPositionId] || slot, slot, pts: r2(e.playerPoolEntry?.appliedStatTotal), line: statLine(act, POS[p.defaultPositionId] || slot),
         proj: Number.isFinite(proj) ? r2(proj) : null, elig: (p.eligibleSlots || []).map((x) => SLOT[x]).filter((x) => x && x !== "BE" && x !== "IR"),
         nfl: NFL[p.proTeamId] || null, injury: p.injuryStatus && p.injuryStatus !== "ACTIVE" ? p.injuryStatus : null };
     });
