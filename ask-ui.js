@@ -835,9 +835,11 @@
   // One full run: the stored set (or the repo file), each case through the
   // real Chief, graded, the score saved. progress(i, n, id) after each.
   let ctAuth = "";
-  async function runAll(includeRetired, progress = () => {}) {
+  async function runAll(includeRetired, progress = () => {}, only = null) {
     const set = (await loadSet()) || { cases: (SEED_CASES.length ? SEED_CASES : await loadSeeds()).map((c) => ({ source: "seed", ...c })), runs: [], local: true };
-    const todo = set.cases.filter((c) => includeRetired || !c.retired), results = [];
+    const todo = set.cases.filter((c) => only?.length ? only.includes(c.id) : includeRetired || !c.retired), results = [];
+    // A failing-only rerun checks fixes; it is not saved as the score.
+    if (only?.length) set.local = true;
     for (let i = 0; i < todo.length; i++) { progress(i, todo.length, todo[i].id); const turns = await testCase(todo[i]); results.push({ c: todo[i], turns, check: grade(todo[i], turns) }); }
     progress(todo.length, todo.length, "");
     const passed = results.filter((r) => r.check.pass).length, failed = results.filter((r) => !r.check.pass).map((r) => r.c.id);
@@ -869,7 +871,7 @@
       if (me() !== "Jake") return post({ type: "ct-error", error: "The app on this device isn't signed in as Jake. Open the app here once and pick Jake." });
       post({ type: "ct-progress", i: 0, n: 0, id: "loading this week's data" });
       if (!(await ctReady())) return post({ type: "ct-error", error: "This week's picks and odds didn't load in 30 seconds. Try again." });
-      try { const r = await runAll(!!e.data.all, (i, n, id) => post({ type: "ct-progress", i, n, id })); post({ type: "ct-done", ...r }); } catch (err) { post({ type: "ct-error", error: String(err?.message || err).slice(0, 120) }); }
+      try { const r = await runAll(!!e.data.all, (i, n, id) => post({ type: "ct-progress", i, n, id }), Array.isArray(e.data.only) ? e.data.only : null); post({ type: "ct-done", ...r }); } catch (err) { post({ type: "ct-error", error: String(err?.message || err).slice(0, 120) }); }
     });
     post({ type: "ct-hello" });
   }
