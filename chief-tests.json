@@ -624,6 +624,26 @@
       "source": "miss",
       "regression": true,
       "note": "Nov 22 (Curt): said a missed cover is enough, then 'your chance jumps to 67.4%' without saying why it isn't 100% or whether an outright loss differs; now answers each way the game can finish"
+    },
+    {
+      "id": "last-game-finish",
+      "screen": "pickem",
+      "turns": [
+        "Utah has to lose straight up or just lose the cover for me to win?"
+      ],
+      "checks": {
+        "tools": [
+          "window"
+        ],
+        "must": [
+          "^\\s*1\\.",
+          "need"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 23 (Curt): window answer named only the push and cover cases (2nd, 4th) and skipped the outcomes where he wins; now one block per outcome with the projected finish as a numbered list and what he needs"
     }
   ]
 }
