@@ -10796,3 +10796,10 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 #rank-sheet .rs-top .rs-win .rs-pct { font-size: 13px !important; line-height: 1; text-shadow: none; }
 #rank-sheet .rs-win small { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--text-dim); }
 #rank-sheet .rs-one .rs-vs, #rank-sheet .rs-one .rs-path { flex: none; width: auto; min-height: 30px; padding: 0 9px; margin: 0; font-size: 6.5px; }
+
+/* Scores cards: one logo size, fixed score column (three digits), names ellipsise evenly. */
+html:not(.pro) .scorebug .bug-row { grid-template-columns: 20px minmax(0, 1fr) max-content 3.2em !important; }
+html:not(.pro) .scorebug .bug-mark, html:not(.pro) .scorebug .bug-mark .bug-logo { width: 20px !important; height: 20px !important; object-fit: contain; }
+html:not(.pro) .scorebug .bug-team { min-width: 0; overflow: hidden; white-space: nowrap; }
+html:not(.pro) .scorebug .bug-team > :first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+html:not(.pro) .scorebug .bug-score { width: 3.2em; text-align: right; }
