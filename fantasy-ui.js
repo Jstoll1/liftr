@@ -434,7 +434,7 @@
     }
     const three = [...s].sort((x, y) => wpct(x) - wpct(y) || (x.pointsFor || 0) - (y.pointsFor || 0)).slice(0, 3);
     const rec = (o) => { const r = s.find((x) => x.owner === o); return r ? pulseRec(r) : ""; };
-    const card = (r) => { const g = M.games(r.owner), p = (lastN[r.owner] || 0) / N; return `<div class="fx-lr"><div class="fx-lr-h"><b data-fxteam="${esc(r.owner)}">${esc(r.owner)}</b><small>${pulseRec(r)} · ${pts(r.pointsFor)} PF</small><em>${pct(p)}</em><i>LAST</i></div><span class="fx-meter fx-lr-m clear"><i class="b" style="width:${Math.max(2, p * 100).toFixed(1)}%"></i></span><ul>${g.map((x) => `<li><i>WK ${esc(x.week)}${x.live ? " · LIVE" : ""}</i><b>${esc(x.op)}</b><small>${esc(rec(x.op))}</small><u class="${x.p >= 0.55 ? "up" : x.p <= 0.45 ? "dn" : ""}">${pct(x.p)}</u></li>`).join("") || `<li><span>No games left</span></li>`}</ul></div>`; };
+    const card = (r) => { const g = M.games(r.owner), p = (lastN[r.owner] || 0) / N; return `<div class="fx-lr"><div class="fx-lr-h"><b data-fxteam="${esc(r.owner)}">${esc(r.owner)}</b><small>${pulseRec(r)} · ${pts(r.pointsFor)} PF</small><em>${pct(p)}</em><i>LAST</i></div><span class="fx-meter fx-lr-m clear"><i class="b" style="width:${Math.max(2, p * 100).toFixed(1)}%"></i></span><ul>${g.map((x) => `<li><i>WK ${esc(x.week)}</i><b>${esc(x.op)}</b><small>${x.live ? '<em class="fx-lv">LIVE</em>' : ""}${esc(rec(x.op))}</small><u class="${x.p >= 0.55 ? "up" : x.p <= 0.45 ? "dn" : ""}">${pct(x.p)}</u></li>`).join("") || `<li><span>No games left</span></li>`}</ul></div>`; };
     pulseSheet("🏁 RACE TO LAST", `${three.map(card).join("")}<p class="fx-lr-n">LAST = fewest wins, then fewest points. Win % per game.</p>`);
     try { window.noteUse?.("fantasy-pulse", "last"); } catch {}
   };
@@ -449,7 +449,7 @@
     const n0 = (x) => Math.round(x).toLocaleString("en-US"), w1 = (x) => (Math.round(x * 10) / 10).toString();
     pulseSheet("👀 RACE TO HISTORY", `<div class="fx-hr-h"><b data-fxteam="${esc(o)}">${esc(o)}</b><small>${pulseRec(r)} · ${g.length} game${g.length === 1 ? "" : "s"} left${pace.pf ? ` · straight pace ${n0(pace.pf)} pts, ${pace.wins} wins` : ""}</small></div>
       <ul class="fx-hr">${row("WINS", wpct(r), expW, wR, w1)}${row("POINTS", r.pointsFor || 0, expPf, pfR, n0)}</ul>
-      <div class="fx-k2 fx-hr-k">GAMES LEFT</div><ul class="fx-hr-g">${g.map((x) => `<li><i>WK ${esc(x.week)}${x.live ? " · LIVE" : ""}</i><b>${esc(x.op)}</b><span>proj <b>${pts(x.exp)}</b></span><u class="${x.p >= 0.55 ? "up" : x.p <= 0.45 ? "dn" : ""}">${pct(x.p)}</u></li>`).join("") || "<li><span>Season done</span></li>"}</ul>
+      <div class="fx-k2 fx-hr-k">GAMES LEFT</div><ul class="fx-hr-g">${g.map((x) => `<li><i>WK ${esc(x.week)}</i><b>${esc(x.op)}</b><span>${x.live ? '<em class="fx-lv">LIVE</em>' : ""}proj <b>${pts(x.exp)}</b></span><u class="${x.p >= 0.55 ? "up" : x.p <= 0.45 ? "dn" : ""}">${pct(x.p)}</u></li>`).join("") || "<li><span>Season done</span></li>"}</ul>
       <p class="fx-lr-n">PROJ = now plus expected points and wins in the games left.</p>`);
     try { window.noteUse?.("fantasy-pulse", "history"); } catch {}
   };

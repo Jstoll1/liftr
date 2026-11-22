@@ -10387,6 +10387,7 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-lr li u, .fx-hr-g li u, .fx-hr li u { text-decoration: none; text-align: right; font-family: "Press Start 2P", monospace; font-size: 7px; color: rgba(255, 255, 255, .7); }
 .fx-lr u.up, .fx-hr u.up, .fx-hr-g u.up { color: var(--neon-green); } .fx-lr u.dn, .fx-hr u.dn, .fx-hr-g u.dn { color: var(--neon-pink); }
 .fx-lr-n { margin: 8px 0 0; font-size: 9.5px; color: rgba(255, 255, 255, .38); }
+.fx-lr .fx-lv, .fx-hr-g .fx-lv { margin-right: 6px; font-style: normal; font-family: "Press Start 2P", monospace; font-size: 5.5px; color: var(--neon-cyan); vertical-align: 1px; }
 .fx-hr-h { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; } .fx-hr-h b { font-size: 14px; color: #fff; cursor: pointer; } .fx-hr-h small { font-size: 10.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fx-hr { border: 1px solid var(--card-border); border-radius: 8px; padding: 2px 10px; }
 .fx-hr li { display: grid; grid-template-columns: 50px 1fr 1fr 1.3fr 44px; align-items: center; gap: 6px; padding: 7px 0; } .fx-hr li + li { border-top: 1px solid rgba(255, 255, 255, .05); }
