@@ -92,7 +92,10 @@ export function historyContext(cur, archive) {
     record.push({ why: { head: ["#", "Week"], rows: wl.map((x, i) => ({ me: x.me, c: [i + 1, x.c[0]] })) }, owner: g.owner, text: g.points > top1 ? `${g.points} in week ${g.week} is the best week ever, past ${String(tops[0] || "").replace(/ \(\w\)$/, "")}` : `${g.points} in week ${g.week} is the ${ord(rank)} best week ever` });
   }
 
-  return { week: wk, before, pace, record };
+  // The all-time single-season records (full regular seasons) for the pace sheet.
+  const topW = [...full].sort((a, b) => b.wins - a.wins || b.year - a.year)[0];
+  const records = { pf: most ? { owner: most.owner, year: most.year, v: r1(most.pf) } : null, wins: topW ? { owner: topW.owner, year: topW.year, v: topW.wins } : null };
+  return { week: wk, before, pace, record, records };
 }
 
 // Each owner's league career from the archive: titles, finals, all-time

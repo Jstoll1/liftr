@@ -395,6 +395,64 @@
       <div class="fx-br-m r1 b">${t(3)}${t(6)}</div><div class="fx-br-m sf b">${t(2)}${tbd("3/6")}</div>
     </div></div>`;
   };
+  // The season model shared by the pulse sheets: each team's points per game
+  // shrunk toward the league average, live chances for this week's games.
+  const model = () => {
+    const wk = data.weekly || [], all = wk.map((x) => x.points), lgM = all.length ? all.reduce((a, b) => a + b, 0) / all.length : 100, lgSd = all.length > 1 ? Math.sqrt(all.reduce((n, x) => n + (x - lgM) ** 2, 0) / (all.length - 1)) : 20;
+    const ppg = (o) => { const mine = wk.filter((x) => x.owner === o).map((x) => x.points), n = mine.length, k = n / (n + 4); return n ? k * (mine.reduce((a, b) => a + b, 0) / n) + (1 - k) * lgM : lgM; };
+    const pWin = (a, b) => { const z = (ppg(a) - ppg(b)) / (lgSd * Math.SQRT2); return 0.5 * (1 + Math.sign(z) * Math.sqrt(1 - Math.exp(-2 * z * z / Math.PI))); };
+    const liveT = (o) => { const mm = (data.live?.matchups || []).find((m) => m.away?.owner === o || m.home?.owner === o); return mm ? { mm, t: mm.away?.owner === o ? mm.away : mm.home, th: mm.away?.owner === o ? mm.home : mm.away } : null; };
+    const games = (o) => (data.remaining || []).filter((g) => g.home === o || g.away === o).map((g) => {
+      const op = g.home === o ? g.away : g.home, lv = Number(g.week) === Number(data.live?.week) ? liveT(o) : null;
+      if (lv && lv.th?.owner === op) { const a = outlook(lv.t), b = outlook(lv.th); const p = lv.mm.final ? ((lv.t.points || 0) > (lv.th.points || 0) ? 1 : (lv.t.points || 0) < (lv.th.points || 0) ? 0 : 0.5) : phi((a.exp - b.exp) / Math.sqrt(a.sd ** 2 + b.sd ** 2)); return { week: g.week, op, p, exp: a.exp, opExp: b.exp, sd: a.sd, live: true }; }
+      return { week: g.week, op, p: pWin(o, op), exp: ppg(o), opExp: ppg(op), sd: lgSd, live: false };
+    });
+    return { ppg, lgSd, games };
+  };
+  const pulseRec = (r) => `${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}`;
+  const pulseSheet = (label, body) => {
+    document.getElementById("fx-mupop")?.remove();
+    const m = document.createElement("div");
+    m.id = "fx-mupop"; m.className = "fx-team"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", label);
+    m.innerHTML = `<div class="fx-tcard"><div class="fx-thead"><span class="fx-k2">${esc(label)}</span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-popbody">${body}</div></div>`;
+    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest("[data-fxx]")) m.remove(); const t = e.target.closest("[data-fxteam]"); if (t) { m.remove(); openTeam(t.dataset.fxteam); } });
+    document.body.appendChild(m);
+  };
+  // 🏁 Race to last: each team's chance to finish last (fewest wins, then
+  // fewest points), from 4,000 runs of the rest of the season.
+  const openLast = () => {
+    const s = data.standings || [], M = model(), N = 4000, lastN = {};
+    const sched = s.map((r) => ({ o: r.owner, g: M.games(r.owner) }));
+    const done = new Set(), pairs = [];
+    for (const { o, g } of sched) for (const x of g) { const k = [o, x.op].sort().join("|") + x.week; if (!done.has(k)) { done.add(k); pairs.push({ a: o, ...x }); } }
+    const nrm = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+    for (let i = 0; i < N; i++) {
+      const w = {}, pf = {}; for (const r of s) { w[r.owner] = wpct(r); pf[r.owner] = r.pointsFor || 0; }
+      for (const g of pairs) { let a, b; if (g.live) { const win = Math.random() < g.p; a = g.exp + nrm() * g.sd; b = g.opExp + nrm() * g.sd; if ((a > b) !== win) [a, b] = [b, a]; } else { a = g.exp + nrm() * M.lgSd; b = g.opExp + nrm() * M.lgSd; } pf[g.a] += a; pf[g.op] += b; if (a > b) w[g.a]++; else w[g.op]++; }
+      let lo = null; for (const r of s) { const o = r.owner; if (!lo || w[o] < w[lo] || (w[o] === w[lo] && pf[o] < pf[lo])) lo = o; }
+      lastN[lo] = (lastN[lo] || 0) + 1;
+    }
+    const three = [...s].sort((x, y) => wpct(x) - wpct(y) || (x.pointsFor || 0) - (y.pointsFor || 0)).slice(0, 3);
+    const rec = (o) => { const r = s.find((x) => x.owner === o); return r ? pulseRec(r) : ""; };
+    const card = (r) => { const g = M.games(r.owner), p = (lastN[r.owner] || 0) / N; return `<div class="fx-lr"><div class="fx-lr-h"><b data-fxteam="${esc(r.owner)}">${esc(r.owner)}</b><small>${pulseRec(r)} · ${pts(r.pointsFor)} PF</small><em>${pct(p)}</em><i>LAST</i></div><span class="fx-meter fx-lr-m clear"><i class="b" style="width:${Math.max(2, p * 100).toFixed(1)}%"></i></span><ul>${g.map((x) => `<li><i>WK ${esc(x.week)}${x.live ? " · LIVE" : ""}</i><b>${esc(x.op)}</b><small>${esc(rec(x.op))}</small><u class="${x.p >= 0.55 ? "up" : x.p <= 0.45 ? "dn" : ""}">${pct(x.p)}</u></li>`).join("") || `<li><span>No games left</span></li>`}</ul></div>`; };
+    pulseSheet("🏁 RACE TO LAST", `${three.map(card).join("")}<p class="fx-lr-n">LAST = fewest wins, then fewest points. Win % per game.</p>`);
+    try { window.noteUse?.("fantasy-pulse", "last"); } catch {}
+  };
+  // 👀 Race to history: the all-time records against this member's season.
+  const openHist = (o) => {
+    const r = (data.standings || []).find((x) => x.owner === o); if (!r) return;
+    const M = model(), g = M.games(o), rec = data.history?.records || {}, pace = data.history?.pace?.find((x) => x.owner === o) || {};
+    const fromBoard = (re) => { const b = (data.history?.record || []).find((x) => re.test(x.text || ""))?.why; const top = b?.rows?.find((x) => !x.me); return top ? { owner: top.c[1], year: top.c[2], v: top.c[3] } : null; };
+    const pfR = rec.pf || fromBoard(/points/), wR = rec.wins || fromBoard(/wins/);
+    const expW = wpct(r) + g.reduce((n, x) => n + x.p, 0), expPf = (r.pointsFor || 0) + g.reduce((n, x) => n + x.exp, 0);
+    const row = (k, now, proj, recd, fmt) => { const gap = recd ? proj - Number(recd.v) : null; return `<li><i>${k}</i><span><b>${fmt(now)}</b><small>NOW</small></span><span><b>${fmt(proj)}</b><small>PROJ</small></span><span>${recd ? `<b class="gd">${fmt(Number(recd.v))}</b><small>${esc(recd.owner)} ${esc(recd.year)}</small>` : "<b>–</b><small>RECORD</small>"}</span><u class="${gap == null ? "" : gap >= 0 ? "up" : "dn"}">${gap == null ? "" : `${gap >= 0 ? "+" : "−"}${fmt(Math.abs(gap))}`}</u></li>`; };
+    const n0 = (x) => Math.round(x).toLocaleString("en-US"), w1 = (x) => (Math.round(x * 10) / 10).toString();
+    pulseSheet("👀 RACE TO HISTORY", `<div class="fx-hr-h"><b data-fxteam="${esc(o)}">${esc(o)}</b><small>${pulseRec(r)} · ${g.length} game${g.length === 1 ? "" : "s"} left${pace.pf ? ` · straight pace ${n0(pace.pf)} pts, ${pace.wins} wins` : ""}</small></div>
+      <ul class="fx-hr">${row("WINS", wpct(r), expW, wR, w1)}${row("POINTS", r.pointsFor || 0, expPf, pfR, n0)}</ul>
+      <div class="fx-k2 fx-hr-k">GAMES LEFT</div><ul class="fx-hr-g">${g.map((x) => `<li><i>WK ${esc(x.week)}${x.live ? " · LIVE" : ""}</i><b>${esc(x.op)}</b><span>proj <b>${pts(x.exp)}</b></span><u class="${x.p >= 0.55 ? "up" : x.p <= 0.45 ? "dn" : ""}">${pct(x.p)}</u></li>`).join("") || "<li><span>Season done</span></li>"}</ul>
+      <p class="fx-lr-n">PROJ = now plus expected points and wins in the games left.</p>`);
+    try { window.noteUse?.("fantasy-pulse", "history"); } catch {}
+  };
   const openRace = (idx = 0) => {
     document.getElementById("fx-mupop")?.remove();
     const st = data.stats || {}, line = st.playoffTeams || data.playoffTeams || 6, s = stand(), rem = data.remaining || [];
@@ -542,10 +600,10 @@
     if (hot && hot.pts > 0) out.push([`<b>${esc(short(hot.name))}</b> tops every starter: ${pts(hot.pts)} for ${esc(hot.owner)}`, `data-fxmu="${hot.mu}"`]);
     // 👀 Whoever is on a record pace this season (points and/or wins).
     const pace = {}; for (const r of data.history?.record || []) { const t = String(r.text || ""); if (!/^on pace for/.test(t) || /fewest/.test(t)) continue; const mp = t.match(/on pace for ([\d.]+) points/), mw = t.match(/on pace for (\d+) wins/); const x = pace[r.owner] = pace[r.owner] || {}; if (mp) { x.pf = Number(mp[1]); x.pfRec = /past the record/.test(t); } if (mw) { x.w = Number(mw[1]); x.wRec = /past the record/.test(t); } }
-    for (const [o, x] of Object.entries(pace).slice(0, 2)) { const st = (data.standings || []).find((r) => r.owner === o); const bits = [st ? `<b>${st.wins}-${st.losses}${st.ties ? `-${st.ties}` : ""}</b> · <b>${Math.round(st.pointsFor || 0).toLocaleString("en-US")}</b> pts now` : "", x.pf || x.w ? `pace ${[x.pf ? `<b>${Math.round(x.pf).toLocaleString("en-US")}</b> pts` : "", x.w ? `<b>${x.w}</b> wins` : ""].filter(Boolean).join(" · ")}` : ""].filter(Boolean); if (bits.length) out.unshift([`👀 <span class="fx-pk">RACE TO HISTORY</span> <b>${esc(o)}</b><span class="fx-psub">${bits.join(" · ")}</span>`, `data-fxteam="${esc(o)}"`]); }
+    for (const [o, x] of Object.entries(pace).slice(0, 2)) { const st = (data.standings || []).find((r) => r.owner === o); const bits = [st ? `<b>${st.wins}-${st.losses}${st.ties ? `-${st.ties}` : ""}</b> · <b>${Math.round(st.pointsFor || 0).toLocaleString("en-US")}</b> pts now` : "", x.pf || x.w ? `pace ${[x.pf ? `<b>${Math.round(x.pf).toLocaleString("en-US")}</b> pts` : "", x.w ? `<b>${x.w}</b> wins` : ""].filter(Boolean).join(" · ")}` : ""].filter(Boolean); if (bits.length) out.unshift([`👀 <span class="fx-pk">RACE TO HISTORY</span> <b>${esc(o)}</b><span class="fx-psub">${bits.join(" · ")}</span>`, `data-fxhist="${esc(o)}"`]); }
     // 🏁 The race to last: the three worst records (fewest points breaks a tie).
     const lo = [...(data.standings || [])].sort((x, y) => (x.wins + (x.ties || 0) / 2) - (y.wins + (y.ties || 0) / 2) || (x.pointsFor || 0) - (y.pointsFor || 0)).slice(0, 3);
-    if (lo.length === 3) out.push([`🏁 <span class="fx-pk">RACE TO LAST</span> ${lo.map((r) => `<b data-fxteam="${esc(r.owner)}">${esc(r.owner)}</b> ${r.wins}-${r.losses}`).join(" · ")}`, `data-fxpulse="last"`]);
+    if (lo.length === 3) out.push([`🏁 <span class="fx-pk">RACE TO LAST</span> ${lo.map((r) => `<b>${esc(r.owner)}</b> ${r.wins}-${r.losses}`).join(" · ")}`, `data-fxpulse="last"`]);
     return out.length ? `<div class="fx-sechd"><span>LEAGUE PULSE</span></div><ul class="fx-pulse">${out.map(([x, a]) => `<li ${a} role="button" tabindex="0">${x}<span class="fx-px">▸</span></li>`).join("")}</ul>` : "";
   };
   const fxSeen = {}; // matchup id -> last painted leader and scores
@@ -661,11 +719,12 @@
     const hx = e.target.closest("[data-fxh]");
     if (hx && !e.target.closest(".fx-why")) { histOpen = histOpen === hx.dataset.fxh ? null : hx.dataset.fxh; try { window.noteUse?.("fantasy-history", hx.dataset.fxh.split("|")[0]); } catch {} return paint(); }
     if (e.target.closest("[data-fxrace]")) { try { window.noteUse?.("fantasy-race"); } catch {} return openRace(Number(e.target.closest("[data-fxrace]").dataset.fxrace) || 0); }
-    if (e.target.closest("[data-fxpulse]")) { try { window.noteUse?.("fantasy-pulse", "last"); } catch {} tab = "standings"; paint(); return document.querySelector(".fx-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    if (e.target.closest("[data-fxpulse]")) return openLast();
+    const hs = e.target.closest("[data-fxhist]"); if (hs) return openHist(hs.dataset.fxhist);
     const mu = e.target.closest("[data-fxmu]");
     if (mu) { const id = Number(mu.dataset.fxmu); openMu(id); try { const mm = data.live?.matchups?.find((x) => x.id === id); window.noteUse?.("fantasy-matchup", mm ? `${mm.away?.owner} vs ${mm.home?.owner}` : ""); } catch {} paint(); }
   });
-  root.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.closest("[data-fxmu],[data-fxo],[data-fxh],[data-fxrace],[data-fxpulse],.fx-pulse [data-fxteam]")) { e.preventDefault(); e.target.click(); } });
+  root.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.closest("[data-fxmu],[data-fxo],[data-fxh],[data-fxrace],[data-fxpulse],[data-fxhist]")) { e.preventDefault(); e.target.click(); } });
 
   // Swipe a fantasy pop-up down to close it: from the top of its scroll,
   // the card follows the finger and closes past 90px (as its ✕ would).
