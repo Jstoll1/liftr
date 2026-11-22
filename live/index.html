@@ -3037,10 +3037,8 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     try { const x = await fetch(`${WORKER}/week-chat?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.chats = Array.isArray(j.chats) ? j.chats : []; st.sig = ""; render(); } } catch {}
     if (!st.ctLast) { try { st.ctLast = JSON.parse(store.get("brochiefs_live_ct_last") || "null"); } catch {} }
     try { const x = await fetch(`${WORKER}/chief-test?${auth()}&report=1&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { st.ct = await x.json(); if (st.ct.report && (!st.ctLast || st.ct.report.at > st.ctLast.at)) st.ctLast = st.ct.report; st.sig = ""; render(); } } catch {}
-    // Once a day on its own: opening the Chief page with no run in the last
-    // 20 hours starts one (once per Live session), so the score keeps moving.
-    const lastAt = st.ct?.runs?.[0]?.at || 0;
-    if (st.ct && !st.ctRun && !st.ctAutoTried && Date.now() - lastAt > 20 * 3600000) { st.ctAutoTried = true; startCtRun(); }
+    // No automatic runs: each run calls the Chief's model once per question,
+    // so runs start only from the Run button (after a Chief change).
   }
   // NFL holding page: who reached the under construction sign.
   async function loadUc() {
