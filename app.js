@@ -127,7 +127,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=637261270964", "lightning-ui.js?v=812074492059", "attract-facts.js?v=621767480045", "history.js?v=451197308157", "fantasy-ui.js?v=561138914508", "sim.js?v=374204176553", "gridcard.js?v=867340868336"];
+const EXTRAS = ["ask-ui.js?v=637261270964", "lightning-ui.js?v=812074492059", "attract-facts.js?v=621767480045", "history.js?v=451197308157", "fantasy-ui.js?v=676280953588", "sim.js?v=374204176553", "gridcard.js?v=867340868336"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -2743,6 +2743,8 @@ function openOwnerPicker() {
     if (!picksScreen.classList.contains("hidden")) { await syncManagerFromCloud(name); withScrollPreserved(renderPicksScreen); }
     if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
     if (!loginScreen.classList.contains("hidden")) renderManagerPicker();
+    // Fantasy follows the new owner too: your matchup, your row, your team news.
+    try { window.fantasyMeChanged?.(); } catch {}
   }));
   claimModal.classList.remove("hidden");
 }
