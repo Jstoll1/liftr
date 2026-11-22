@@ -10265,6 +10265,9 @@ async function maybeChiefMsg() {
   if (!msg || document.getElementById("chief-msg") || loadMe() !== me) return;
   const send = (body) => fetch(`${WORKER_URL}/chief-msg`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ manager: me, id: msg.id, ...body }) });
   send({ seen: 1 }).catch(() => {});
+  // Shown once: remembered the moment it appears, so closing the app or
+  // leaving it unanswered never brings it back.
+  try { localStorage.setItem(DONE_KEY, JSON.stringify([...doneIds, msg.id].slice(-50))); } catch {}
   track("chief-msg-seen", { event: true });
   const m = document.createElement("div");
   m.id = "chief-msg"; m.className = "modal-overlay cmsg"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Message from the Chief");
