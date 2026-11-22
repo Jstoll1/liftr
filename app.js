@@ -11736,6 +11736,7 @@ async function startLiveView() {
   if (view === "grid") { showScoreboard(); await ensureExtras(); for (let i = 0; i < 50 && !window.openGridCard; i++) await new Promise((r) => setTimeout(r, 100)); return window.openGridCard?.(); }
   showScoreboard();
   const until = async (ok, ms = 10000) => { const t0 = Date.now(); while (!ok() && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 100)); return ok(); };
+  if (view === "recap" && x) { if (await until(() => Object.values(weekSummaries || {}).some((s) => s?.complete && s.recap), 15000)) openRecapSheet(x, ({ hit: "PICK OF THE WEEK", miss: "WORST PICK", move: "MOVEMENT", split: "COIN FLIP", tb: "TIEBREAKER" })[x] || ""); }
   if (!(await until(() => liveWeekRows.length))) return;
   const who = MANAGERS.find((n) => n === x);
   if (view === "game" && GAMES.some((g) => String(g.id) === x)) openInsights(Number(x));
@@ -11744,6 +11745,7 @@ async function startLiveView() {
     openRankSheet(who);
   } else if (view === "path" && who && (await until(() => winChanceMemo.ctx))) openPathCard(who);
   else if (view === "h2h") openH2H();
+  // A week replay card (shared by everyone, so the signed-out view is the same).
 }
 
 // The bottom nav always wins: tapping a tab closes any sheet or popup that

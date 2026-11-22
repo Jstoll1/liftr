@@ -1701,6 +1701,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       return of ? `path&x=${encodeURIComponent(nameFrom(of.k.slice(8)))}` : "scoreboard";
     }
     if (e.k === "h2h") return "h2h";
+    if (e.k === "recap-card" && e.d) return `recap&x=${encodeURIComponent(e.d)}`;
     // Fantasy: the same sheet or tab, seen as that member (his matchup, his row).
     if (e.k === "fantasy-matchup" && e.d) return `fantasy&f=matchup&x=${encodeURIComponent(e.d)}`;
     if ((e.k === "fantasy-team" || e.k === "fantasy-owner" || e.k === "fantasy-ask-team") && e.d) return `fantasy&f=team&x=${encodeURIComponent(e.d)}`;
