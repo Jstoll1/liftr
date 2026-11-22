@@ -609,20 +609,28 @@
   // Tap a player in the live lineup: his card opens under that row (tap
   // again to close): game, points against projection, season numbers.
   const playerCard = (pc) => {
-    const row = pc.closest(".fx-mr"), side = pc.classList.contains("l") ? "l" : "r", key = `${row.dataset.fxpi}${side}`;
-    const box = row.closest(".fx-mir"), old = box.querySelector(".fx-pc"); old?.remove();
-    box.querySelectorAll(".fx-mc.on").forEach((x) => x.classList.remove("on"));
-    if (old?.dataset.k === key) return;
+    const row = pc.closest(".fx-mr"), side = pc.classList.contains("l") ? "l" : "r";
     const owner = side === "l" ? row.dataset.fxl : row.dataset.fxr, mm = (data.live?.matchups || []).find((m) => m.away?.owner === owner || m.home?.owner === owner), t = mm?.away?.owner === owner ? mm.away : mm?.home;
     const p = t?.starters?.[Number(row.dataset.fxpi)]; if (!p) return;
     const r = (data.rosters?.[owner] || []).find((x) => x.name === p.name) || {}, st = stOf(p), left = remaining(p), g = gameLine(p);
     const n = (teamNews?.players || []).find((x) => x.name === p.name)?.news?.find((x) => x.headline);
-    const d = document.createElement("div"); d.className = `fx-pc ${side}`; d.dataset.k = key;
-    d.innerHTML = `<div class="fx-pc-h">${nflLogo(p.nfl)}<b>${esc(p.name)}</b><small>${esc(p.pos || "")} · ${esc(p.nfl || "")} · ${esc(owner)}</small>${p.injury ? `<u class="sev">${esc(statusTxt(p.injury))}</u>` : ""}</div>
+    const html = `<div class="fx-pc-h">${nflLogo(p.nfl)}<b>${esc(p.name)}</b><small>${esc(p.pos || "")} · ${esc(p.nfl || "")} · ${esc(owner)}</small>${p.injury ? `<u class="sev">${esc(statusTxt(p.injury))}</u>` : ""}</div>
       ${g ? `<div class="fx-pc-g ${st}">${st === "live" ? '<i>LIVE</i>' : st === "done" ? "<i>FINAL</i>" : "<i>UP NEXT</i>"}<span>${g}</span></div>` : ""}
       <div class="fx-pc-s">${st === "pre" ? "" : `<span><b>${pts(p.pts)}</b><small>PTS</small></span>`}<span><b>${p.proj != null ? pts(p.proj) : "–"}</b><small>PROJ</small></span>${st === "pre" ? "" : `<span><b class="${(p.pts || 0) >= (p.proj || 0) && st !== "pre" ? "up" : ""}">${st === "done" ? `${(p.pts || 0) - (p.proj || 0) >= 0 ? "+" : "−"}${pts(Math.abs((p.pts || 0) - (p.proj || 0)))}` : `+${pts(left)}`}</b><small>${st === "done" ? "VS PROJ" : "LEFT"}</small></span>`}${r.season != null ? `<span><b>${pts(r.season)}</b><small>SEASON</small></span><span><b>${pts(r.avg)}</b><small>AVG</small></span>` : ""}</div>
       ${n ? `<p class="fx-pc-n">${kindPill(`${n.headline} ${n.note || ""}`)}${esc(n.headline)}</p>` : ""}`;
-    row.after(d); pc.classList.add("on");
+    document.getElementById("fx-plpop")?.remove();
+    const m = document.createElement("div");
+    m.id = "fx-plpop"; m.className = "fx-team fx-plpop"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", p.name);
+    const cut = html.indexOf("</div>") + 6;
+    m.innerHTML = `<div class="fx-tcard"><i class="fx-grab"></i><div class="fx-thead">${html.slice(0, cut)}<button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-pc">${html.slice(cut)}</div></div>`;
+    const card = m.querySelector(".fx-tcard"), close = () => { m.remove(); };
+    let sy = null, sx = 0;
+    m.addEventListener("touchstart", (e) => { e.stopPropagation(); if (e.touches.length === 1) { sy = e.touches[0].clientY; sx = e.touches[0].clientX; } }, { passive: true });
+    m.addEventListener("touchmove", (e) => { if (sy == null) return; const dy = e.touches[0].clientY - sy; if (dy > 0) { card.style.transition = "none"; card.style.transform = `translateY(${dy}px)`; } }, { passive: true });
+    m.addEventListener("touchend", (e) => { e.stopPropagation(); if (sy == null) return; const t2 = e.changedTouches[0], dy = t2.clientY - sy, dx = t2.clientX - sx; sy = null; card.style.transition = ""; if (dy > 70 || Math.abs(dx) > 90) close(); else card.style.transform = ""; });
+    m.addEventListener("click", (e) => { e.stopPropagation(); if (e.target === m || e.target.closest("[data-fxx]")) close(); });
+    m.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+    document.body.appendChild(m);
     try { window.noteUse?.("fantasy-player", p.name); } catch {}
   };
   const fxSeen = {}; // matchup id -> last painted leader and scores
