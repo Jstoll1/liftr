@@ -10343,6 +10343,16 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-kb-p b { font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .fx-kb-p .fx-nfl { width: 14px; height: 14px; }
 .fx-kb-p small { flex-basis: 100%; font-size: 9.5px; color: var(--text-dim); }
 .fx-kb-p { flex-wrap: nowrap; } .fx-kb-p em { flex: none; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff; } .fx-kb-r > i { font-size: 5.5px; }
+.fx-races { margin-top: 8px; padding: 6px 10px 4px; border-radius: 8px; border: 1px solid var(--card-border); background: rgba(0, 0, 0, .2); }
+.fx-races-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+.fx-races-h span { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); } .fx-races-h small { font-size: 10px; color: var(--text-dim); }
+.fx-rr { width: 100%; display: grid; grid-template-columns: 52px minmax(0, 1fr) auto 10px; align-items: center; gap: 8px; padding: 6px 0; border: 0; border-top: 1px solid rgba(255, 255, 255, .05); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.fx-rr:first-of-type { border-top: 0; }
+.fx-rr-k { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--neon-cyan); white-space: nowrap; }
+.fx-rr-t { min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .fx-rr-t b { font-weight: 600; color: #fff; } .fx-rr-t em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 7px; color: rgba(255, 255, 255, .7); } .fx-rr-t i { font-style: normal; margin: 0 6px; font-size: 10px; color: var(--text-dim); }
+.fx-rr-g { font-family: 'Press Start 2P', monospace; font-size: 5.5px; padding: 3px 4px; border-radius: 3px; color: rgba(255, 255, 255, .75); border: 1px solid var(--card-border); white-space: nowrap; }
+.fx-rr-g.tie { color: var(--arcade-gold); border-color: rgba(var(--arcade-gold-rgb), .45); }
+.fx-rr-x { font-size: 9px; color: var(--text-dim); }
 .fx-dv { display: inline-block; margin-left: 6px; padding: 1px 3px; border-radius: 3px; vertical-align: 2px; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5px; color: var(--neon-cyan); border: 1px solid rgba(var(--neon-cyan-rgb), .45); }
 .fx-fire { font-style: normal; font-size: 9px; margin-left: 2px; }
 .fx-sts.dv .fx-c.fx-skc { display: grid; grid-template-columns: 1fr 12px; align-items: center; }
