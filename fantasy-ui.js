@@ -523,8 +523,16 @@
     document.getElementById("fx-mupop")?.remove();
     const m = document.createElement("div");
     m.id = "fx-mupop"; m.className = "fx-team"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Matchup");
-    m.innerHTML = `<div class="fx-tcard fx-mucard" data-id="${id}"><div class="fx-thead"><span class="fx-k2">WEEK ${esc(data.live?.week || "")} MATCHUP</span><button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-popbody">${fullById[id] || ""}</div></div>`;
+    // Swipe sideways (or tap the dots) for the other matchups, yours first.
+    const ids = (data.live?.matchups || []).map((x) => x.id).sort((x, y) => { const mx = (k) => { const mm = data.live.matchups.find((z) => z.id === k); return mm && (mm.home?.owner === me() || mm.away?.owner === me()) ? 0 : 1; }; return mx(x) - mx(y); });
+    const at = Math.max(0, ids.indexOf(id)), go = (d) => { const n = ids[(at + d + ids.length) % ids.length]; if (n != null && n !== id) { openMu(n); try { window.noteUse?.("fantasy-matchup-swipe"); } catch {} } };
+    m.innerHTML = `<div class="fx-tcard fx-mucard" data-id="${id}"><div class="fx-thead"><span class="fx-k2">WEEK ${esc(data.live?.week || "")} MATCHUP</span>${ids.length > 1 ? `<span class="fx-mudots">${ids.map((k, i) => `<i class="${i === at ? "on" : ""}" data-fxgo="${k}"></i>`).join("")}</span>` : ""}<button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-popbody">${fullById[id] || ""}</div></div>`;
+    let sx = null, sy = 0;
+    m.addEventListener("touchstart", (e) => { if (e.touches.length === 1) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; } }, { passive: true });
+    m.addEventListener("touchend", (e) => { if (sx == null) return; const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? 1 : -1); }, { passive: true });
+    m.addEventListener("keydown", (e) => { if (e.key === "ArrowRight") go(1); else if (e.key === "ArrowLeft") go(-1); });
     m.addEventListener("click", (e) => {
+      const dot = e.target.closest("[data-fxgo]"); if (dot) return openMu(Number(dot.dataset.fxgo));
       if (e.target === m || e.target.closest("[data-fxx]")) { chipOpen = null; return m.remove(); }
       const ch = e.target.closest("[data-fxchip]");
       if (ch) { const k = ch.dataset.fxchip, mid = Number(ch.dataset.mid); chipOpen = chipOpen?.mid === mid && chipOpen.k === k ? null : { mid, k }; try { window.noteUse?.("fantasy-h2h", k); } catch {} return paint(); }
