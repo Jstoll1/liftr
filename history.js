@@ -396,7 +396,7 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     const o=ownerOf(me());const mine=o?shuffle(aboutYou(o)):[];
     const seen=seenMe();mine.sort((a2,b2)=>(seen.includes(a2.id)?1:0)-(seen.includes(b2.id)?1:0));
     const lead=mine.splice(0,3);
-    try{localStorage.setItem(SEEN_ME_KEY,JSON.stringify([...lead.map((q)=>q.id),...seen.filter((x)=>!lead.some((q)=>q.id===x))].slice(0,6)))}catch{}
+    if(!window.__liveView)try{localStorage.setItem(SEEN_ME_KEY,JSON.stringify([...lead.map((q)=>q.id),...seen.filter((x)=>!lead.some((q)=>q.id===x))].slice(0,6)))}catch{}
     deck=lead.concat(shuffle(POOL.concat(mine,titleQs())));
   }
   function confettiBurst(box){
