@@ -16,7 +16,9 @@
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const pts = (n) => (Math.round((Number(n) || 0) * 10) / 10).toFixed(1);
   const pct = (x) => (x >= 0.995 ? "99%+" : x > 0 && x < 0.01 ? "<1%" : `${Math.round((x || 0) * 100)}%`);
-  const me = () => (typeof currentManager !== "undefined" ? currentManager : null);
+  // The signed-in member as a fantasy owner: the pick'em login keeps some
+  // members under another name (Conlan is Connie in the fantasy league).
+  const me = () => { const n = typeof currentManager !== "undefined" ? currentManager : null; if (!n) return null; const alias = (typeof NAME_SHOWN !== "undefined" && NAME_SHOWN[n]) || n; const owners = new Set([...(data?.standings || []).map((r) => r.owner), ...Object.keys(data?.rosters || {})]); return owners.has(n) ? n : owners.has(alias) ? alias : alias; };
   const colour = (o) => (typeof A !== "undefined" && A.colors?.[o]) || "#8b8498";
   const nflLogo = (ab) => (ab ? `<img class="fx-nfl" src="https://a.espncdn.com/i/teamlogos/nfl/500-dark/${esc(ab.toLowerCase())}.png" alt="" loading="lazy" onerror="if(!this.dataset.f){this.dataset.f=1;this.src=this.src.replace('/500-dark/','/500/')}else this.style.visibility='hidden'">` : "");
   // No ESPN logo: the owner's pick'em avatar (their emoji or initial on
