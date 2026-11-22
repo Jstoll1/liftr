@@ -49,12 +49,13 @@
           "standings|edge"
         ],
         "must": [
-          "Conlan|Connie"
+          "favou?rite",
+          "\\d+(\\.\\d+)?%"
         ],
         "noAsk": true
       },
       "regression": true,
-      "note": "Nov 21: named Robert (status out) the favourite; must read standings; run 4 (Nov 21): regressed, named Robert (2nd) as the favourite; edge now resolves 'favourite' itself"
+      "note": "Nov 21: named Robert (status out) the favourite; must read standings; run 4 (Nov 21): regressed, named Robert (2nd) as the favourite; edge now resolves 'favourite' itself; Nov 22: the check named last week's favourite (Connie); now any favourite with his chance"
     },
     {
       "source": "seed",
@@ -87,7 +88,7 @@
           "gameOdds"
         ],
         "must": [
-          "\\d+(\\.\\d+)?%"
+          "\\d+(\\.\\d+)?%|final"
         ],
         "mustNot": [
           "not available",
@@ -95,7 +96,7 @@
         ]
       },
       "regression": true,
-      "note": "Nov 21: gameOdds found no pick to read from; now plays the game model itself"
+      "note": "Nov 21: gameOdds found no pick to read from; now plays the game model itself; Nov 22: G8 went final mid-run and the Chief rightly said so; a final game now passes"
     },
     {
       "source": "seed",
@@ -516,7 +517,8 @@
         "noAsk": true
       },
       "source": "feature",
-      "note": "Nov 21: fantasy seeding follows divisions (winners take seeds 1-2); the Chief should explain the division rule"
+      "note": "Nov 21: fantasy seeding follows divisions (winners take seeds 1-2); the Chief should explain the division rule; Nov 22: archive ranked by record and said Andrew isn't the 2 seed; archive now gets the ESPN seeds with the division rule",
+      "regression": true
     },
     {
       "id": "out-says-why",
