@@ -87,9 +87,11 @@ export function historyContext(cur, archive) {
   const cutoff = allTop.length ? Math.min(...allTop) : Infinity;
   const tops = archive.records?.highestWeeklyScores || [], top1 = allTop.length ? Math.max(...allTop) : Infinity;
   for (const g of cur.weekly || []) if (g.points >= cutoff) {
-    const rank = 1 + allTop.filter((x) => x > g.points).length;
-    const wl = tops.map((t, i) => ({ v: allTop[i], c: [String(t).replace(/ \(\w\)$/, "")] })).concat([{ v: g.points, me: true, c: [`${g.owner} ${g.points} in ${cur.year || "this season"} week ${g.week}`] }]).filter((x) => Number.isFinite(x.v)).sort((a, b) => b.v - a.v).slice(0, 11);
-    record.push({ why: { head: ["#", "Week"], rows: wl.map((x, i) => ({ me: x.me, c: [i + 1, x.c[0]] })) }, owner: g.owner, text: g.points > top1 ? `${g.points} in week ${g.week} is the best week ever, past ${String(tops[0] || "").replace(/ \(\w\)$/, "")}` : `${g.points} in week ${g.week} is the ${ord(rank)} best week ever` });
+    // This season's other big weeks count too (Dewitt's 200 earlier this year).
+    const mine = (cur.weekly || []).filter((x) => x.points >= cutoff && x.points > 0);
+    const rank = 1 + allTop.filter((x) => x > g.points).length + mine.filter((x) => x.points > g.points).length;
+    const wl = tops.map((t, i) => ({ v: allTop[i], c: [String(t).replace(/ \(\w\)$/, "")] })).concat(mine.map((x) => ({ v: x.points, me: x === g, c: [`${x.owner} ${x.points} in ${cur.year || "this season"} week ${x.week}`] }))).filter((x) => Number.isFinite(x.v)).sort((a, b) => b.v - a.v).slice(0, 11);
+    record.push({ why: { head: ["#", "Week"], rows: wl.map((x, i) => ({ me: x.me, c: [i + 1, x.c[0]] })) }, owner: g.owner, text: g.points > top1 && rank === 1 ? `${g.points} in week ${g.week} is the best week ever, past ${String(tops[0] || "").replace(/ \(\w\)$/, "")}` : `${g.points} in week ${g.week} is the ${ord(rank)} best week ever` });
   }
 
   // The all-time single-season records (full regular seasons) for the pace sheet.
