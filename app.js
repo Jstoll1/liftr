@@ -127,7 +127,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=881503210796", "lightning-ui.js?v=812074492059", "attract-facts.js?v=621767480045", "history.js?v=451197308157", "fantasy-ui.js?v=363845987272", "sim.js?v=374204176553", "gridcard.js?v=867340868336"];
+const EXTRAS = ["ask-ui.js?v=881503210796", "lightning-ui.js?v=812074492059", "attract-facts.js?v=621767480045", "history.js?v=451197308157", "fantasy-ui.js?v=418246788512", "sim.js?v=374204176553", "gridcard.js?v=867340868336"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -11711,7 +11711,17 @@ async function startLiveView() {
   homeHeader.classList.remove("hidden");
   bottomNav.classList.remove("hidden");
   currentManager = null;
-  if (view === "history") return showHistory();
+  // Fantasy as a member saw it: his matchup, row and team news (fantasy has
+  // no private picks). Pick'em views stay signed out so no one's open picks show.
+  if (view === "history" || view === "fantasy") {
+    const q = new URLSearchParams(location.search), as = q.get("as") || "", f = q.get("f") || "";
+    const nm = MANAGERS.find((n) => n.toLowerCase() === as.toLowerCase() || (NAME_SHOWN[n] || "").toLowerCase() === as.toLowerCase());
+    if (nm) currentManager = nm;
+    showHistory();
+    for (let i = 0; i < 100 && !window.fantasyOpen?.ready?.(); i++) await new Promise((r) => setTimeout(r, 100));
+    if (f) window.fantasyOpen?.(f, x);
+    return;
+  }
   if (view === "trivia") return showTrivia();
   // The grid check card for the admin page: counts only, picks stay masked.
   if (view === "grid") { showScoreboard(); await ensureExtras(); for (let i = 0; i < 50 && !window.openGridCard; i++) await new Promise((r) => setTimeout(r, 100)); return window.openGridCard?.(); }

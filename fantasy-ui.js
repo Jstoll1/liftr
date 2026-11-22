@@ -657,6 +657,16 @@
   });
 
   const visible = () => !document.getElementById("history-screen")?.classList.contains("hidden") && !document.hidden;
+  // Live's preview: open the sheet or tab a member opened.
+  window.fantasyOpen = (f, x) => {
+    if (!data) return;
+    if (f === "matchup") { const [a, b] = String(x || "").split(/\s+vs\s+/); const mm = (data.live?.matchups || []).find((m) => [m.away?.owner, m.home?.owner].includes(a) && [m.away?.owner, m.home?.owner].includes(b)); if (mm) { paint(); openMu(mm.id); } }
+    else if (f === "team" && x) openTeam(x);
+    else if (f === "tab" && x) { tab = x; paint(); document.querySelector(".fx-tabs")?.scrollIntoView({ block: "start" }); }
+    else if (f === "race") { tab = "standings"; paint(); try { openRace(0); } catch {} }
+    else if (f === "recap") document.querySelector("[data-fxtake]")?.click();
+  };
+  window.fantasyOpen.ready = () => !!data;
   window.fantasyMeChanged = () => { teamNews = null; teamNewsAt = 0; newsOpen = null; newsAll = false; card = null; chipOpen = null; document.getElementById("fx-mupop")?.remove(); document.getElementById("fx-team")?.remove(); paint(); };
   window.paintFantasy = async (force) => { paint(); await load(force); paint(); };
   if (visible()) window.paintFantasy();
