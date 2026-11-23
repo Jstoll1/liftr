@@ -638,6 +638,20 @@
     try { window.noteUse?.("fantasy-player", p.name); } catch {}
   };
   const fxSeen = {}; // matchup id -> last painted leader and scores
+  // Desktop only: the matchup as a full page, with both benches, what each
+  // lineup left on the bench and points by position beside the lineups.
+  const wideMu = () => !document.documentElement.classList.contains("phone") && innerWidth >= 1100;
+  const muSide = (mid) => {
+    const mm = (data.live?.matchups || []).find((x) => x.id === mid); if (!mm) return "";
+    const fl = mm.home?.owner === me(), L = fl ? mm.home : mm.away, Rt = fl ? mm.away : mm.home;
+    const grp = (t) => { const o = {}; for (const p of t?.starters || []) o[p.slot] = (o[p.slot] || 0) + (p.pts || 0); return o; };
+    const ga = grp(L), gb = grp(Rt), slots = [...new Set([...(L?.starters || []), ...(Rt?.starters || [])].map((p) => p.slot))];
+    const pos = `<div class="fx-pg-box"><h4>POINTS BY POSITION</h4><div class="fx-pg-pos">${slots.map((k) => { const a = ga[k] || 0, b = gb[k] || 0, t = a + b || 1; return `<div class="fx-pg-pr"><b class="${a > b ? "w" : ""}">${pts(a)}</b><span class="fx-pg-pb"><i class="a" style="width:${((a / t) * 100).toFixed(0)}%"></i><i class="b" style="width:${((b / t) * 100).toFixed(0)}%"></i></span><b class="${b > a ? "w" : ""}">${pts(b)}</b><small>${esc(k)}</small></div>`; }).join("")}</div></div>`;
+    const bench = (t, k) => { const b = (t?.bench || []).slice().sort((x, y) => (y.pts || 0) - (x.pts || 0)), tot = b.reduce((n, p) => n + (p.pts || 0), 0), left = Number.isFinite(t?.best) ? Math.max(0, t.best - (t.points || 0)) : null;
+      return `<div class="fx-pg-bn ${k}"><div class="fx-pg-bh"><b>${esc(t?.owner || "")}</b><small>BENCH ${pts(tot)}</small></div>${left != null ? `<p class="fx-pg-best">Best lineup <b>${pts(t.best)}</b> · ${left > 0.05 ? `<em>${pts(left)} left on bench</em>` : "<em class=\"ok\">set perfectly</em>"}</p>` : ""}<ul>${b.map((p) => `<li class="${stOf(p)}">${nflLogo(p.nfl) || "<span></span>"}<span class="fx-pg-bp"><b>${esc(short(p.name))}</b><small>${esc(p.slot === "IR" ? "IR" : p.pos || "")}${stOf(p) === "done" && p.line ? ` · ${esc(p.line)}` : gameLine(p, true) ? ` · ${gameLine(p, true)}` : ""}</small></span><em>${stOf(p) === "pre" ? "–" : pts(p.pts)}</em></li>`).join("") || "<li class=\"none\">No bench</li>"}</ul></div>`; };
+    return `${pos}<div class="fx-pg-box"><h4>BENCH</h4><div class="fx-pg-bns">${bench(L, "a")}${bench(Rt, "b")}</div></div>`;
+  };
+  const muBody = (id) => wideMu() ? `<div class="fx-pg"><div class="fx-pg-main">${fullById[id] || ""}</div><aside class="fx-pg-side">${muSide(id)}</aside></div>` : fullById[id] || "";
   const openMu = (id) => {
     document.getElementById("fx-mupop")?.remove();
     const m = document.createElement("div");
@@ -645,7 +659,8 @@
     // Swipe sideways (or tap the dots) for the other matchups, yours first.
     const ids = (data.live?.matchups || []).map((x) => x.id).sort((x, y) => { const mx = (k) => { const mm = data.live.matchups.find((z) => z.id === k); return mm && (mm.home?.owner === me() || mm.away?.owner === me()) ? 0 : 1; }; return mx(x) - mx(y); });
     const at = Math.max(0, ids.indexOf(id)), go = (d) => { const n = ids[(at + d + ids.length) % ids.length]; if (n != null && n !== id) { openMu(n); try { window.noteUse?.("fantasy-matchup-swipe"); } catch {} } };
-    m.innerHTML = `<div class="fx-tcard fx-mucard" data-id="${id}"><div class="fx-thead"><span class="fx-k2">WEEK ${esc(data.live?.week || "")} MATCHUP</span>${ids.length > 1 ? `<span class="fx-mudots">${ids.map((k, i) => `<i class="${i === at ? "on" : ""}" data-fxgo="${k}"></i>`).join("")}</span>` : ""}<button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-popbody">${fullById[id] || ""}</div></div>`;
+    m.innerHTML = `<div class="fx-tcard fx-mucard" data-id="${id}"><div class="fx-thead"><span class="fx-k2">WEEK ${esc(data.live?.week || "")} MATCHUP</span>${ids.length > 1 ? `<span class="fx-mudots">${ids.map((k, i) => `<i class="${i === at ? "on" : ""}" data-fxgo="${k}"></i>`).join("")}</span>` : ""}<button type="button" class="fx-x" data-fxx="1" aria-label="Close">✕</button></div><div class="fx-popbody">${muBody(id)}</div></div>`;
+    if (wideMu()) m.classList.add("fx-page");
     let sx = null, sy = 0;
     m.addEventListener("touchstart", (e) => { if (e.touches.length === 1) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; } }, { passive: true });
     m.addEventListener("touchend", (e) => { if (sx == null) return; const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? 1 : -1); }, { passive: true });
@@ -713,7 +728,7 @@
     const games = cards.map((g) => g.card).join("");
     fullById = Object.fromEntries(cards.map((g) => [g.id, g.full]));
     const pop = document.querySelector("#fx-mupop .fx-tcard");
-    if (pop && fullById[pop.dataset.id]) pop.querySelector(".fx-popbody").innerHTML = fullById[pop.dataset.id];
+    if (pop && fullById[pop.dataset.id]) pop.querySelector(".fx-popbody").innerHTML = muBody(Number(pop.dataset.id));
     root.innerHTML = `<div class="fx-l">
       <div class="fx-head"><span class="fx-k">FANTASY · ${esc(data.year)}</span><span class="fx-wk">${anyLive ? `<i class="fx-dot"></i>LIVE · ` : ""}WEEK ${esc(week)}</span></div>
       ${data.take?.text ? `<button type="button" class="fx-take-btn${(() => { try { return localStorage.getItem(`brochiefs_fx_take_${data.take.week}`) ? " read" : ""; } catch { return ""; } })()}" data-fxtake="1"><img src="assets/images/chief/chief2-96.webp" alt=""><span class="fx-k2">WEEK ${esc(data.take.week)} RECAP</span><em>from the Chief</em><i>▸</i></button>` : ""}
