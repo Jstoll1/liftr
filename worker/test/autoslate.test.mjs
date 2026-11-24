@@ -75,3 +75,18 @@ test("College: never builds a slate and never calls ESPN for one", async () => {
   assert.equal(nflCalls, before);
   assert.equal(env.LIFTR_KV.m.size, 0);
 });
+
+test("NFL: a slate the commissioner saved by hand (Thanksgiving's three games) is never filled back out", async () => {
+  board = { week: { number: 12 }, season: { type: 2 }, events: [ev(1, 21, 19, 3.5, false, 30), ev(2, 12, 13, 2.5, true, 34), ev(3, 8, 9, 6.5, false, 38), ev(4, 25, 26, 2.5, true, 104), ev(5, 1, 2, 4, true, 120)] };
+  const env = { SPORT: "nfl", LIFTR_KV: kv(), DEFAULT_ROSTER: "Ben,Nathan,Jake" };
+  const auto = await call(env, "/games");
+  assert.equal(auto.games.length, 5);
+  const three = auto.games.filter((g) => g.id <= 3).map((g) => ({ ...g, tiebreakerGame: g.id === 3 }));
+  env.LIFTR_KV.m.set("slate-hand:12", "1");
+  env.LIFTR_KV.m.set("games:w12", JSON.stringify({ week: 12, label: "Week 12", games: three }));
+  env.LIFTR_KV.m.delete("autoslate:at");
+  resetReadCache();
+  const r = await call(env, "/games");
+  assert.equal(r.games.length, 3);
+  assert.deepEqual(r.games.filter((g) => g.tiebreakerGame).map((g) => g.id), [3]);
+});

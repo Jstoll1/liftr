@@ -1928,6 +1928,7 @@ const ESPN_HEADERS = {
   "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
   Accept: "application/json",
 };
+const handSlateKey = (week) => `slate-hand:${week}`;
 async function autoSlate(env, { force = false } = {}) {
   if (SPORT !== "nfl" || !env.LIFTR_KV) return { skipped: "not nfl" };
   const last = Number(await env.LIFTR_KV.get(AUTO_SLATE_AT)) || 0;
@@ -1945,6 +1946,7 @@ async function autoSlate(env, { force = false } = {}) {
   const rows = (data.events || []).map((ev) => buildNflRow(ev)).filter(Boolean);
   const stored = await env.LIFTR_KV.get(gamesKey(week), "json");
   const games = (stored?.games || []).map((g) => ({ ...g }));
+  const byHand = games.length > 0 && !!(await env.LIFTR_KV.get(handSlateKey(week)));
   // Which games have a pick on them, and whether any tiebreaker guess is in.
   const states = await Promise.all(PICKS_MANAGERS.map((m) => env.LIFTR_KV.get(pickKey(week, m), "json")));
   const picked = new Set();
@@ -1967,6 +1969,7 @@ async function autoSlate(env, { force = false } = {}) {
       if (!picked.has(g.id) && (g.spread !== r.spread || g.favorite !== r.favorite)) { g.spread = r.spread; g.favorite = r.favorite; moved++; }
       continue;
     }
+    if (byHand) continue;
     let id = 1;
     while (used.has(id)) id++;
     if (id > 16) break;
@@ -1977,7 +1980,7 @@ async function autoSlate(env, { force = false } = {}) {
   if (!games.length) return { week, skipped: "no lines yet" };
   games.sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff) || a.id - b.id);
   const held = games.find((g) => g.tiebreakerGame);
-  if (!(held && guessed)) {
+  if (!(held && (guessed || byHand))) {
     for (const g of games) delete g.tiebreakerGame;
     games[games.length - 1].tiebreakerGame = true;
   }
@@ -2122,6 +2125,9 @@ async function handleGames(request, env, corsHeaders, url, ctx) {
     const moved = slateRenumbering(existing?.games, checked.games);
     if (moved) return json({ error: moved }, 409, corsHeaders);
     await env.LIFTR_KV.put(gamesKey(checked.week), JSON.stringify(checked));
+    // A slate the commissioner saved by hand is theirs: the auto slate keeps
+    // its lines and kickoffs current but never adds games or moves the tiebreaker.
+    await env.LIFTR_KV.put(handSlateKey(checked.week), "1", { expirationTtl: 60 * 86400 });
     const weeks = await readWeeks(env);
     const list = [...new Set([...weeks.list, checked.week])].sort((a, b) => a - b);
     const current = body.makeCurrent === false ? weeks.current : checked.week;
