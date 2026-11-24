@@ -515,6 +515,8 @@ async function pushManagerState(manager, state, { attempts = 3 } = {}) {
       });
       // Signed out: retrying cannot help, so stop and ask for the code.
       if (res.status === 401) {
+        // A family phone signs itself back in and sends again.
+        if (i === 0 && autoSecret(manager) && await autoLogin(manager)) continue;
         setSyncStatus("failed");
         handleAuthFailure(manager);
         return false;
@@ -1128,6 +1130,7 @@ async function submitOwnerCode() {
 // A 401 from a save means the token is gone, expired, or for someone
 // else. Drop it and ask, so the next tap saves.
 async function handleAuthFailure(manager) {
+  if (await autoLogin(manager)) return;
   clearAuth();
   await refreshAuthState();
   if (!picksScreen.classList.contains("hidden")) await requireOwnerAuth(manager);
@@ -1434,7 +1437,7 @@ function openJoin() {
   document.getElementById("claim-modal")?.classList.add("hidden");
   const j = joinSaved();
   document.getElementById("join-form").classList.toggle("hidden", !!(j && j.status === "pending"));
-  document.getElementById("join-sub").textContent = j && j.status === "pending" ? `Request sent for ${j.name}. You'll be let in as soon as the commissioner approves it; this page checks each time you open the app.` : "The commissioner approves new players. You'll get your own login once you're in.";
+  document.getElementById("join-sub").textContent = j && j.status === "pending" ? `Request sent for ${j.name}! 🦃 Once it's approved, just open this page again and you're in. No password needed.` : "Send your name and Jake lets you in. No password: this phone signs you in by itself.";
   m.classList.remove("hidden");
   noteUse("join-open");
 }
@@ -1462,6 +1465,7 @@ async function checkJoin() {
     try { localStorage.setItem(JOIN_KEY, JSON.stringify({ ...j, status: d.status })); } catch {}
     if (d.status === "approved") {
       await loadRoster();
+      if (d.invite && await autoClaim(j.name, d.invite)) return;
       lotwToast?.(`You're in, ${j.name}! Pick your name and set a PIN.`);
       setTimeout(() => openClaimPrompt(), 600);
     }
@@ -1471,6 +1475,31 @@ async function checkJoin() {
 // that name can only be claimed with the code it carries.
 const INVITE_KEY = "brochiefs_invite_v1";
 function inviteFor(name) { try { const v = JSON.parse(localStorage.getItem(INVITE_KEY) || "null"); return v && v.name === name ? v.code : null; } catch { return null; } }
+// No PIN for the family: the phone makes its own long random secret, claims
+// the name with the invite code and keeps the secret, so it can sign itself
+// back in when a token runs out. Only this phone ever knows the secret.
+const AUTO_KEY = "brochiefs_auto_v1";
+const autoSecret = (name) => { try { const v = JSON.parse(localStorage.getItem(AUTO_KEY) || "null"); return v && v.name === name ? v.code : null; } catch { return null; } };
+async function authPost(body) { const r = await fetch(`${WORKER_URL}/auth`, { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", body: JSON.stringify({ ...body, device: deviceId(), client: deviceDetails() }) }); return { status: r.status, data: await r.json().catch(() => null) }; }
+async function autoClaim(name, invite) {
+  const code = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
+  try {
+    const { status, data } = await authPost({ action: "claim", manager: name, code, invite });
+    if (status !== 200 || !data?.token) return false;
+    try { localStorage.setItem(AUTO_KEY, JSON.stringify({ name, code })); localStorage.removeItem(INVITE_KEY); } catch {}
+    saveAuth(name, data.token);
+    if (!authState.claimed.includes(name)) authState.claimed = [...authState.claimed, name];
+    saveMe(name); selectManager(name);
+    lotwToast?.(`You're in, ${name}! 🦃 Make your picks.`);
+    track("join-auto-signin", { event: true });
+    return true;
+  } catch { return false; }
+}
+async function autoLogin(name) {
+  const code = autoSecret(name); if (!code) return false;
+  try { const { status, data } = await authPost({ action: "login", manager: name, code }); if (status === 200 && data?.token) { saveAuth(name, data.token); return true; } } catch {}
+  return false;
+}
 if (window.LEAGUE?.sport === "nfl") {
   const q = new URLSearchParams(location.search);
   if (/^[a-f0-9]{32}$/.test(q.get("claim") || "") && q.get("n")) {
@@ -1478,7 +1507,7 @@ if (window.LEAGUE?.sport === "nfl") {
     history.replaceState(null, "", location.pathname);
     const name = q.get("n");
     // Once the roster has the name, go straight to setting their PIN.
-    setTimeout(async () => { await loadRoster(); if (MANAGERS.includes(name) && !loadMe()) { lotwToast?.(`Welcome, ${name}! Set a PIN to finish.`); if (await requireOwnerAuth(name)) { saveMe(name); selectManager(name); try { localStorage.removeItem(INVITE_KEY); } catch {} } } }, 900);
+    setTimeout(async () => { await loadRoster(); if (MANAGERS.includes(name) && inviteFor(name) && await autoClaim(name, inviteFor(name))) return; if (MANAGERS.includes(name) && !loadMe()) { lotwToast?.(`Welcome, ${name}! Set a PIN to finish.`); if (await requireOwnerAuth(name)) { saveMe(name); selectManager(name); try { localStorage.removeItem(INVITE_KEY); } catch {} } } }, 900);
   }
   // brochiefs.com/join (NFL) lands here as ?join=1.
   if (q.get("join") === "1") { history.replaceState(null, "", location.pathname); setTimeout(openJoin, 700); }

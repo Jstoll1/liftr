@@ -1000,15 +1000,31 @@ async function handleJoin(request, env, corsHeaders, url) {
     const id = String(url.searchParams.get("id") || "");
     if (!/^[a-f0-9]{16}$/.test(id)) return json({ error: "Bad id" }, 400, corsHeaders);
     const r = await env.LIFTR_KV.get(joinKey(id), "json");
-    return json(r ? { status: r.status, name: r.name } : { status: "gone" }, 200, corsHeaders);
+    if (!r) return json({ status: "gone" }, 200, corsHeaders);
+    // The request id is a random secret only the asking phone holds, so once
+    // approved that phone gets the invite code and signs itself in (no PIN).
+    const inv = r.status === "approved" ? await env.LIFTR_KV.get(inviteKey(r.name), "json") : null;
+    return json({ status: r.status, name: r.name, ...(inv?.code ? { invite: inv.code } : {}) }, 200, corsHeaders);
   }
   if (!admin) return json({ error: "Not authorized" }, 403, corsHeaders);
   if (request.method === "GET") {
     const keys = (await env.LIFTR_KV.list({ prefix: "join:" })).keys;
     const all = (await Promise.all(keys.map((k) => env.LIFTR_KV.get(k.name, "json")))).filter(Boolean);
-    return json({ requests: all.sort((a, b) => b.at - a.at) }, 200, corsHeaders);
+    await loadRoster(env, true);
+    const claimed = (await Promise.all(PICKS_MANAGERS.map(async (n) => [n, !!(await env.LIFTR_KV.get(authKey(n)))]))).filter(([, c]) => c).map(([n]) => n);
+    return json({ requests: all.sort((a, b) => b.at - a.at), members: PICKS_MANAGERS, claimed }, 200, corsHeaders);
   }
   let b; try { b = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); }
+  // New phone: clear the member's sign-in and issue a fresh one-time link.
+  if (b?.action === "relink") {
+    await loadRoster(env, true);
+    const name = PICKS_MANAGERS.find((n) => n.toLowerCase() === String(b?.name || "").toLowerCase());
+    if (!name) return json({ error: "No such member" }, 404, corsHeaders);
+    await env.LIFTR_KV.delete(authKey(name)); await env.LIFTR_KV.delete(authTriesKey(name)); await env.LIFTR_KV.delete(authDevicesKey(name));
+    const code = crypto.randomUUID().replace(/-/g, "");
+    await env.LIFTR_KV.put(inviteKey(name), JSON.stringify({ code, at: Date.now() }), { expirationTtl: 14 * 86400 });
+    return json({ ok: true, name, link: `https://nfl.brochiefs.com/?claim=${code}&n=${encodeURIComponent(name)}` }, 200, corsHeaders);
+  }
   const r = await env.LIFTR_KV.get(joinKey(String(b?.id || "")), "json");
   if (!r) return json({ error: "No such request" }, 404, corsHeaders);
   if (b.action === "approve") {

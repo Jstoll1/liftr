@@ -49,3 +49,24 @@ test("join: approval makes a personal link; only it can claim the name", async (
   assert.equal((await claim(code)).status, 200);         // the personal link
   assert.equal((await claim(code)).status, 409);         // and only once
 });
+
+test("join: Grandpa's phone signs itself in after approval (no PIN), and a new phone link works", async () => {
+  const e = { ...env(), AUTH_SECRET: "s" };
+  const { id } = await (await call(e, "/join", { name: "Grandpa", email: "gp@x.com" })).json();
+  assert.equal((await (await call(e, `/join?id=${id}`)).json()).invite, undefined); // nothing before approval
+  await call(e, "/joins?key=adm", { id, action: "approve" });
+  const st = await (await call(e, `/join?id=${id}`)).json();
+  assert.match(st.invite, /^[a-f0-9]{32}$/);
+  const secret = "a".repeat(32);
+  const claim = await (await call(e, "/auth", { action: "claim", manager: "Grandpa", code: secret, invite: st.invite })).json();
+  assert.ok(claim.token);
+  assert.equal((await (await call(e, `/join?id=${id}`)).json()).invite, undefined); // used up
+  assert.ok((await (await call(e, "/auth", { action: "login", manager: "Grandpa", code: secret })).json()).token); // silent re-login
+  const list = await (await call(e, "/joins?key=adm")).json();
+  assert.ok(list.claimed.includes("Grandpa"));
+  assert.equal((await call(e, "/joins", { action: "relink", name: "Grandpa" })).status, 403);
+  const rl = await (await call(e, "/joins?key=adm", { action: "relink", name: "grandpa" })).json();
+  const code = new URL(rl.link).searchParams.get("claim");
+  assert.equal((await call(e, "/auth", { action: "login", manager: "Grandpa", code: secret })).status !== 200, true); // old phone signed out
+  assert.ok((await (await call(e, "/auth", { action: "claim", manager: "Grandpa", code: "b".repeat(32), invite: code })).json()).token);
+});
