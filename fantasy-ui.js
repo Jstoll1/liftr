@@ -524,9 +524,8 @@
     const divTables = tab === "standings" && dvs.length > 1 ? dvs.map((d) => { const rs = orderRec(stand().filter((r) => data.divisionOf?.[r.owner] === d.id)), lead = rs[0]; return `<div class="fx-sth t-standings fx-dvh"><span>${esc(String(d.name || "").toUpperCase())}</span><span>W-L</span><span>GB</span><span>PF</span><span>STRK</span></div><div class="fx-sts t-standings dv">${rs.map((r, i) => { const gb = ((lead.wins - r.wins) + (r.losses - lead.losses)) / 2, sk = st.streak?.[r.owner] || "–"; return row(r.owner, { rank: i + 1, sub: data.teams?.[r.owner]?.name, cols: [{ v: `${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}` }, { v: gb ? String(gb) : "–", cls: "pf fx-gbc" }, { v: pts(r.pointsFor), cls: "pf" }, { v: `<span>${esc(sk)}</span><i class="fx-fire"${/^W([4-9]|\d\d)/.test(sk) ? ' aria-label="hot streak">🔥' : ">"}</i>`, cls: `fx-skc ${/^W/.test(sk) ? "up" : /^L/.test(sk) ? "dn" : ""}` }] }, 99); }).join("")}</div>`; }).join("") : "";
     const why = { standings: divW.size ? `${divW.size} division winners + ${line - divW.size} wild cards · Cyan = playoff position` : `Top ${line} make the playoffs.`, power: "Who's playing best right now: points, record against the whole league each week, and the last three weeks.", odds: `Chances from 4,000 simulated finishes of the season. Top ${line} make the playoffs.`, luck: "Real record against the record your points deserve. Plus means more wins than the scoring earned.", both: "Fantasy place next to pick'em place this season, best combined first." }[tab];
     return `<div class="fx-sechd"><span>LEAGUE TABLE</span></div><div class="fx-tabs" role="tablist">${[["standings", "STANDINGS"], ["power", "POWER"], ["odds", "ODDS"], ["luck", "LUCK"]].map(([k, l]) => `<button type="button" role="tab" aria-selected="${tab === k}" class="${tab === k ? "on" : ""}" data-fxtab="${k}">${l}</button>`).join("")}</div>
-      <p class="fx-why-top"><b>${{ standings: "STANDINGS", power: "POWER", odds: "ODDS", luck: "LUCK", both: "BOTH LEAGUES" }[tab]}</b> ${esc(why)}</p>${tab === "standings" ? picture(line) + bubble(line) : ""}
-      ${divTables || `<div class="fx-sth t-${tab}"><span></span>${set.head.map((h) => `<span>${h}</span>`).join("")}</div>
-      <div class="fx-sts t-${tab}">${set.rows.join("")}</div>`}<p class="fx-note">Tap an owner for their team.</p>`;
+      <p class="fx-why-top"><b>${{ standings: "STANDINGS", power: "POWER", odds: "ODDS", luck: "LUCK", both: "BOTH LEAGUES" }[tab]}</b> ${esc(why)}</p>${(() => { const side = tab === "standings" ? picture(line) + bubble(line) : "", body = `${divTables || `<div class="fx-sth t-${tab}"><span></span>${set.head.map((h) => `<span>${h}</span>`).join("")}</div>
+      <div class="fx-sts t-${tab}">${set.rows.join("")}</div>`}<p class="fx-note">Tap an owner for their team.</p>`; return wideMu() && side ? `<div class="fx-tw"><div class="fx-tw-a">${body}</div><div class="fx-tw-b">${side}</div></div>` : side + body; })()}`;
   };
 
   const awards = () => {
@@ -725,14 +724,16 @@
       </div>` };
     });
     // Tap a card: the full breakdown opens in a pop-up.
-    const games = cards.map((g) => g.card).join("");
+    const myMu = wideMu() ? cards.find((g) => g.mine) : null;
+    const games = cards.filter((g) => g !== myMu).map((g) => g.card).join("");
     fullById = Object.fromEntries(cards.map((g) => [g.id, g.full]));
     const pop = document.querySelector("#fx-mupop .fx-tcard");
     if (pop && fullById[pop.dataset.id]) pop.querySelector(".fx-popbody").innerHTML = muBody(Number(pop.dataset.id));
     root.innerHTML = `<div class="fx-l">
       <div class="fx-head"><span class="fx-k">FANTASY · ${esc(data.year)}</span><span class="fx-wk">${anyLive ? `<i class="fx-dot"></i>LIVE · ` : ""}WEEK ${esc(week)}</span></div>
       ${data.take?.text ? `<button type="button" class="fx-take-btn${(() => { try { return localStorage.getItem(`brochiefs_fx_take_${data.take.week}`) ? " read" : ""; } catch { return ""; } })()}" data-fxtake="1"><img src="assets/images/chief/chief2-96.webp" alt=""><span class="fx-k2">WEEK ${esc(data.take.week)} RECAP</span><em>from the Chief</em><i>▸</i></button>` : ""}
-      ${games ? `<div class="fx-mus">${games}</div>` : `<p class="fx-note">This week's matchups show once ESPN posts them.</p>`}
+      ${myMu ? `<div class="fx-sechd"><span>YOUR MATCHUP</span></div><div class="fx-mine-pg" data-id="${myMu.id}">${muBody(myMu.id)}</div><div class="fx-sechd"><span>AROUND THE LEAGUE</span></div>` : ""}
+      ${games ? `<div class="fx-mus${myMu ? " fx-mus4" : ""}">${games}</div>` : `<p class="fx-note">This week's matchups show once ESPN posts them.</p>`}
       </div><aside class="fx-rail">${pulseHtml()}${teamNewsHtml()}</aside><div class="fx-l2">
       ${tables()}
       ${historyHtml()}
@@ -764,6 +765,12 @@
     const nw = e.target.closest("[data-fxnp]");
     if (nw) { const id = nw.dataset.fxnp; newsOpen = newsOpen === id ? null : id; if (newsOpen) { try { window.noteUse?.("fantasy-news"); } catch {} } return paint(); }
     if (e.target.closest("[data-fxnewsall]")) { newsAll = !newsAll; return paint(); }
+    if (e.target.closest(".fx-mine-pg")) {
+      const pc = e.target.closest(".fx-mr .fx-mc:not(.empty)"); if (pc) return playerCard(pc);
+      const ch = e.target.closest("[data-fxchip]"); if (ch) { const k = ch.dataset.fxchip, mid = Number(ch.dataset.mid); chipOpen = chipOpen?.mid === mid && chipOpen.k === k ? null : { mid, k }; return paint(); }
+      const tm = e.target.closest("[data-fxteam]"); if (tm) return openTeam(tm.dataset.fxteam);
+      return;
+    }
     const hx = e.target.closest("[data-fxh]");
     if (hx && !e.target.closest(".fx-why")) { histOpen = histOpen === hx.dataset.fxh ? null : hx.dataset.fxh; try { window.noteUse?.("fantasy-history", hx.dataset.fxh.split("|")[0]); } catch {} return paint(); }
     if (e.target.closest("[data-fxrace]")) { try { window.noteUse?.("fantasy-race"); } catch {} return openRace(Number(e.target.closest("[data-fxrace]").dataset.fxrace) || 0); }
