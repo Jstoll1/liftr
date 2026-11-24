@@ -637,6 +637,40 @@
     try { window.noteUse?.("fantasy-player", p.name); } catch {}
   };
   const fxSeen = {}; // matchup id -> last painted leader and scores
+  // End of week recap: once every starter in every matchup has played, the
+  // week's results, awards and the Chief's take in one sheet.
+  const weekOver = () => { const ms = data.live?.matchups || []; return ms.length > 0 && ms.every((m) => m.final || [...(m.away?.starters || []), ...(m.home?.starters || [])].every((p) => { const st = stOf(p); return st === "done" || (!st && (p.pts || p.proj == null)); })); };
+  const recapHtml = () => {
+    const ms = data.live?.matchups || [], wk = data.live?.week, teams = ms.flatMap((m) => [{ t: m.away, o: m.home }, { t: m.home, o: m.away }]);
+    const P = (t) => Number(t?.points) || 0, res = ms.map((m) => { const a = P(m.away), b = P(m.home), w = a >= b ? m.away : m.home, l = a >= b ? m.home : m.away; return { w, l, ws: Math.max(a, b), ls: Math.min(a, b), d: Math.abs(a - b) }; });
+    const hi = [...teams].sort((x, y) => P(y.t) - P(x.t))[0], lo = [...teams].sort((x, y) => P(x.t) - P(y.t))[0];
+    const close = [...res].sort((x, y) => x.d - y.d)[0], blow = [...res].sort((x, y) => y.d - x.d)[0];
+    const starters = teams.flatMap(({ t }) => (t?.starters || []).map((p) => ({ p, o: t.owner })));
+    const mvp = [...starters].sort((x, y) => (y.p.pts || 0) - (x.p.pts || 0))[0];
+    const bust = [...starters].filter((x) => x.p.proj != null && x.p.pos !== "D/ST" && x.p.pos !== "K").sort((x, y) => ((x.p.pts || 0) - x.p.proj) - ((y.p.pts || 0) - y.p.proj))[0];
+    const regret = [...teams].filter(({ t }) => Number.isFinite(t?.best)).map(({ t }) => ({ o: t.owner, v: t.best - P(t) })).sort((x, y) => y.v - x.v)[0];
+    const perfect = teams.filter(({ t }) => Number.isFinite(t?.best) && t.best - P(t) < 0.05).map(({ t }) => t.owner);
+    const tile = (k, cls, big, who, sub) => `<div class="fx-wr-t ${cls}"><span class="fx-wr-k">${k}</span><b>${big}</b><span class="fx-wr-w">${who}</span>${sub ? `<small>${sub}</small>` : ""}</div>`;
+    const tiles = [
+      hi && tile("TOP SCORE", "gold", pts(P(hi.t)), esc(hi.t.owner), `beat ${esc(hi.o?.owner || "")}`),
+      lo && tile("LOW SCORE", "pink", pts(P(lo.t)), esc(lo.t.owner), `vs ${esc(lo.o?.owner || "")}`),
+      close && tile("CLOSEST", "cyan", `${pts(close.d)}`, `${esc(close.w.owner)} over ${esc(close.l.owner)}`, `${pts(close.ws)}–${pts(close.ls)}`),
+      blow && tile("BLOWOUT", "purple", `${pts(blow.d)}`, `${esc(blow.w.owner)} over ${esc(blow.l.owner)}`, `${pts(blow.ws)}–${pts(blow.ls)}`),
+      mvp && tile("MVP", "green", pts(mvp.p.pts), `${esc(short(mvp.p.name))}`, `${esc(mvp.o)}${mvp.p.line ? ` · ${esc(mvp.p.line)}` : ""}`),
+      bust && tile("BIGGEST BUST", "pink", `${pts(bust.p.pts)}`, `${esc(short(bust.p.name))}`, `${esc(bust.o)} · proj ${pts(bust.p.proj)}`),
+      regret && regret.v > 0.05 && tile("BENCH BLUNDER", "pink", `−${pts(regret.v)}`, esc(regret.o), "left on the bench"),
+      perfect.length && tile("PERFECT LINEUP", "green", "✓", perfect.map(esc).join(", "), "best possible lineup started"),
+    ].filter(Boolean);
+    const take = data.take?.week === wk && data.take?.text ? `<div class="fx-wr-chief"><img src="assets/images/chief/chief2-96.webp" alt=""><p>${esc(data.take.text)}</p></div>` : "";
+    return `<p class="fx-wr-sub">Every starter has played. Scores can still shift a little with ESPN's stat corrections.</p>
+      <ul class="fx-wr-res">${res.map((r) => `<li${r.w?.owner === me() || r.l?.owner === me() ? ' class="me"' : ""}><span class="w">${badge(r.w)}<b>${esc(r.w?.owner || "")}</b><em>${pts(r.ws)}</em></span><i>def.</i><span class="l"><em>${pts(r.ls)}</em><b>${esc(r.l?.owner || "")}</b>${badge(r.l)}</span></li>`).join("")}</ul>
+      <div class="fx-wr-g">${tiles.join("")}</div>${take}`;
+  };
+  const openRecap = () => {
+    if (!window.__liveView) try { localStorage.setItem(`brochiefs_fx_rc_${data.live?.week}`, "1"); } catch {}
+    pulseSheet(`WEEK ${data.live?.week} RECAP`, recapHtml());
+    try { window.noteUse?.("fantasy-week-recap"); } catch {}
+  };
   // Desktop only: the matchup as a full page, with both benches, what each
   // lineup left on the bench and points by position beside the lineups.
   const wideMu = () => !document.documentElement.classList.contains("phone") && innerWidth >= 1100;
@@ -731,7 +765,7 @@
     if (pop && fullById[pop.dataset.id]) pop.querySelector(".fx-popbody").innerHTML = muBody(Number(pop.dataset.id));
     root.innerHTML = `<div class="fx-l">
       <div class="fx-head"><span class="fx-k">FANTASY · ${esc(data.year)}</span><span class="fx-wk">${anyLive ? `<i class="fx-dot"></i>LIVE · ` : ""}WEEK ${esc(week)}</span></div>
-      ${data.take?.text ? `<button type="button" class="fx-take-btn${(() => { try { return localStorage.getItem(`brochiefs_fx_take_${data.take.week}`) ? " read" : ""; } catch { return ""; } })()}" data-fxtake="1"><img src="assets/images/chief/chief2-96.webp" alt=""><span class="fx-k2">WEEK ${esc(data.take.week)} RECAP</span><em>from the Chief</em><i>▸</i></button>` : ""}
+      ${weekOver() ? `<button type="button" class="fx-take-btn fx-rc-btn${(() => { try { return localStorage.getItem(`brochiefs_fx_rc_${data.live?.week}`) ? " read" : ""; } catch { return ""; } })()}" data-fxrecap="1"><img src="assets/images/chief/chief2-96.webp" alt=""><span class="fx-k2">WEEK ${esc(data.live?.week)} RECAP</span><em>results, awards${data.take?.week === data.live?.week ? " and the Chief" : ""}</em><i>▸</i></button>` : data.take?.text ? `<button type="button" class="fx-take-btn${(() => { try { return localStorage.getItem(`brochiefs_fx_take_${data.take.week}`) ? " read" : ""; } catch { return ""; } })()}" data-fxtake="1"><img src="assets/images/chief/chief2-96.webp" alt=""><span class="fx-k2">WEEK ${esc(data.take.week)} RECAP</span><em>from the Chief</em><i>▸</i></button>` : ""}
       ${myMu ? `<div class="fx-sechd"><span>YOUR MATCHUP</span></div><div class="fx-mine-pg" data-id="${myMu.id}">${muBody(myMu.id)}</div><div class="fx-sechd"><span>AROUND THE LEAGUE</span></div>` : ""}
       ${games ? `<div class="fx-mus${myMu ? " fx-mus4" : ""}">${games}</div>` : `<p class="fx-note">This week's matchups show once ESPN posts them.</p>`}
       </div><aside class="fx-rail">${pulseHtml()}${teamNewsHtml()}</aside><div class="fx-l2">
@@ -743,6 +777,7 @@
   }
 
   root.addEventListener("click", (e) => {
+    if (e.target.closest("[data-fxrecap]")) return openRecap();
     if (e.target.closest("[data-fxtake]")) {
       // The Chief's recap in a pop-up, so it never pushes the matchups down.
       if (!window.__liveView) try { localStorage.setItem(`brochiefs_fx_take_${data.take.week}`, "1"); } catch {}
@@ -809,7 +844,7 @@
     else if (f === "team" && x) openTeam(x);
     else if (f === "tab" && x) { tab = x; paint(); document.querySelector(".fx-tabs")?.scrollIntoView({ block: "start" }); }
     else if (f === "race") { tab = "standings"; paint(); try { openRace(0); } catch {} }
-    else if (f === "recap") document.querySelector("[data-fxtake]")?.click();
+    else if (f === "recap") (document.querySelector("[data-fxrecap]") || document.querySelector("[data-fxtake]"))?.click();
   };
   window.fantasyOpen.ready = () => !!data;
   window.fantasyMeChanged = () => { teamNews = null; teamNewsAt = 0; newsOpen = null; newsAll = false; card = null; chipOpen = null; document.getElementById("fx-mupop")?.remove(); document.getElementById("fx-team")?.remove(); paint(); };
