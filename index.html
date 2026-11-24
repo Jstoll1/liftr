@@ -196,20 +196,20 @@
       <span id="claim-title" class="modal-title">WHO ARE YOU?</span>
       <span id="claim-subtext" class="modal-subtext">Pick your name once and this phone will remember you.</span>
       <div id="claim-grid" class="claim-grid"></div>
-      <button id="claim-join-btn" class="join-btn hidden" type="button">New here? Ask to join the league</button>
+      <button id="claim-join-btn" class="join-btn hidden" type="button">🦃 New here? Join the Family Thanksgiving Pick'em</button>
       <button id="claim-skip-btn" class="link-btn claim-skip" type="button">Just looking for now</button>
     </div>
   </div>
 
   <!-- JOIN REQUEST (NFL): name and email, approved by the commissioner -->
-  <div id="join-modal" class="modal-overlay hidden" role="dialog" aria-label="Ask to join">
+  <div id="join-modal" class="modal-overlay hidden" role="dialog" aria-label="Family Thanksgiving NFL Pick'em">
     <div class="modal-card join-card">
-      <span class="modal-title">ASK TO JOIN</span>
+      <span class="modal-title">🦃 FAMILY THANKSGIVING NFL PICK'EM!</span>
       <span id="join-sub" class="modal-subtext">The commissioner approves new players. You'll get your own login once you're in.</span>
       <form id="join-form" class="join-form" autocomplete="on">
         <label>Name in the league<input id="join-name" name="name" maxlength="20" autocomplete="given-name" required /></label>
         <label>Email<input id="join-email" name="email" type="email" inputmode="email" autocomplete="email" required /></label>
-        <label>Message <i>(optional)</i><textarea id="join-msg" name="message" maxlength="280" rows="3" placeholder="Who you know in the league"></textarea></label>
+        <label>Message <i>(optional)</i><textarea id="join-msg" name="message" maxlength="280" rows="3" placeholder="Who you are in the family"></textarea></label>
         <span id="join-err" class="join-err" role="alert"></span>
         <button id="join-send" class="join-go" type="submit">SEND REQUEST</button>
       </form>
