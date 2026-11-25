@@ -27,9 +27,9 @@
     if (document.getElementById("gate")) return;
     var g = document.createElement("div");
     g.id = "gate";
-    g.innerHTML = '<div class="g"><h1>🦃 FAMILY THANKSGIVING NFL PICK\'EM</h1>' +
+    g.innerHTML = '<div class="g"><h1>🦃 THANKSGIVING NFL PICK\'EM</h1>' +
       (pending ? "<p>Request sent for <b>" + esc(pending.name) + "</b>! Jake will let you in soon. Open this page again once he does and you're in.</p>"
-               : "<p>A private family pick'em. Join to see the games and make your picks.</p><button type=\"button\" class=\"go\" data-g=\"join\">JOIN THE PICK'EM</button>") +
+               : "<p>A private pick'em. Join to see the games and make your picks.</p><button type=\"button\" class=\"go\" data-g=\"join\">JOIN THE PICK'EM</button>") +
       '<button type="button" class="alt" data-g="pin">I ALREADY JOINED</button>' +
       '<form id="gate-f"><label>Your name<input id="gate-n" autocomplete="name" required></label><label>Your PIN<input id="gate-p" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" required></label><p class="err" id="gate-e"></p><button type="submit" class="go">SIGN IN</button></form></div>';
     document.body.appendChild(g);
