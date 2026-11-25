@@ -1021,6 +1021,7 @@ function loadAuth() {
 
 function saveAuth(manager, token) {
   try { localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify({ manager, token })); } catch {}
+  window.__gateOff?.();
 }
 
 function clearAuth() {
@@ -1468,6 +1469,7 @@ async function sendJoin(ev) {
     if (!r.ok || !d.id) { err.textContent = d.error || "Couldn't send. Try again."; return; }
     try { localStorage.setItem(JOIN_KEY, JSON.stringify({ id: d.id, name, status: "pending", at: Date.now() })); } catch {}
     track("join-request", { event: true });
+    window.__gateRefresh?.();
     openJoin();
   } catch { err.textContent = "No connection. Try again."; }
   finally { btn.disabled = false; btn.textContent = "SEND REQUEST"; }
