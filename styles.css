@@ -11002,3 +11002,7 @@ html[data-sport="nfl"] .pot-head,
 html[data-sport="nfl"] #payouts-panel,
 html[data-sport="nfl"] #season-toggle,
 html[data-sport="nfl"] #season-panel { display: none !important; }
+
+/* NFL: the lock sits in the card's head row beside G#, not hanging off
+   the corner. */
+html[data-sport="nfl"] .scorebug .bug-head .bug-lk { position: static; flex: none; width: 14px; height: 14px; margin: 0 -2px; font-size: 8px; box-shadow: 0 0 6px rgba(var(--arcade-gold-rgb), .5); }
