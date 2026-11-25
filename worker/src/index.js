@@ -1015,6 +1015,19 @@ async function handleJoin(request, env, corsHeaders, url) {
     return json({ requests: all.sort((a, b) => b.at - a.at), members: PICKS_MANAGERS, claimed }, 200, corsHeaders);
   }
   let b; try { b = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); }
+  // Remove a member: off the roster, sign-in and invite cleared, request gone.
+  if (b?.action === "remove") {
+    await loadRoster(env, true);
+    const name = PICKS_MANAGERS.find((n) => n.toLowerCase() === String(b?.name || "").toLowerCase());
+    if (name) {
+      const names = PICKS_MANAGERS.filter((n) => n !== name);
+      await env.LIFTR_KV.put(ROSTER_KEY, JSON.stringify(names));
+      PICKS_MANAGERS.splice(0, PICKS_MANAGERS.length, ...names); rosterReadAt = Date.now();
+      await env.LIFTR_KV.delete(authKey(name)); await env.LIFTR_KV.delete(authTriesKey(name)); await env.LIFTR_KV.delete(authDevicesKey(name)); await env.LIFTR_KV.delete(inviteKey(name));
+    }
+    if (b?.id) await env.LIFTR_KV.delete(joinKey(String(b.id)));
+    return json({ ok: true, removed: name || null, roster: PICKS_MANAGERS }, 200, corsHeaders);
+  }
   // New phone: clear the member's sign-in and issue a fresh one-time link.
   if (b?.action === "relink") {
     await loadRoster(env, true);

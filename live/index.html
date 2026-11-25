@@ -1053,7 +1053,7 @@ html, body { overflow-x: hidden; }
     const reqs = joins.requests || [], pend = reqs.filter((r) => r.status === "pending"), done = reqs.filter((r) => r.status === "approved");
     const claimed = new Set(joins.claimed || []);
     const row = (r) => `<li class="jr"><div class="jr-m"><b>${E(r.name)}</b><small>${E(r.email)} · ${ago(r.at)}</small>${r.message ? `<i>“${E(r.message)}”</i>` : ""}</div><div class="jr-b"><button type="button" class="ok" data-jact="approve" data-jid="${E(r.id)}"${joinsBusy ? " disabled" : ""}>Approve</button><button type="button" class="no" data-jact="deny" data-jid="${E(r.id)}"${joinsBusy ? " disabled" : ""}>Deny</button></div></li>`;
-    const mem = (n) => { const r = done.find((x) => x.name === n); const st = claimed.has(n) ? "signed in" : r ? "approved · not opened yet" : "not signed in"; return `<li class="jr"><div class="jr-m"><b>${E(n)}</b><small>${st}</small></div><div class="jr-b">${!claimed.has(n) && r?.link ? `<button type="button" data-jcopy="${E(r.link)}">Copy link</button>` : ""}<button type="button" data-jact="relink" data-jname="${E(n)}"${joinsBusy ? " disabled" : ""}>New phone link</button></div></li>`; };
+    const mem = (n) => { const r = done.find((x) => x.name === n); const st = claimed.has(n) ? "signed in" : r ? "approved · not opened yet" : "not signed in"; return `<li class="jr"><div class="jr-m"><b>${E(n)}</b><small>${st}</small></div><div class="jr-b">${!claimed.has(n) && r?.link ? `<button type="button" data-jcopy="${E(r.link)}">Copy link</button>` : ""}<button type="button" data-jact="relink" data-jname="${E(n)}"${joinsBusy ? " disabled" : ""}>New phone link</button><button type="button" class="no" data-jact="remove" data-jname="${E(n)}" data-jid="${E(r?.id || "")}"${joinsBusy ? " disabled" : ""}>Remove</button></div></li>`; };
     const el = document.createElement("section");
     el.id = "joins"; el.className = "panel jn";
     el.innerHTML = `<div class="ph"><h2>🦃 Join requests</h2><span class="sub">${pend.length ? `<b class="jn-c">${pend.length} waiting</b>` : "none waiting"}</span></div>
@@ -1068,14 +1068,16 @@ html, body { overflow-x: hidden; }
     const b = e.target.closest("[data-jact]"); if (!b || joinsBusy) return;
     const act = b.dataset.jact;
     if (act === "deny" && !confirm("Deny this request?")) return;
+    if (act === "remove" && !confirm(`Remove ${b.dataset.jname} from the league?`)) return;
     if (act === "relink" && !confirm(`Sign ${b.dataset.jname} out everywhere and make a new one-time link for their new phone?`)) return;
     joinsBusy = act; mountJoins();
     try {
-      const r = await fetch(`${WORKER}/joins?${auth()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(act === "relink" ? { action: "relink", name: b.dataset.jname } : { action: act, id: b.dataset.jid }) });
+      const r = await fetch(`${WORKER}/joins?${auth()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(act === "relink" || act === "remove" ? { action: act, name: b.dataset.jname, ...(b.dataset.jid ? { id: b.dataset.jid } : {}) } : { action: act, id: b.dataset.jid }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) joinsMsg = d.error || "That did not work.";
       else if (act === "approve") joinsMsg = `${d.request?.name} is in. Their phone signs in by itself next time they open the page.`;
       else if (act === "deny") joinsMsg = "Denied.";
+      else if (act === "remove") joinsMsg = `${d.removed || "They"} removed.`;
       else { try { await navigator.clipboard.writeText(d.link); joinsMsg = `New link for ${d.name} copied. Text it to them.`; } catch { joinsMsg = `New link for ${d.name}: ${d.link}`; } }
     } catch { joinsMsg = "No connection."; }
     joinsBusy = ""; await loadJoins(); mountJoins();

@@ -70,3 +70,14 @@ test("join: Grandpa's phone signs itself in after approval (no PIN), and a new p
   assert.equal((await call(e, "/auth", { action: "login", manager: "Grandpa", code: secret })).status !== 200, true); // old phone signed out
   assert.ok((await (await call(e, "/auth", { action: "claim", manager: "Grandpa", code: "b".repeat(32), invite: code })).json()).token);
 });
+
+test("join: remove takes a member off the roster and clears their sign-in and request", async () => {
+  const e = { ...env(), AUTH_SECRET: "s" };
+  const { id } = await (await call(e, "/join", { name: "Test", email: "t@x.com" })).json();
+  await call(e, "/joins?key=adm", { id, action: "approve" });
+  assert.equal((await call(e, "/joins", { action: "remove", name: "Test", id })).status, 403);
+  const r = await (await call(e, "/joins?key=adm", { action: "remove", name: "Test", id })).json();
+  assert.deepEqual(r.roster, ["Ben", "Jake"]);
+  assert.equal((await (await call(e, `/join?id=${id}`)).json()).status, "gone");
+  assert.equal([...e.LIFTR_KV.m.keys()].some((k) => /invite:test|auth:Test/.test(k)), false);
+});
