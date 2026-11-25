@@ -1254,7 +1254,8 @@ const appScroll = document.getElementById("app-scroll");
 let headerCompact = false;
 function syncHeaderSize() {
   const y = appScroll.scrollTop;
-  const next = headerCompact ? y > 24 : y > 64;
+  // Tight all the time, like CFB: the header never grows or shrinks on scroll.
+  const next = true;
   if (next === headerCompact) return;
   headerCompact = next;
   homeHeader.classList.toggle("compact", next);
@@ -3180,7 +3181,7 @@ function renderPicksScreen() {
 
     card.innerHTML = `
       <div class="game-meta">
-        <span class="game-meta-left"><span>G${game.id} &middot; ${game.kickoffLabel} &middot; ${game.tv}</span>${gameLocked || !note || note.startsWith("⚠") ? "" : `<span class="game-stamp">${note}</span>`}</span>
+        <span class="game-meta-left"><span>G${gNum(game)} &middot; ${game.kickoffLabel} &middot; ${game.tv}</span>${gameLocked || !note || note.startsWith("⚠") ? "" : `<span class="game-stamp">${note}</span>`}</span>
         <span class="game-meta-right">${lockRowHtml(game, pick, gameLocked)}<button type="button" class="insights-btn ic" data-insights="${game.id}" aria-label="Info for ${game.awayShort} at ${game.homeShort}">i</button>${statusClass === "submitted bet" ? "" : `<span class="game-status ${statusClass}">${statusLabel}</span>`}</span>
       </div>
       ${gameLocked ? lockedResultHtml(game, pick, finalRes, isLive ? g : null) : matchupCardsHtml(game, pick)}
@@ -3339,7 +3340,7 @@ function updatePicksProgress(state) {
   let adminHere = false;
   try { adminHere = !!sessionStorage.getItem(ADMIN_KEY_STORE); } catch { /* private mode */ }
   if (adminHere && lockedMismatch.length && phoneSnapshot[currentManager]) {
-    const lines = lockedMismatch.map((m) => `G${m.id}: phone ${m.phone ? pickLabel(GAMES.find((g) => g.id === m.id), m.phone) : "none"} · cloud ${m.cloud ? pickLabel(GAMES.find((g) => g.id === m.id), m.cloud) : "none"}`);
+    const lines = lockedMismatch.map((m) => `G${gNum(m.id)}: phone ${m.phone ? pickLabel(GAMES.find((g) => g.id === m.id), m.phone) : "none"} · cloud ${m.cloud ? pickLabel(GAMES.find((g) => g.id === m.id), m.cloud) : "none"}`);
     warn.innerHTML = `<b>⚠ This phone and the scoreboard disagree on ${lockedMismatch.length} locked game${lockedMismatch.length === 1 ? "" : "s"}</b><span>${lines.join("<br>")}</span><span class="picks-mismatch-cta">Tap to make this phone's picks the record (needs the admin key)</span>`;
     warn.classList.remove("hidden");
   } else {
@@ -3544,7 +3545,7 @@ function renderInsertCoin(cloudPicks) {
   const state = cloudPicks[currentManager] || getManagerState(currentManager);
   const open = GAMES.filter((g) => !isGameLocked(g) && !state.picks[g.id]);
   if (open.length === 0) { el.classList.add("hidden"); return; }
-  const list = open.map((g) => `G${g.id}`).join(" ");
+  const list = open.map((g) => `G${gNum(g)}`).join(" ");
   el.innerHTML = `<span class="coin-blink">INSERT COIN</span><span class="coin-sub">${open.length} GAME${open.length === 1 ? "" : "S"} UNPICKED &middot; ${list} &middot; TAP TO PICK</span>`;
   el.classList.remove("hidden");
 }
@@ -3592,7 +3593,15 @@ function fetchSidePot(force = false) {
 const sideGames = (pot) => pot.own ? pot.slate : (pot.slate || pot.games.map((id) => ({ id }))).map((g) => { const x = GAMES.find((y) => String(y.id) === String(g.id)); return x ? { ...x, ...(g.total != null ? { total: g.total } : {}) } : g.away ? g : null; }).filter(Boolean);
 const onSlate = (g) => typeof g.id === "number" && GAMES.some((x) => x.id === g.id);
 // A pool game goes by its number; a game off the slate is marked as such.
-const sideTag = (g) => (g.half === 2 ? "2ND HALF" : g.half === 1 ? "1ST HALF" : onSlate(g) ? `G${g.id}` : "BONUS");
+// NFL labels games G1, G2, G3 by kickoff order, whatever ids the slate used.
+function gNum(g) {
+  const id = g && typeof g === "object" ? g.id : g;
+  if (window.LEAGUE?.sport !== "nfl") return id;
+  const order = GAMES.slice().sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff) || a.id - b.id);
+  const i = order.findIndex((x) => x.id === id);
+  return i < 0 ? id : i + 1;
+}
+const sideTag = (g) => (g.half === 2 ? "2ND HALF" : g.half === 1 ? "1ST HALF" : onSlate(g) ? `G${gNum(g)}` : "BONUS");
 const sideMatch = (g) => `${g.awayShort} @ ${g.homeShort}${g.half === 2 ? " (2nd half)" : g.half === 1 ? " (1st half)" : ""}`;
 // Live scores for side games off the slate, read from ESPN the same way
 // the board reads its own.
@@ -3990,7 +3999,7 @@ async function mountSideAdmin(box, getKey, say) {
         const pre = c.state === "pre", firstOk = pre && c.eventId && !c.noHalves, secondOk = (pre || c.period <= 2) && c.eventId && !c.noHalves;
         if (!c.full && !firstOk && !secondOk) return "";
         return `<div class="as-g">
-          <div class="as-g-top"><span class="as-g-nm">${c.pool ? `G${c.pool.id} · ` : ""}${esc(c.awayShort)} @ ${esc(c.homeShort)}${c.fcs ? ` <small>FCS</small>` : ""}</span><small>${status(c)}</small></div>
+          <div class="as-g-top"><span class="as-g-nm">${c.pool ? `G${gNum(c.pool.id)} · ` : ""}${esc(c.awayShort)} @ ${esc(c.homeShort)}${c.fcs ? ` <small>FCS</small>` : ""}</span><small>${status(c)}</small></div>
           <div class="as-g-line">${lineText(c)}</div>
           <div class="as-g-opts">${c.full ? opt(fullVal(c), "FULL GAME", c.full.total ?? (c.pool ? poolTotals.get(c.pool.id) : null) ?? null) : ""}${firstOk ? opt(`f${c.eventId}`, "1ST HALF", null) : ""}${secondOk ? opt(`h${c.eventId}`, "2ND HALF", null) : ""}</div>
           ${firstOk ? edit(c, `f${c.eventId}`, "1H") : ""}${secondOk ? edit(c, `h${c.eventId}`, "2H") : ""}
@@ -4615,7 +4624,7 @@ function renderLiveScores(live, cloudPicks) {
         <div class="${cls}${myPick?.lock && lockRule() ? " lk" : ""}" data-game="${game.id}" role="button" tabindex="0" aria-label="Open ${game.awayShort} at ${game.homeShort}">
           ${myPick?.lock && lockRule() ? `<i class="bug-lk" title="Your lock of the week">🔒</i>` : ""}
           <div class="bug-head">
-            <span class="bug-gnum">G${game.id}</span>
+            <span class="bug-gnum">G${gNum(game)}</span>
             <span class="bug-status">${statusText}</span>${tvTag}
             ${myPill}
           </div>
@@ -4640,7 +4649,7 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
   // One ordered list for the header and every row, so the columns read
   // left to right in kickoff order and stay aligned with their labels.
   const ordered = gamesByKickoff();
-  const headCells = ordered.map((g) => `<th class="${results[g.id] ? "final" : isGameLocked(g) ? "live" : ""}">G${g.id}</th>`).join("");
+  const headCells = ordered.map((g) => `<th class="${results[g.id] ? "final" : isGameLocked(g) ? "live" : ""}">G${gNum(g)}</th>`).join("");
   // The tiebreaker is one game and one total, so work it out once rather
   // than per manager.
   const tbGame = tiebreakerGameOf();
@@ -5388,7 +5397,7 @@ function playerBreakdownHtml(name, state, results, live) {
     const scoreCell = (s, other) => `<span class="rd-sc ${isFinal && s !== null && s > other ? "win" : ""}">${s === null ? "" : s}</span>`;
     return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}">
       <div class="rd-game">
-        <span class="rd-gline">G${game.id} ${statusTag}</span>
+        <span class="rd-gline">G${gNum(game)} ${statusTag}</span>
         <span class="rd-matchup"><span class="rd-tm away ${pickedSide === "away" ? "picked" : ""}">${game.awayShort}</span>${scoreCell(aS, hS)}<span class="rd-tm home ${pickedSide === "home" ? "picked" : ""}">${game.homeShort}</span>${scoreCell(hS, aS)}</span>
       </div>
       <div class="rd-pick">${pickHtml}</div>
