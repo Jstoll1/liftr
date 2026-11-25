@@ -644,6 +644,29 @@
       "source": "miss",
       "regression": true,
       "note": "Nov 23 (Curt): window answer named only the push and cover cases (2nd, 4th) and skipped the outcomes where he wins; now one block per outcome with the projected finish as a numbered list and what he needs"
+    },
+    {
+      "id": "cfp-stakes",
+      "screen": "pickem",
+      "turns": [
+        "I'm talking about the cfp - what teams playing really have something to play for, whether that's a cfp birth or conference title"
+      ],
+      "checks": {
+        "tools": [
+          "stakes"
+        ],
+        "must": [
+          "#\\d+|No\\. ?\\d+|ranked \\d+",
+          "\\d+-\\d+"
+        ],
+        "mustNot": [
+          "keep an eye on"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 25 (Curt): no rankings tool, so the Chief named only Michigan vs Ohio State from general knowledge with no ranks or records; now stakes gives the CFP poll and every ranked game with records and conference records"
     }
   ]
 }
