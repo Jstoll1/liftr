@@ -2183,7 +2183,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       return `<section class="newstrip audit open joins"><div class="au-head"><span class="ns-h"><b>✋ ${nPend ? `${nPend} JOIN REQUEST${nPend === 1 ? "" : "S"}` : "JOIN LINKS TO SEND"}</b><small>NFL league</small></span></div>
         <div class="au-list">${list.map((r) => `<div class="au-row jr"><div class="au-top"><b>${esc(r.name)}</b><span class="jr-when">${esc(hm(r.at))}</span></div>
           <div class="jr-in"><span class="jr-mail">${esc(r.email)}</span>${r.message ? `<span class="jr-msg">“${esc(r.message)}”</span>` : ""}
-          ${r.status === "pending" ? `<span class="jr-act"><button type="button" class="jr-ok" data-join="${esc(r.id)}" data-act="approve">Approve</button><button type="button" class="jr-no" data-join="${esc(r.id)}" data-act="deny">Deny</button></span>` : `<span class="jr-act"><span class="jr-done">✓ Approved</span><button type="button" class="au-cp" data-joinlink="${esc(r.link)}" data-joinname="${esc(r.name)}">${st.copied === `jl:${r.id}` ? "✓ Copied" : "Copy invite"}</button></span>`}</div></div>`).join("")}</div>
+          ${r.status === "pending" ? `<span class="jr-act"><button type="button" class="jr-ok" data-join="${esc(r.id)}" data-act="approve">Approve</button><button type="button" class="jr-no" data-join="${esc(r.id)}" data-act="deny">Deny</button></span>` : `<span class="jr-act"><span class="jr-done">✓ Approved</span><button type="button" class="au-cp" data-joinlink="${esc(r.link)}" data-joinname="${esc(r.name)}">${st.copied === `jl:${r.id}` ? "✓ Copied" : "Copy invite"}</button><button type="button" class="jr-no" data-join="${esc(r.id)}" data-act="remove" data-joinname="${esc(r.name)}">Remove</button></span>`}</div></div>`).join("")}</div>
         <small class="au-note">Each approved player gets a one-time link; only that link can claim their name.</small></section>`;
     };
     const auditStrip = () => {
@@ -2811,9 +2811,11 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     if (b.dataset.older) { st.shown += 20; render(); return; }
     if (b.dataset.reload) { location.reload(); return; }
     if (b.dataset.join) {
+      if (b.dataset.act === "remove" && !confirm(`Remove ${b.dataset.joinname} from the league? Their sign-in and picks access go away.`)) return;
+      if (b.dataset.act === "deny" && !confirm("Deny this request?")) return;
       b.disabled = true;
       try {
-        const x = await fetch(`${WORKER}/joins?${auth()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: b.dataset.join, action: b.dataset.act }) });
+        const x = await fetch(`${WORKER}/joins?${auth()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: b.dataset.join, action: b.dataset.act, ...(b.dataset.joinname ? { name: b.dataset.joinname } : {}) }) });
         const j = await x.json().catch(() => ({}));
         if (!x.ok) { alert(j.error || "Couldn't save that."); b.disabled = false; return; }
       } catch { alert("No connection."); b.disabled = false; return; }
@@ -2917,7 +2919,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     }
     if (b.dataset.joinlink) {
       const r = (st.joins || []).find((x) => x.link === b.dataset.joinlink);
-      const text = `${b.dataset.joinname}, you're in the Brochiefs NFL pick'em! Open this link on your phone to set your PIN: ${b.dataset.joinlink}`;
+      const text = `${b.dataset.joinname}, you're in the Brochiefs NFL pick'em! Open this link on your phone and you're in (no password): ${b.dataset.joinlink}`;
       if (!(await copyText(text))) { b.textContent = "Couldn't copy"; return; }
       st.copied = `jl:${r?.id}`; st.sig = ""; render();
       clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; st.sig = ""; render(); }, 1600);
