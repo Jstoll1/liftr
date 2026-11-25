@@ -10972,3 +10972,15 @@ html.sheet .gs-t.no-ats { grid-template-columns: 22px minmax(52px, 1fr) auto; }
 .join-card .link-btn { margin-top: 10px; align-self: center; }
 .join-form textarea { padding: 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .18); background: rgba(0, 0, 0, .35); color: #fff; font: inherit; font-size: 16px; resize: none; }
 .join-form label i { font-style: normal; opacity: .7; }
+
+/* NFL build (sport.js sets data-sport): the college league's history,
+   trivia, question of the week and pot stay out of it. */
+html[data-sport="nfl"] #nav-history-btn,
+html[data-sport="nfl"] #nav-trivia-btn,
+html[data-sport="nfl"] #admin-qotw-btn,
+html[data-sport="nfl"] #admin-qotw,
+html[data-sport="nfl"] .console-tab[data-tab="qotw"],
+html[data-sport="nfl"] .console-tab[data-tab="ledger"],
+html[data-sport="nfl"] .console-tab[data-tab="feeds"],
+html[data-sport="nfl"] .console-tab[data-tab="experts"] { display: none !important; }
+html[data-sport="nfl"] #logo-screen { display: none !important; }
