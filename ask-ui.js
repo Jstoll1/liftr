@@ -343,6 +343,29 @@
     // same simulation as WIN%: each member's pick on that game hit in a
     // known share of the runs. Before kickoff a cover sits near 50% because
     // the spread is set to make it even; live, it moves with the score.
+    // Who has something to play for: the CFP rankings (the AP poll before
+    // the committee's first one) and this week's games with a ranked team in
+    // them, every FBS game not just the slate, with records and conference
+    // records. Straight from ESPN, so it covers games the pick'em skipped.
+    stakes: async () => {
+      const API = window.ESPN_API || "https://site.api.espn.com/apis/site/v2/sports/football/college-football";
+      try {
+        const [rk, sb] = await Promise.all([fetch(`${API}/rankings`).then((r) => r.json()), fetch(`${API}/scoreboard?groups=80&limit=300`).then((r) => r.json())]);
+        const polls = rk?.rankings || [], poll = polls.find((x) => /playoff/i.test(x.name || "")) || polls.find((x) => /^AP/i.test(x.name || "")) || polls[0];
+        if (!poll) return { error: "Rankings didn't load." };
+        const nm = (t) => t?.location || t?.displayName || t?.name || "?";
+        const top25 = (poll.ranks || []).map((x) => ({ rank: x.current, team: nm(x.team), record: x.recordSummary || null }));
+        const rankOf = new Map((poll.ranks || []).map((x) => [String(x.team?.id), x.current]));
+        const slateIds = new Set(GAMES.flatMap((g) => [String(g.awayId), String(g.homeId)]));
+        const rec = (c, type) => (c?.records || []).find((r) => r.type === type || r.name === type)?.summary || null;
+        const games = (sb?.events || []).map((ev) => { const c = ev.competitions?.[0], sides = c?.competitors || [];
+          const away = sides.find((x) => x.homeAway === "away"), home = sides.find((x) => x.homeAway === "home");
+          const side = (x) => ({ team: nm(x?.team), rank: rankOf.get(String(x?.team?.id)) || null, record: rec(x, "total"), confRecord: rec(x, "vsconf"), score: c?.status?.type?.state === "pre" ? null : Number(x?.score) });
+          return { matchup: `${nm(away?.team)} at ${nm(home?.team)}`, away: side(away), home: side(home), conferenceGame: !!c?.conferenceCompetition, status: c?.status?.type?.shortDetail || "", inPickem: slateIds.has(String(away?.team?.id)) && slateIds.has(String(home?.team?.id)), note: (c?.notes || [])[0]?.headline || null };
+        }).filter((g) => g.away.rank || g.home.rank || /championship/i.test(g.note || ""));
+        return { poll: poll.name, top25, rankedGamesThisWeek: games, meaning: "poll is the CFP committee's ranking when it says Playoff, else the AP poll. rankedGamesThisWeek is every FBS game this week with a ranked team (or a conference championship), slate or not; inPickem marks games in this week's pick'em. confRecord is the conference record. These are records, not standings or tiebreakers: say a team leads or controls its conference only from confRecord, and hedge it." };
+      } catch { return { error: "Couldn't reach ESPN for the rankings." }; }
+    },
     gameOdds(a = {}) {
       const game = a.game ?? a.game_id ?? a.gameId ?? a.id, game_id = undefined;
       const id = Number(String(game ?? "").replace(/\D/g, "")), g = GAMES.find((x) => Number(x.id) === id);
