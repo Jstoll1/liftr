@@ -344,6 +344,9 @@ async function loadRoster() {
     const same = names.length === MANAGERS.length && names.every((n, i) => n === MANAGERS[i]);
     MANAGERS.splice(0, MANAGERS.length, ...names);
     try { localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify(names)); } catch {}
+    // Family NFL: a phone signed in as someone no longer on the roster
+    // (removed on Live) goes back behind the members gate.
+    if (window.LEAGUE?.sport === "nfl" && !window.__adminEntry && !loadAuth()) { try { localStorage.removeItem(AUTH_TOKEN_KEY); localStorage.removeItem(ME_KEY); } catch {} window.__gateOn?.(); }
     return !same;
   } catch { return false; }
 }

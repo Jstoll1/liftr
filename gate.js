@@ -7,7 +7,7 @@
   if (!window.LEAGUE || window.LEAGUE.sport !== "nfl") return;
   var q = new URLSearchParams(location.search);
   var has = function () { try { var a = JSON.parse(localStorage.getItem("brochiefs_token_v1") || "null"); return !!(a && a.token); } catch (e) { return false; } };
-  if (has() || q.get("claim") || q.get("hardhat") === "1" || /[?&]admin(=|&|$)/.test(location.search) || location.hash === "#admin") return;
+  var pass = (has() || q.get("claim") || q.get("hardhat") === "1" || /[?&]admin(=|&|$)/.test(location.search) || location.hash === "#admin");
   var pending = null;
   try { var j = JSON.parse(localStorage.getItem("brochiefs_join_v1") || "null"); if (j && j.status === "pending") pending = j; } catch (e) {}
   var esc = function (s) { return String(s || "").replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
@@ -23,7 +23,6 @@
     "#gate .err{min-height:18px;margin:8px 0 0;font-size:13px;color:#ff4f8b;text-align:center}" +
     "#join-modal{z-index:1000!important}";
   var st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
-  document.documentElement.classList.add("gated");
   var show = function () {
     if (document.getElementById("gate")) return;
     var g = document.createElement("div");
@@ -57,8 +56,9 @@
       } catch (x) { er.textContent = "No connection. Try again."; }
     });
   };
+  window.__gateOn = function () { document.documentElement.classList.add("gated"); start(); };
   var start = function () { var jm = document.getElementById("join-modal"); if (jm && jm.parentElement !== document.body) document.body.appendChild(jm); show(); };
-  if (document.readyState !== "loading") start(); else document.addEventListener("DOMContentLoaded", start);
+  if (!pass) { document.documentElement.classList.add("gated"); if (document.readyState !== "loading") start(); else document.addEventListener("DOMContentLoaded", start); }
   // The app calls this once the phone signs itself in (an approved request).
   window.__gateRefresh = function () { try { var j = JSON.parse(localStorage.getItem("brochiefs_join_v1") || "null"); pending = j && j.status === "pending" ? j : null; } catch (e) {} var g = document.getElementById("gate"); if (g) { g.remove(); show(); } };
   window.__gateOff = function () { document.documentElement.classList.remove("gated"); var g = document.getElementById("gate"); if (g) g.remove(); };
