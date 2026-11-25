@@ -90,6 +90,9 @@ const app = {
     if (url.pathname === "/library") {
       return handleLibrary(request, env, corsHeaders);
     }
+    if (url.pathname === "/notes") {
+      return handleNotes(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/join" || url.pathname === "/joins") {
       await loadRoster(env);
       return handleJoin(request, env, corsHeaders, url);
@@ -972,6 +975,46 @@ async function handleRoster(request, env, corsHeaders, url) {
 //   GET  /joins?key=|device=            -> {requests}  admin only (with email)
 //   POST /joins?key=|device= {id, action: "approve"|"deny"} admin only
 const joinKey = (id) => `join:${id}`;
+
+// Messages to the commissioner (NFL): anyone can send one from Help or the
+// sign-in screen (a forgotten PIN can't sign in first). A signed-in phone's
+// token marks the sender as verified. Live lists them and marks them done.
+async function handleNotes(request, env, corsHeaders, url) {
+  if (SPORT !== "nfl") return json({ error: "Not open" }, 404, corsHeaders);
+  const admin = isAdmin(env, url) || (await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()));
+  let b = null;
+  if (request.method === "POST") { try { b = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); } }
+  if (request.method === "POST" && !b?.action) {
+    const text = String(b?.text ?? "").trim().slice(0, 500);
+    if (!text) return json({ error: "Write a message first." }, 400, corsHeaders);
+    const owner = b?.token ? await tokenOwner(env, b.token) : null;
+    const name = owner || String(b?.name ?? "").trim().replace(/\s+/g, " ").slice(0, 30);
+    if (!name) return json({ error: "Add your name so Jake knows who it's from." }, 400, corsHeaders);
+    const ip = request.headers.get("cf-connecting-ip") || "x";
+    const rl = `noterl:${ip}:${Math.floor(Date.now() / 3600e3)}`;
+    const n = Number(await env.LIFTR_KV.get(rl)) || 0;
+    if (n >= 10) return json({ error: "Too many messages. Try again in an hour." }, 429, corsHeaders);
+    await env.LIFTR_KV.put(rl, String(n + 1), { expirationTtl: 3600 });
+    if ((await env.LIFTR_KV.list({ prefix: "note:" })).keys.length >= 200) return json({ error: "The inbox is full." }, 429, corsHeaders);
+    const at = Date.now(), id = `${at}-${crypto.randomUUID().slice(0, 8)}`;
+    await env.LIFTR_KV.put(`note:${id}`, JSON.stringify({ id, name, verified: !!owner, text, at, done: false }), { expirationTtl: 30 * 86400 });
+    return json({ ok: true }, 200, corsHeaders);
+  }
+  if (!admin) return json({ error: "Not authorized" }, 403, corsHeaders);
+  if (request.method === "GET") {
+    const keys = (await env.LIFTR_KV.list({ prefix: "note:" })).keys;
+    const all = (await Promise.all(keys.map((k) => env.LIFTR_KV.get(k.name, "json")))).filter(Boolean);
+    return json({ notes: all.sort((x, y) => y.at - x.at) }, 200, corsHeaders);
+  }
+  const id = String(b?.id || "");
+  if (!/^\d+-[a-f0-9]{8}$/.test(id)) return json({ error: "Bad id" }, 400, corsHeaders);
+  if (b.action === "delete") { await env.LIFTR_KV.delete(`note:${id}`); return json({ ok: true }, 200, corsHeaders); }
+  const r = await env.LIFTR_KV.get(`note:${id}`, "json");
+  if (!r) return json({ error: "Gone" }, 404, corsHeaders);
+  r.done = b.action === "done";
+  await env.LIFTR_KV.put(`note:${id}`, JSON.stringify(r), { expirationTtl: 30 * 86400 });
+  return json({ ok: true }, 200, corsHeaders);
+}
 const pendPinKey = (name) => `pendpin:${String(name).toLowerCase()}`;
 const inviteKey = (name) => `invite:${String(name).toLowerCase()}`;
 async function handleJoin(request, env, corsHeaders, url) {

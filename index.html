@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
   <title>Brochiefs Pick'em</title>
   <script src="sport.js?v=885558041763"></script>
-  <script src="gate.js?v=4"></script>
+  <script src="gate.js?v=5"></script>
 
   <!-- iOS "Add to Home Screen" behavior: launches full-screen with no Safari
        chrome, uses this title, and status-bar text sits over our own dark
@@ -33,8 +33,8 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Chakra+Petch:wght@500;600;700&family=VT323&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Chakra+Petch:wght@500;600;700&family=VT323&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Chakra+Petch:wght@500;600;700&family=VT323&display=swap" rel="stylesheet" /></noscript>
-  <meta name="build" content="375473859387" />
-  <link rel="stylesheet" href="styles.css?v=584401392205" />
+  <meta name="build" content="060391327027" />
+  <link rel="stylesheet" href="styles.css?v=433052966505" />
   <link rel="stylesheet" href="history.css?v=609823000375" />
 </head>
 <body>
@@ -563,8 +563,15 @@
         <details class="help-q"><summary>Can I change a pick?</summary><p>Yes, as often as you like until that game kicks off. Then it locks.</p></details>
         <details class="help-q"><summary>Where do I see who's winning?</summary><p>Tap <b>Scores</b> for the live games, the leaderboard and everyone's picks once games start.</p></details>
         <details class="help-q"><summary>I got a new phone, or it signed me out</summary><p>Open the site and tap <b>I already joined</b>. Type your name and the PIN you picked when you joined.</p></details>
-        <details class="help-q"><summary>I forgot my PIN</summary><p>Text Jake. He can set a new one for you.</p></details>
-        <details class="help-q"><summary>Something looks wrong</summary><p>Pull down to refresh first. Still wrong? Send Jake a screenshot.</p></details>
+        <details class="help-q"><summary>I forgot my PIN</summary><p>Send Jake a message below. He can set a new one for you. Can't get in at all? Tap <b>Message Jake</b> on the sign-in screen.</p></details>
+        <details class="help-q"><summary>Something looks wrong</summary><p>Pull down to refresh first. Still wrong? Tell Jake below what you see.</p></details>
+      </section>
+      <section class="help-card" id="help-msg">
+        <h2 class="help-h">💬 Message Jake</h2>
+        <form id="help-msg-f" class="help-msg-f">
+          <textarea id="help-msg-t" maxlength="500" rows="3" placeholder="Question, problem or trash talk" required></textarea>
+          <div class="help-msg-row"><span id="help-msg-s" class="help-msg-s" role="status"></span><button type="submit" class="help-btn">SEND</button></div>
+        </form>
       </section>
       <div class="help-go"><button type="button" class="help-btn" data-help-go="picks">Make my picks ›</button><button type="button" class="help-btn alt" data-help-go="scores">See scores ›</button></div>
     </div>
@@ -683,6 +690,6 @@
   <script data-goatcounter="https://brochiefs.goatcounter.com/count"
           data-goatcounter-settings='{"no_onload": true}'
           async src="https://gc.zgo.at/count.js"></script>
-  <script src="app.js?v=832074865188"></script>
+  <script src="app.js?v=443579101852"></script>
 </body>
 </html>

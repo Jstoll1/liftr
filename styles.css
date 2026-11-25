@@ -11021,6 +11021,12 @@ html[data-sport="nfl"] .scorebug .bug-head .bug-lk { position: static; flex: non
 .help-q summary::after { content: "+"; color: var(--neon-cyan); font-weight: 700; }
 .help-q[open] summary::after { content: "−"; }
 .help-q p { margin: 0 0 12px; font-size: 14px; line-height: 1.5; color: var(--text-dim); }
+.help-msg-f { display: flex; flex-direction: column; gap: 8px; }
+.help-msg-f textarea { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .18); background: rgba(0, 0, 0, .35); color: var(--text); font: inherit; font-size: 16px; resize: none; }
+.help-msg-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.help-msg-row .help-btn { flex: none; padding: 12px 18px; }
+.help-msg-s { min-width: 0; font-size: 13px; color: var(--text-dim); }
+.help-msg-s.ok { color: var(--neon-green); } .help-msg-s.err { color: var(--neon-pink); }
 .help-go { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .help-btn { padding: 14px 10px; border-radius: 10px; border: 0; background: var(--neon-cyan); color: var(--bg); font: 10px 'Press Start 2P', monospace; cursor: pointer; }
 .help-btn.alt { background: transparent; color: var(--neon-cyan); border: 1px solid rgba(var(--neon-cyan-rgb), .5); }

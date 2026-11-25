@@ -2251,6 +2251,20 @@ function showHelp() {
   enterScreen("help");
 }
 document.getElementById("nav-help-btn")?.addEventListener("click", showHelp);
+document.getElementById("help-msg-f")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const t = document.getElementById("help-msg-t"), st = document.getElementById("help-msg-s"), btn = e.target.querySelector("button");
+  const text = t.value.trim(); if (!text) return;
+  let a = null; try { a = JSON.parse(localStorage.getItem("brochiefs_token_v1") || "null"); } catch {}
+  btn.disabled = true; st.textContent = "Sending…"; st.className = "help-msg-s";
+  try {
+    const r = await fetch(`${window.LEAGUE.worker}/notes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, token: a?.token, name: a?.manager || localStorage.getItem("brochiefs_me_v1") || "" }) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) { t.value = ""; st.textContent = "Sent! Jake will see it."; st.className = "help-msg-s ok"; }
+    else { st.textContent = d.error || "That didn't send."; st.className = "help-msg-s err"; }
+  } catch { st.textContent = "No connection. Try again."; st.className = "help-msg-s err"; }
+  btn.disabled = false;
+});
 document.addEventListener("click", (e) => { if (e.target.closest("[data-help-go]")) { const t = e.target.closest("[data-help-go]").dataset.helpGo; document.getElementById(t === "scores" ? "nav-scoreboard-btn" : "nav-picks-btn")?.click(); } });
 
 function showTrivia() {

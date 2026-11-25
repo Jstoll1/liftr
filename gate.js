@@ -18,6 +18,8 @@
     "#gate p{margin:0 0 18px;font-size:15px;line-height:1.5;color:#c9b8e0}" +
     "#gate button{display:block;width:100%;margin:10px 0 0;padding:15px;border-radius:12px;border:0;font:13px 'Press Start 2P',monospace;cursor:pointer}" +
     "#gate .go{background:#05d9e8;color:#07020f}#gate .alt{background:transparent;color:#05d9e8;border:2px solid #3a1a55}" +
+    "#gate .lnk{display:block;width:auto;margin:14px auto 0;padding:6px;background:none;border:0;color:#9d8bb8;font:14px system-ui,sans-serif;text-decoration:underline;cursor:pointer}" +
+    "#gate textarea{display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:13px;border-radius:10px;border:1px solid #3a1a55;background:#0b0312;color:#fff;font:16px system-ui,sans-serif;resize:none}" +
     "#gate form{display:none;margin-top:14px;text-align:left}#gate form.on{display:block}" +
     "#gate label{display:block;margin:10px 0 0;font-size:13px;color:#c9b8e0}#gate input{display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:13px;border-radius:10px;border:1px solid #3a1a55;background:#0b0312;color:#fff;font-size:17px}" +
     "#gate .err{min-height:18px;margin:8px 0 0;font-size:13px;color:#ff4f8b;text-align:center}" +
@@ -31,11 +33,14 @@
       (pending ? "<p>Request sent for <b>" + esc(pending.name) + "</b>! Jake will let you in soon. Open this page again once he does and you're in.</p>"
                : "<p>A private pick'em. Join to see the games and make your picks.</p><button type=\"button\" class=\"go\" data-g=\"join\">JOIN THE PICK'EM</button>") +
       '<button type="button" class="alt" data-g="pin">I ALREADY JOINED</button>' +
-      '<form id="gate-f"><label>Your name<input id="gate-n" autocomplete="name" required></label><label>Your PIN<input id="gate-p" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" required></label><p class="err" id="gate-e"></p><button type="submit" class="go">SIGN IN</button></form></div>';
+      '<form id="gate-f"><label>Your name<input id="gate-n" autocomplete="name" required></label><label>Your PIN<input id="gate-p" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" required></label><p class="err" id="gate-e"></p><button type="submit" class="go">SIGN IN</button></form>' +
+      '<button type="button" class="lnk" data-g="msg">Can\'t get in? Message Jake</button>' +
+      '<form id="gate-m"><label>Your name<input id="gate-mn" autocomplete="name" required></label><label>Message<textarea id="gate-mt" rows="3" maxlength="500" required placeholder="Forgot my PIN, new phone…"></textarea></label><p class="err" id="gate-me"></p><button type="submit" class="go">SEND</button></form></div>';
     document.body.appendChild(g);
     g.addEventListener("click", function (e) {
       var b = e.target.closest("[data-g]"); if (!b) return;
       if (b.dataset.g === "join") { var jm = document.getElementById("join-modal"); if (jm && jm.parentElement !== document.body) document.body.appendChild(jm); if (window.openJoin) window.openJoin(); }
+      else if (b.dataset.g === "msg") { document.getElementById("gate-m").classList.add("on"); document.getElementById("gate-mn").focus(); }
       else { document.getElementById("gate-f").classList.add("on"); document.getElementById("gate-n").focus(); }
     });
     document.getElementById("gate-f").addEventListener("submit", async function (e) {
@@ -56,6 +61,18 @@
       } catch (x) { er.textContent = "No connection. Try again."; }
     });
   };
+  document.addEventListener("submit", async function (e) {
+    if (e.target.id !== "gate-m") return;
+    e.preventDefault();
+    var er = document.getElementById("gate-me"), name = document.getElementById("gate-mn").value.trim(), text = document.getElementById("gate-mt").value.trim();
+    er.style.color = ""; er.textContent = "Sending…";
+    try {
+      var r = await fetch(window.LEAGUE.worker + "/notes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name, text: text }) });
+      var d = await r.json().catch(function () { return {}; });
+      if (r.ok) { er.style.color = "#39ff88"; er.textContent = "Sent! Jake will get back to you."; document.getElementById("gate-mt").value = ""; }
+      else er.textContent = d.error || "That didn't send.";
+    } catch (x) { er.textContent = "No connection. Try again."; }
+  });
   window.__gateOn = function () { document.documentElement.classList.add("gated"); start(); };
   var start = function () { var jm = document.getElementById("join-modal"); if (jm && jm.parentElement !== document.body) document.body.appendChild(jm); show(); };
   if (!pass) { document.documentElement.classList.add("gated"); if (document.readyState !== "loading") start(); else document.addEventListener("DOMContentLoaded", start); }
