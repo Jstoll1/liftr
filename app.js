@@ -1642,7 +1642,8 @@ function goToPlayerSelect() {
   const me = loadMe();
   if (me) {
     currentManager = me;
-    if (window.LEAGUE?.sport === "nfl" ? true : firstKickoffPassed()) {
+    // Family NFL pick'em: members land on their picks.
+    if (window.LEAGUE?.sport === "nfl" ? false : firstKickoffPassed()) {
       loginScreen.classList.add("hidden");
       showScoreboard();
     } else {
@@ -10024,7 +10025,7 @@ function goToScoresNow() {
   updateMePill();
   // A new slate with nothing kicked off yet: picks first. Once the week is
   // under way, the scoreboard.
-  if (GAMES.length && !firstKickoffPassed()) showPicksScreen(); else showScoreboard();
+  if (window.LEAGUE?.sport === "nfl" || (GAMES.length && !firstKickoffPassed())) showPicksScreen(); else showScoreboard();
   document.documentElement.classList.remove("known");
 }
 (async () => {
