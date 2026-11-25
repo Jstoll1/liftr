@@ -972,6 +972,7 @@ async function handleRoster(request, env, corsHeaders, url) {
 //   GET  /joins?key=|device=            -> {requests}  admin only (with email)
 //   POST /joins?key=|device= {id, action: "approve"|"deny"} admin only
 const joinKey = (id) => `join:${id}`;
+const pendPinKey = (name) => `pendpin:${String(name).toLowerCase()}`;
 const inviteKey = (name) => `invite:${String(name).toLowerCase()}`;
 async function handleJoin(request, env, corsHeaders, url) {
   if (SPORT !== "nfl") return json({ error: "Not open" }, 404, corsHeaders);
@@ -983,6 +984,8 @@ async function handleJoin(request, env, corsHeaders, url) {
     const message = String(b?.message ?? "").trim().replace(/\s+/g, " ").slice(0, 280);
     if (!name || name.length > 20 || !/^[\p{L}\p{N} .'-]+$/u.test(name)) return json({ error: "Use a name of 20 letters or fewer." }, 400, corsHeaders);
     if (!/^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,}$/.test(email)) return json({ error: "That email doesn't look right." }, 400, corsHeaders);
+    const pinRaw = String(b?.pin ?? "").trim();
+    if (!/^\d{4,8}$/.test(pinRaw)) return json({ error: "Pick a PIN of 4 to 8 digits." }, 400, corsHeaders);
     if (PICKS_MANAGERS.some((n) => n.toLowerCase() === name.toLowerCase())) return json({ error: `${name} is already in the league. Pick your name instead, or use another.` }, 409, corsHeaders);
     // Rate limit: five requests an hour per address, twenty pending at most.
     const ip = request.headers.get("cf-connecting-ip") || "x";
@@ -993,7 +996,8 @@ async function handleJoin(request, env, corsHeaders, url) {
     const pending = (await env.LIFTR_KV.list({ prefix: "join:" })).keys.length;
     if (pending >= 20) return json({ error: "The waiting list is full. Text the commissioner." }, 429, corsHeaders);
     const id = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
-    await env.LIFTR_KV.put(joinKey(id), JSON.stringify({ id, name, email, message, at: Date.now(), status: "pending" }), { expirationTtl: 30 * 86400 });
+    const pinSalt = crypto.randomUUID();
+    await env.LIFTR_KV.put(joinKey(id), JSON.stringify({ id, name, email, message, at: Date.now(), status: "pending", pin: { salt: pinSalt, hash: await codeHash(pinRaw, pinSalt) } }), { expirationTtl: 30 * 86400 });
     return json({ ok: true, id }, 200, corsHeaders);
   }
   if (url.pathname === "/join" && request.method === "GET") {
@@ -1012,7 +1016,7 @@ async function handleJoin(request, env, corsHeaders, url) {
     const all = (await Promise.all(keys.map((k) => env.LIFTR_KV.get(k.name, "json")))).filter(Boolean);
     await loadRoster(env, true);
     const claimed = (await Promise.all(PICKS_MANAGERS.map(async (n) => [n, !!(await env.LIFTR_KV.get(authKey(n)))]))).filter(([, c]) => c).map(([n]) => n);
-    return json({ requests: all.sort((a, b) => b.at - a.at), members: PICKS_MANAGERS, claimed }, 200, corsHeaders);
+    return json({ requests: all.sort((a, b) => b.at - a.at).map(({ pin, ...r }) => ({ ...r, hasPin: !!pin })), members: PICKS_MANAGERS, claimed }, 200, corsHeaders);
   }
   let b; try { b = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); }
   // Remove a member: off the roster, sign-in and invite cleared, request gone.
@@ -1023,10 +1027,23 @@ async function handleJoin(request, env, corsHeaders, url) {
       const names = PICKS_MANAGERS.filter((n) => n !== name);
       await env.LIFTR_KV.put(ROSTER_KEY, JSON.stringify(names));
       PICKS_MANAGERS.splice(0, PICKS_MANAGERS.length, ...names); rosterReadAt = Date.now();
-      await env.LIFTR_KV.delete(authKey(name)); await env.LIFTR_KV.delete(authTriesKey(name)); await env.LIFTR_KV.delete(authDevicesKey(name)); await env.LIFTR_KV.delete(inviteKey(name));
+      await env.LIFTR_KV.delete(authKey(name)); await env.LIFTR_KV.delete(authTriesKey(name)); await env.LIFTR_KV.delete(authDevicesKey(name)); await env.LIFTR_KV.delete(inviteKey(name)); await env.LIFTR_KV.delete(pendPinKey(name));
     }
     if (b?.id) await env.LIFTR_KV.delete(joinKey(String(b.id)));
     return json({ ok: true, removed: name || null, roster: PICKS_MANAGERS }, 200, corsHeaders);
+  }
+  // Live: set a member's PIN (Jake texts it to them). Their phone stays signed in.
+  if (b?.action === "setpin") {
+    await loadRoster(env, true);
+    const name = PICKS_MANAGERS.find((n) => n.toLowerCase() === String(b?.name || "").toLowerCase());
+    if (!name) return json({ error: "No such member" }, 404, corsHeaders);
+    const pin = String(b?.pin ?? "").trim();
+    if (!/^\d{4,8}$/.test(pin)) return json({ error: "Use 4 to 8 digits." }, 400, corsHeaders);
+    const salt = crypto.randomUUID(), rec = { salt, hash: await codeHash(pin, salt), setAt: Date.now() };
+    const stored = await env.LIFTR_KV.get(authKey(name), "json");
+    if (stored) { await env.LIFTR_KV.put(authKey(name), JSON.stringify({ ...stored, pin: rec })); await env.LIFTR_KV.delete(authTriesKey(name)); }
+    else await env.LIFTR_KV.put(pendPinKey(name), JSON.stringify(rec), { expirationTtl: 30 * 86400 });
+    return json({ ok: true, name }, 200, corsHeaders);
   }
   // New phone: clear the member's sign-in and issue a fresh one-time link.
   if (b?.action === "relink") {
@@ -1053,6 +1070,7 @@ async function handleJoin(request, env, corsHeaders, url) {
     // claim it (set the first PIN). Good for 14 days.
     const code = crypto.randomUUID().replace(/-/g, "");
     await env.LIFTR_KV.put(inviteKey(r.name), JSON.stringify({ code, id: r.id, at: Date.now() }), { expirationTtl: 14 * 86400 });
+    if (r.pin) await env.LIFTR_KV.put(pendPinKey(r.name), JSON.stringify(r.pin), { expirationTtl: 30 * 86400 });
     r.status = "approved";
     r.link = `https://nfl.brochiefs.com/?claim=${code}&n=${encodeURIComponent(r.name)}`;
   } else if (b.action === "deny") r.status = "denied";
@@ -1444,7 +1462,9 @@ async function handleAuth(request, env, corsHeaders, url) {
     if (code.length < AUTH_MIN_CODE) return json({ error: `Use at least ${AUTH_MIN_CODE} characters.` }, 400, corsHeaders);
     if (code.length > 64) return json({ error: "That code is too long." }, 400, corsHeaders);
     const salt = crypto.randomUUID();
-    await env.LIFTR_KV.put(authKey(manager), JSON.stringify({ salt, hash: await codeHash(code, salt), setAt: Date.now() }));
+    const pend = typeof pendPinKey === "function" ? await env.LIFTR_KV.get(pendPinKey(manager), "json") : null;
+    await env.LIFTR_KV.put(authKey(manager), JSON.stringify({ salt, hash: await codeHash(code, salt), setAt: Date.now(), ...(pend ? { pin: pend } : {}) }));
+    if (pend) await env.LIFTR_KV.delete(pendPinKey(manager));
     await authEvent(env, request, { manager, kind: "claim", deviceId, client });
     if (invite) await env.LIFTR_KV.delete(inviteKey(manager));
     return json({ ok: true, manager, token: await signToken(env, manager) }, 200, corsHeaders);
@@ -1463,7 +1483,22 @@ async function handleAuth(request, env, corsHeaders, url) {
     return json({ ok: true, manager }, 200, corsHeaders);
   }
   if (action === "login") {
-    if (!stored) return json({ error: `${manager} has not been claimed yet. Set a code to claim it.`, claimed: false }, 404, corsHeaders);
+    if (!stored) {
+      // Approved but never opened on the asking phone: their PIN signs them in anywhere.
+      const pend = SPORT === "nfl" ? await env.LIFTR_KV.get(pendPinKey(manager), "json") : null;
+      if (pend && !(await tooManyTries(env, manager))) {
+        const okp = code.length >= 1 && sameSecret(await codeHash(code, pend.salt), pend.hash);
+        await noteTry(env, manager, okp);
+        if (okp) {
+          const salt = crypto.randomUUID();
+          await env.LIFTR_KV.put(authKey(manager), JSON.stringify({ salt, hash: await codeHash(crypto.randomUUID(), salt), setAt: Date.now(), pin: pend }));
+          await env.LIFTR_KV.delete(pendPinKey(manager)); await env.LIFTR_KV.delete(inviteKey(manager));
+          return json({ ok: true, manager, token: await signToken(env, manager) }, 200, corsHeaders);
+        }
+        return json({ error: "That PIN is not right." }, 401, corsHeaders);
+      }
+      return json({ error: `${manager} has not been claimed yet. Set a code to claim it.`, claimed: false }, 404, corsHeaders);
+    }
     if (await tooManyTries(env, manager)) {
       await authEvent(env, request, { manager, kind: "locked out", ok: false, deviceId, client });
       return json({ error: "Too many tries. Wait ten minutes." }, 429, corsHeaders);

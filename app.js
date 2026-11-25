@@ -1056,16 +1056,16 @@ function requireOwnerAuth(name) {
   const modal = document.getElementById("code-modal");
   if (!modal) return Promise.resolve(true);
   const nflFam = window.LEAGUE?.sport === "nfl";
-  document.getElementById("code-title").textContent = claimed ? (nflFam ? "🔑 YOUR PIN" : "🔑 YOUR CODE") : "🔑 SET YOUR CODE";
-  document.getElementById("code-subtext").textContent = claimed
-    ? (nflFam ? `New phone? Enter the backup PIN you set for ${shown(name)}. No PIN? Ask Jake for a new phone link.` : `Enter the code you set for ${shown(name)}.`)
+  document.getElementById("code-title").textContent = claimed || nflFam ? (nflFam ? "🔑 YOUR PIN" : "🔑 YOUR CODE") : "🔑 SET YOUR CODE";
+  document.getElementById("code-subtext").textContent = claimed || nflFam
+    ? (nflFam ? `New phone? Enter the PIN you picked when you joined, ${shown(name)}. Forgot it? Ask Jake.` : `Enter the code you set for ${shown(name)}.`)
     : `Nobody has claimed ${shown(name)} yet. Pick a code of six characters or more — you will need it on every device.`;
   document.getElementById("code-owner").textContent = shown(name).toUpperCase();
   const input = document.getElementById("code-input");
   input.value = "";
-  input.placeholder = claimed ? (nflFam ? "your PIN" : "your code") : "at least 6 characters";
-  input.inputMode = claimed && nflFam ? "numeric" : "text";
-  document.getElementById("code-ok").textContent = claimed ? "Sign in" : "Claim it";
+  input.placeholder = nflFam ? "your PIN" : claimed ? "your code" : "at least 6 characters";
+  input.inputMode = nflFam ? "numeric" : "text";
+  document.getElementById("code-ok").textContent = claimed || nflFam ? "Sign in" : "Claim it";
   setCodeStatus(authRequired() ? "" : "Optional for now — picks still save without it.");
   modal.dataset.owner = name;
   modal.dataset.claimed = claimed ? "1" : "";
@@ -1101,7 +1101,9 @@ async function submitOwnerCode() {
   try {
     const res = await fetch(`${WORKER_URL}/auth`, {
       method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
-      body: JSON.stringify({ action: claimed ? "login" : "claim", manager: name, code, device: deviceId(), client: deviceDetails(), ...(inviteFor(name) ? { invite: inviteFor(name) } : {}) }),
+      // NFL: every member joins through approval, so a name not yet claimed
+      // on a phone signs in with the PIN from their join request.
+      body: JSON.stringify({ action: claimed || window.LEAGUE?.sport === "nfl" ? "login" : "claim", manager: name, code, device: deviceId(), client: deviceDetails(), ...(inviteFor(name) ? { invite: inviteFor(name) } : {}) }),
     });
     status = res.status;
     data = await res.json().catch(() => null);
@@ -1113,6 +1115,7 @@ async function submitOwnerCode() {
   if (okBtn) okBtn.disabled = false;
   if (status === 200 && data?.token) {
     saveAuth(name, data.token);
+    introOnce();
     if (!authState.claimed.includes(name)) authState.claimed = [...authState.claimed, name];
     closeCodeModal(true);
     return;
@@ -1218,8 +1221,17 @@ const brandSub = document.getElementById("brand-sub");
 const RULES_SEEN_KEY = "brochiefs_rules_seen_v1";
 
 function openRules() {
+  // The tiebreaker game and the most a perfect card can score, from this week's slate.
+  try {
+    const tb = (GAMES || []).find((g) => g.tiebreakerGame), max = (GAMES || []).length * 3 + (lockRule()?.hit || 0);
+    const t = document.getElementById("rules-tb"); if (t && tb) t.textContent = `Guess the total points both teams score in ${tb.awayShort || tb.away} @ ${tb.homeShort || tb.home}. Closest wins a tie; going over is fine.`;
+    const m = document.getElementById("rules-max"); if (m) m.textContent = GAMES?.length ? `${GAMES.length} games · perfect card: ${max} PTS` : "";
+  } catch {}
   rulesModal.classList.remove("hidden");
+  noteUse?.("rules-open");
 }
+// First sign-in on the family site: the rules come up once.
+function introOnce() { if (window.LEAGUE?.sport === "nfl" && !localStorage.getItem(RULES_SEEN_KEY)) setTimeout(openRules, 900); }
 
 function closeRules() {
   rulesModal.classList.add("hidden");
@@ -1439,17 +1451,19 @@ function openJoin() {
   document.getElementById("claim-modal")?.classList.add("hidden");
   const j = joinSaved();
   document.getElementById("join-form").classList.toggle("hidden", !!(j && j.status === "pending"));
-  document.getElementById("join-sub").textContent = j && j.status === "pending" ? `Request sent for ${j.name}! 🦃 Once it's approved, just open this page again and you're in. No password needed.` : "Send your name and Jake lets you in. No password: this phone signs you in by itself.";
+  document.getElementById("join-sub").textContent = j && j.status === "pending" ? `Request sent for ${j.name}! 🦃 Once it's approved, just open this page again and you're in.` : "Send your name and Jake lets you in. This phone then signs you in by itself; the PIN is only for a new phone.";
   m.classList.remove("hidden");
   noteUse("join-open");
 }
 async function sendJoin(ev) {
   ev.preventDefault();
-  const name = document.getElementById("join-name").value.trim(), email = document.getElementById("join-email").value.trim(), message = document.getElementById("join-msg").value.trim();
+  const name = document.getElementById("join-name").value.trim(), email = document.getElementById("join-email").value.trim(), message = document.getElementById("join-msg").value.trim(), pin = document.getElementById("join-pin")?.value.trim() || "";
   const err = document.getElementById("join-err"), btn = document.getElementById("join-send");
-  err.textContent = ""; btn.disabled = true; btn.textContent = "SENDING…";
+  err.textContent = "";
+  if (!/^\d{4,8}$/.test(pin)) { err.textContent = "Pick a PIN of 4 to 8 digits."; return; }
+  btn.disabled = true; btn.textContent = "SENDING…";
   try {
-    const r = await fetch(`${WORKER_URL}/join`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, message }) });
+    const r = await fetch(`${WORKER_URL}/join`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, message, pin }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d.id) { err.textContent = d.error || "Couldn't send. Try again."; return; }
     try { localStorage.setItem(JOIN_KEY, JSON.stringify({ id: d.id, name, status: "pending", at: Date.now() })); } catch {}
@@ -1493,7 +1507,7 @@ async function autoClaim(name, invite) {
     if (!authState.claimed.includes(name)) authState.claimed = [...authState.claimed, name];
     saveMe(name); selectManager(name);
     lotwToast?.(`You're in, ${name}! 🦃 Make your picks.`);
-    setTimeout(() => offerPin(name), 2500);
+    introOnce();
     track("join-auto-signin", { event: true });
     return true;
   } catch { return false; }

@@ -11,7 +11,7 @@ const call = (e, path, body, ip = "1.1.1.1") => worker.fetch(new Request(`https:
 
 test("join: request, admin sees it with email, approve adds to the roster", async () => {
   const e = env();
-  const r = await (await call(e, "/join", { name: "Sam  Smith", email: "Sam@Example.com" })).json();
+  const r = await (await call(e, "/join", { name: "Sam  Smith", email: "Sam@Example.com", pin: "4321" })).json();
   assert.ok(r.id);
   assert.equal((await (await call(e, `/join?id=${r.id}`)).json()).status, "pending");
   assert.equal((await call(e, "/joins")).status, 403);
@@ -25,20 +25,20 @@ test("join: request, admin sees it with email, approve adds to the roster", asyn
 
 test("join: guards (names taken, bad email, deny, rate limit, college closed)", async () => {
   const e = env();
-  assert.equal((await call(e, "/join", { name: "ben", email: "b@x.com" })).status, 409);
-  assert.equal((await call(e, "/join", { name: "Al", email: "nope" })).status, 400);
-  const { id } = await (await call(e, "/join", { name: "Al", email: "al@x.com" })).json();
+  assert.equal((await call(e, "/join", { name: "ben", email: "b@x.com", pin: "4321" })).status, 409);
+  assert.equal((await call(e, "/join", { name: "Al", email: "nope", pin: "4321" })).status, 400);
+  const { id } = await (await call(e, "/join", { name: "Al", email: "al@x.com", pin: "4321" })).json();
   await call(e, "/joins?key=adm", { id, action: "deny" });
   assert.equal((await (await call(e, `/join?id=${id}`)).json()).status, "denied");
-  for (let i = 0; i < 4; i++) await call(e, "/join", { name: "Q" + i, email: `q${i}@x.com` }, "2.2.2.2");
-  assert.equal((await call(e, "/join", { name: "Q9", email: "q9@x.com" }, "2.2.2.2")).status, 200);
-  assert.equal((await call(e, "/join", { name: "Q10", email: "q10@x.com" }, "2.2.2.2")).status, 429);
+  for (let i = 0; i < 4; i++) await call(e, "/join", { name: "Q" + i, email: `q${i}@x.com`, pin: "4321" }, "2.2.2.2");
+  assert.equal((await call(e, "/join", { name: "Q9", email: "q9@x.com", pin: "4321" }, "2.2.2.2")).status, 200);
+  assert.equal((await call(e, "/join", { name: "Q10", email: "q10@x.com", pin: "4321" }, "2.2.2.2")).status, 429);
   assert.equal((await call({ ...env(), SPORT: "cfb" }, "/join", { name: "Z", email: "z@x.com" })).status, 404);
 });
 
 test("join: approval makes a personal link; only it can claim the name", async () => {
   const e = { ...env(), AUTH_SECRET: "s" };
-  const { id } = await (await call(e, "/join", { name: "Sam", email: "s@x.com", message: "Ben's brother" })).json();
+  const { id } = await (await call(e, "/join", { name: "Sam", email: "s@x.com", message: "Ben's brother", pin: "4321" })).json();
   assert.equal((await (await call(e, "/joins?key=adm")).json()).requests[0].message, "Ben's brother");
   const { request } = await (await call(e, "/joins?key=adm", { id, action: "approve" })).json();
   const code = new URL(request.link).searchParams.get("claim");
@@ -52,7 +52,7 @@ test("join: approval makes a personal link; only it can claim the name", async (
 
 test("join: Grandpa's phone signs itself in after approval (no PIN), and a new phone link works", async () => {
   const e = { ...env(), AUTH_SECRET: "s" };
-  const { id } = await (await call(e, "/join", { name: "Grandpa", email: "gp@x.com" })).json();
+  const { id } = await (await call(e, "/join", { name: "Grandpa", email: "gp@x.com", pin: "4321" })).json();
   assert.equal((await (await call(e, `/join?id=${id}`)).json()).invite, undefined); // nothing before approval
   await call(e, "/joins?key=adm", { id, action: "approve" });
   const st = await (await call(e, `/join?id=${id}`)).json();
@@ -73,7 +73,7 @@ test("join: Grandpa's phone signs itself in after approval (no PIN), and a new p
 
 test("join: remove takes a member off the roster and clears their sign-in and request", async () => {
   const e = { ...env(), AUTH_SECRET: "s" };
-  const { id } = await (await call(e, "/join", { name: "Test", email: "t@x.com" })).json();
+  const { id } = await (await call(e, "/join", { name: "Test", email: "t@x.com", pin: "4321" })).json();
   await call(e, "/joins?key=adm", { id, action: "approve" });
   assert.equal((await call(e, "/joins", { action: "remove", name: "Test", id })).status, 403);
   const r = await (await call(e, "/joins?key=adm", { action: "remove", name: "Test", id })).json();
@@ -84,16 +84,30 @@ test("join: remove takes a member off the roster and clears their sign-in and re
 
 test("join: backup PIN signs a member in on a second phone; only the signed-in owner can set it", async () => {
   const e = { ...env(), AUTH_SECRET: "s" };
-  const { id } = await (await call(e, "/join", { name: "Nana", email: "n@x.com" })).json();
+  const { id } = await (await call(e, "/join", { name: "Nana", email: "n@x.com", pin: "4321" })).json();
   await call(e, "/joins?key=adm", { id, action: "approve" });
   const { invite } = await (await call(e, `/join?id=${id}`)).json();
   const { token } = await (await call(e, "/auth", { action: "claim", manager: "Nana", code: "c".repeat(32), invite })).json();
   const noPin = await call(e, "/auth", { action: "login", manager: "Nana", code: "1234" });
   assert.equal(noPin.status, 401);
-  assert.match((await noPin.json()).error, /new phone link/);
+  assert.ok((await (await call(e, "/auth", { action: "login", manager: "Nana", code: "4321" })).json()).token); // the PIN from her join request
   assert.equal((await call(e, "/auth", { action: "setpin", manager: "Nana", pin: "1234" })).status, 401);
   assert.equal((await call(e, "/auth", { action: "setpin", manager: "Nana", pin: "12", token })).status, 400);
   assert.equal((await call(e, "/auth", { action: "setpin", manager: "Nana", pin: "2468", token })).status, 200);
   assert.ok((await (await call(e, "/auth", { action: "login", manager: "Nana", code: "2468" })).json()).token);
   assert.ok((await (await call(e, "/auth", { action: "login", manager: "Nana", code: "c".repeat(32) })).json()).token); // the first phone still works
+});
+
+test("join: the join PIN signs in on another phone before the first phone opened it; Live can set a new PIN", async () => {
+  const e = { ...env(), AUTH_SECRET: "s" };
+  const { id } = await (await call(e, "/join", { name: "Pop", email: "p@x.com", pin: "1111" })).json();
+  assert.equal(JSON.stringify(await (await call(e, "/joins?key=adm")).json()).includes("hash"), false); // never listed
+  await call(e, "/joins?key=adm", { id, action: "approve" });
+  assert.equal((await call(e, "/auth", { action: "login", manager: "Pop", code: "9999" })).status, 401);
+  assert.ok((await (await call(e, "/auth", { action: "login", manager: "Pop", code: "1111" })).json()).token);
+  assert.equal((await call(e, "/joins", { action: "setpin", name: "Pop", pin: "2222" })).status, 403);
+  assert.equal((await call(e, "/joins?key=adm", { action: "setpin", name: "pop", pin: "2222" })).status, 200);
+  assert.ok((await (await call(e, "/auth", { action: "login", manager: "Pop", code: "2222" })).json()).token);
+  assert.equal((await call(e, "/auth", { action: "login", manager: "Pop", code: "1111" })).status, 401);
+  assert.equal((await call(e, "/join", { name: "NoPin", email: "n@x.com" })).status, 400);
 });

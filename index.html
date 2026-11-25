@@ -32,7 +32,7 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" rel="stylesheet" /></noscript>
-  <meta name="build" content="729495934926" />
+  <meta name="build" content="911498302024" />
   <link rel="stylesheet" href="styles.css?v=809957412226" />
   <link rel="stylesheet" href="history.css?v=145654074095" />
 </head>
@@ -205,10 +205,11 @@
   <div id="join-modal" class="modal-overlay hidden" role="dialog" aria-label="Family Thanksgiving NFL Pick'em">
     <div class="modal-card join-card">
       <span class="modal-title">🦃 FAMILY THANKSGIVING NFL PICK'EM!</span>
-      <span id="join-sub" class="modal-subtext">Send your name and Jake lets you in. No password: this phone signs you in by itself.</span>
+      <span id="join-sub" class="modal-subtext">Send your name and Jake lets you in. This phone then signs you in by itself; the PIN is only for a new phone.</span>
       <form id="join-form" class="join-form" autocomplete="on">
-        <label>Name in the league<input id="join-name" name="name" maxlength="20" autocomplete="given-name" required /></label>
+        <label>Your name<input id="join-name" name="name" maxlength="20" autocomplete="given-name" required /></label>
         <label>Email<input id="join-email" name="email" type="email" inputmode="email" autocomplete="email" required /></label>
+        <label>Pick a 4-digit PIN <i>(only needed if you switch phones)</i><input id="join-pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" minlength="4" maxlength="8" autocomplete="new-password" required /></label>
         <label>Message <i>(optional)</i><textarea id="join-msg" name="message" maxlength="280" rows="3" placeholder="Who you are in the family"></textarea></label>
         <span id="join-err" class="join-err" role="alert"></span>
         <button id="join-send" class="join-go" type="submit">SEND REQUEST</button>
@@ -233,34 +234,35 @@
   <!-- RULES MODAL -->
   <div id="rules-modal" class="modal-overlay hidden">
     <div class="modal-card">
-      <span class="modal-title">🏈 HOW IT WORKS</span>
-      <span class="modal-subtext">Year 13 &mdash; this weekend's picks decide fantasy draft order. 1st place picks any draft slot first, 2nd picks next, and so on.</span>
+      <span class="modal-title">🦃 HOW IT WORKS</span>
+      <span class="modal-subtext">Family Thanksgiving NFL Pick'em. Pick every game, score points, most points wins the turkey.</span>
 
       <div class="rules-section">
-        <span class="rules-heading">⚡ Scoring &mdash; pick ONE per game</span>
+        <span class="rules-heading">⚡ Scoring: one pick per game</span>
         <ul class="rules-list">
-          <li>🟢 Favorite, Straight Up &mdash; <strong>1 pt</strong></li>
-          <li>🔥 Either team, Against the Spread &mdash; <strong>2 pts</strong> (a push on the number pays nobody)</li>
-          <li>🚨 Underdog, Straight Up &mdash; <strong>3 pts</strong></li>
+          <li>🟢 Favorite to win &mdash; <strong>1 pt</strong></li>
+          <li>🔥 Either team against the spread &mdash; <strong>2 pts</strong></li>
+          <li>🚨 Underdog to win &mdash; <strong>3 pts</strong></li>
         </ul>
-        <span class="rules-example">e.g. LSU -10 vs Clemson: LSU SU = 1, LSU -10 or Clemson +10 = 2, Clemson SU = 3</span>
+        <span class="rules-example">The spread is the favorite's head start in reverse. Favored by 3 (−3): they must win by more than 3. The underdog (+3) covers if they win or lose by less than 3. Land exactly on the number and nobody scores.</span>
+        <span class="rules-example">Riskier pick, more points. A wrong pick scores 0, never negative.</span>
       </div>
 
       <div id="rules-lotw" class="rules-section hidden"></div>
 
       <div class="rules-section">
         <span class="rules-heading">🎯 Tiebreaker</span>
-        <span class="rules-example">Guess the total combined points in Clemson @ LSU. Closest wins ties &mdash; going over is allowed.</span>
+        <span id="rules-tb" class="rules-example">Guess the total points both teams score in the game marked TIEBREAKER. Closest wins a tie; going over is fine.</span>
       </div>
 
       <div class="rules-section">
-        <span class="rules-heading">🔒 Locking</span>
-        <span class="rules-example">Resubmit any pick as many times as you want &mdash; it locks automatically the moment that game kicks off.</span>
+        <span class="rules-heading">🔒 When picks lock</span>
+        <span class="rules-example">Change your picks as often as you like. Each game locks at its own kickoff, so get them in before the first game Thursday.</span>
       </div>
 
-      <span class="rules-max">Max possible score: 30 PTS</span>
+      <span id="rules-max" class="rules-max"></span>
 
-      <button id="rules-close-btn" class="primary-btn">LET'S GO 🏈🍻</button>
+      <button id="rules-close-btn" class="primary-btn">LET'S GO 🦃🏈</button>
     </div>
   </div>
 
@@ -655,6 +657,6 @@
   <script data-goatcounter="https://brochiefs.goatcounter.com/count"
           data-goatcounter-settings='{"no_onload": true}'
           async src="https://gc.zgo.at/count.js"></script>
-  <script src="app.js?v=075451261963"></script>
+  <script src="app.js?v=577816978663"></script>
 </body>
 </html>
