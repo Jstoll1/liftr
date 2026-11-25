@@ -1070,6 +1070,23 @@ html, body { overflow-x: hidden; }
 @media (min-width: 900px) { .ov-duo { grid-template-columns: 1fr 1fr; } }
 
 /* Page title bar with a toggle (Stats range, BI filter). */
+.mb-sum { font-size: 13px; color: var(--meta, #9a94b8); } .mb-sum b { color: #ffd23f; }
+.mb-sec { margin-top: 18px; } .mb-sec h2 { margin: 0 0 8px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--meta, #9a94b8); }
+.mb-reqs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 10px; }
+.mb-req { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; border: 1px solid rgba(255, 210, 63, .45); background: rgba(255, 210, 63, .06); }
+.mb-rq-m { display: flex; flex-direction: column; gap: 3px; min-width: 0; } .mb-rq-m b { font-size: 16px; } .mb-rq-m span { font-size: 13px; color: var(--meta, #9a94b8); overflow-wrap: anywhere; } .mb-rq-m i { font-size: 13px; }
+.mb-list { border-radius: 14px; border: 1px solid rgba(255, 255, 255, .08); background: rgba(255, 255, 255, .02); }
+.mb-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid rgba(255, 255, 255, .06); }
+.mb-row:first-child { border-top: 0; }
+.mb-who { display: flex; flex-direction: column; gap: 2px; min-width: 0; } .mb-who b { font-size: 15px; } .mb-who span { font-size: 12.5px; color: var(--meta, #9a94b8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mb-st { justify-self: start; padding: 3px 10px; border-radius: 999px; font-size: 12px; white-space: nowrap; } .mb-st.on { color: #5dffa3; background: rgba(57, 255, 136, .1); } .mb-st.wait { color: #ffd23f; background: rgba(255, 210, 63, .1); } .mb-st.off { color: var(--meta, #9a94b8); background: rgba(255, 255, 255, .05); }
+.mb-acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.mb-b { font: inherit; font-size: 13px; padding: 7px 13px; border-radius: 999px; cursor: pointer; color: inherit; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .16); }
+.mb-b.ok { color: #07120c; background: #39ff88; border-color: transparent; font-weight: 700; } .mb-b.no { color: #ff8aa0; border-color: rgba(255, 79, 109, .45); background: none; } .mb-b.cp { color: #ffd23f; border-color: rgba(255, 210, 63, .45); }
+.mb-empty, .mb-note { margin: 12px 0 0; font-size: 13px; color: var(--meta, #9a94b8); line-height: 1.5; }
+.mb-nudge { display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255, 210, 63, .45); background: rgba(255, 210, 63, .06); color: inherit; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.mb-nudge span { margin-left: auto; color: #ffd23f; font-size: 13px; }
+@media (max-width: 640px) { .mb-row { grid-template-columns: minmax(0, 1fr) auto; } .mb-acts { grid-column: 1 / -1; justify-content: flex-start; } }
 .pg-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pg-bar h1 { margin: 0; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--meta, #9a94b8); }
 .pg-bar .seg { margin: 0; }
@@ -1579,7 +1596,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
   // Recommended actions folded or cleared, remembered on this device.
   const recShut = (() => { try { return new Set(JSON.parse(localStorage.getItem("brochiefs_live_rec_shut") || "[]")); } catch { return new Set(); } })();
   const recHidden = (() => { try { return JSON.parse(localStorage.getItem("brochiefs_live_rec_hidden") || "{}") || {}; } catch { return {}; } })();
-  const PAGES = [["home", "Overview", "now"], ["activity", "Visits", "visits"], ["issues", "Issues", "bell"], ["bi", "Chief", "brain"], ["stats", "Stats", "stats"]];
+  const PAGES = [["home", "Overview", "now"], ["activity", "Visits", "visits"], ["issues", "Issues", "bell"], ["bi", "Chief", "brain"], ["stats", "Stats", "stats"], ...(LEAGUE === "nfl" ? [["members", "Members", "plus"]] : [])];
   // Old section ids (jump links, studio's back buttons) land on their page.
   const PAGE_OF = { "sec-now": "home", "sec-tl": "home", "sec-visits": "activity", "sec-stats": "stats" };
   // Which section is in view, for the tabs; recomputed on scroll and after
@@ -2176,6 +2193,25 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       return `<section class="afr">${head}
         ${rows.length ? days.map((g) => `<div class="afr-day">${esc(g.k)}</div>${g.rows.map((r) => `<div class="afr-r${afrFix(r) ? " fixed" : ""}"><button type="button" class="afr-cb" data-afrfix="${r.at}" aria-pressed="${!!afrFix(r)}" title="${afrFix(r)?.commit ? `Fixed in ${esc(afrFix(r).commit)}: ${esc(afrFix(r).note || "")}` : afrFix(r) ? "Ticked as fixed" : "Mark fixed"}"${afrFix(r)?.commit ? " disabled" : ""}>${afrFix(r) ? "✓" : ""}</button><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-k ${AFR_KIND[r.k || "dead-tap"]?.[1] || ""}">${AFR_KIND[r.k || "dead-tap"]?.[0] || esc(r.k)}</span><span class="afr-d">${esc(r.d || "")}${r.screen ? ` <i>${esc(SCREENS[r.screen] || r.screen)}</i>` : ""}${afrFix(r)?.commit ? ` <i class="afr-fx">fixed ${esc(afrFix(r).commit)}</i>` : ""}</span><button type="button" class="afr-one" data-afrone="${r.at}" aria-label="Copy this one">${st.copied === `afr:${r.at}` ? "✓" : "copy"}</button></div>`).join("")}`).join("") : `<p class="afr-none">Nothing broke for you. No errors, rage taps, dead taps or sudden closes.</p>`}</section>`;
     };
+    // NFL Members page: requests waiting on you, then everyone in the league
+    // with their state and what you can do for them.
+    const membersPage = () => {
+      const reqs = st.joins || [], mem = st.jmembers || [], claimed = new Set(st.jclaimed || []);
+      const pend = reqs.filter((r) => r.status === "pending");
+      const byName = new Map(reqs.filter((r) => r.status === "approved").map((r) => [r.name.toLowerCase(), r]));
+      const btn = (cls, attrs, lab) => `<button type="button" class="mb-b ${cls}" ${attrs}>${lab}</button>`;
+      const pendCards = pend.map((r) => `<div class="mb-req"><div class="mb-rq-m"><b>${esc(r.name)}</b><span>${esc(r.email)} · ${esc(hm(r.at))}</span>${r.message ? `<i>“${esc(r.message)}”</i>` : ""}</div><div class="mb-acts">${btn("ok", `data-join="${esc(r.id)}" data-act="approve"`, "Approve")}${btn("no", `data-join="${esc(r.id)}" data-act="deny"`, "Deny")}</div></div>`).join("");
+      const rows = mem.map((n) => { const r = byName.get(n.toLowerCase()), on = claimed.has(n);
+        const stt = on ? `<span class="mb-st on">Signed in</span>` : r ? `<span class="mb-st wait">Approved · not opened yet</span>` : `<span class="mb-st off">Not signed in</span>`;
+        return `<div class="mb-row"><div class="mb-who"><b>${esc(n)}</b><span>${r ? esc(r.email) : ""}${r?.message ? ` · ${esc(r.message)}` : ""}</span></div>${stt}<div class="mb-acts">${!on && r?.link ? btn("cp", `data-joinlink="${esc(r.link)}" data-joinname="${esc(n)}"`, st.copied === `jl:${r.id}` ? "✓ Copied" : "Copy invite") : ""}${btn("", `data-join="m" data-act="setpin" data-joinname="${esc(n)}"`, "Set PIN")}${btn("no", `data-join="m" data-act="remove" data-joinname="${esc(n)}"`, "Remove")}</div></div>`; }).join("");
+      return `<div class="pg-bar"><h1>Members</h1><span class="mb-sum">${mem.length} member${mem.length === 1 ? "" : "s"}${pend.length ? ` · <b>${pend.length} waiting</b>` : ""}</span></div>
+        ${st.joins == null ? `<p class="mb-empty">Loading…</p>` : ""}
+        ${pend.length ? `<section class="mb-sec"><h2>Waiting for you</h2><div class="mb-reqs">${pendCards}</div></section>` : ""}
+        <section class="mb-sec"><h2>In the league</h2>${rows ? `<div class="mb-list">${rows}</div>` : `<p class="mb-empty">Nobody yet. Send the family nfl.brochiefs.com/join.</p>`}</section>
+        <p class="mb-note">Approving signs their phone in by itself the next time they open the page. Their PIN (picked when they joined) signs them in on another phone; Set PIN gives them a new one to text. Remove takes them out of the league.</p>`;
+    };
+    // Overview: a one-line nudge when someone is waiting; the work is on Members.
+    const joinNudge = () => { const n = (st.joins || []).filter((r) => r.status === "pending").length; return n ? `<button type="button" class="mb-nudge" data-page="members">✋ <b>${n} join request${n === 1 ? "" : "s"}</b> waiting <span>Open Members ›</span></button>` : ""; };
     const joinPanel = () => {
       const list = (st.joins || []).filter((r) => r.status === "pending" || (r.status === "approved" && r.link && Date.now() - (r.decidedAt || 0) < 14 * 86400000));
       const mem = st.jmembers || [];
@@ -2419,7 +2455,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     const since = (pg) => pseen[pg] || 0;
     const issuesNew = (st.afr || []).filter((r) => !afrFix(r) && r.at > since("issues")).length + opsDay.filter((r) => (OPS_KIND[r.k] || [])[1] === "err" && r.at > since("issues")).length;
     const biNew = biOthers.filter((r) => r.at > since("bi")).length;
-    const badge = { home: inNow.length || "", issues: issuesNew || "", bi: biNew || "" };
+    const badge = { home: inNow.length || "", issues: issuesNew || "", bi: biNew || "", members: (st.joins || []).filter((r) => r.status === "pending").length || "" };
     const att = (page, n, lab, sub, tone) => `<button type="button" class="att-c ${tone}" data-page="${page}"><b class="num">${n}</b><span>${lab}</span><small>${sub}</small></button>`;
     const attCards = [
       att("issues", afrOpenN, "Friction open", afrOpenN ? "rage, dead taps, errors" : "all ticked off", afrOpenN ? "warn" : "ok"),
@@ -2628,7 +2664,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     const themeCard = !tp || !tp.of ? "" : `<section class="card tpl"><div class="tpl-h"><b>Theme poll</b><span>${tp.voted} of ${tp.of} voted</span></div>
       <div class="tpl-bars">${Object.keys(TPL).map((k) => { const n = tp.counts?.[k] || 0, pct = tp.voted ? Math.round((100 * n) / tp.voted) : 0; const who = Object.entries(tp.votes || {}).filter(([, v]) => v === k).map(([m]) => esc(name(m))); return `<div class="tpl-r"><span class="tpl-l">${TPL[k]}</span><span class="tpl-b"><i style="width:${pct}%"></i></span><b>${n}</b><small>${who.join(", ") || "&nbsp;"}</small></div>`; }).join("")}</div>
       ${(tp.waitingOn || []).length ? `<div class="tpl-w">Still to vote: ${tp.waitingOn.map((m) => `${esc(name(m))}${tp.views?.[m] ? ` <em>(seen ${tp.views[m].n}×)</em>` : ""}`).join(", ")}</div>` : `<div class="tpl-w">Everyone has voted.</div>`}</section>`;
-    const strips = `<div class="vote-wrap">${themeCard}${joinPanel()}${auditStrip()}</div>`;
+    const strips = `<div class="vote-wrap">${themeCard}${joinNudge()}${auditStrip()}</div>`;
     // Notification bar: who came in and who asked BI since you last
     // cleared it (never you). Tap a part to go there; ✕ marks it seen.
     const ME = "Jake";
@@ -2651,6 +2687,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     const pageBody = {
       home: `${kpisNb}${timeline}${feedHtml}${st.range !== "3h" && (wk || st.range === "7d") ? `<section class="tl panel wk-rest">${weekView("rest")}</section>` : ""}${overview}${recCard("home")}${ucPanel}${strips}`,
       activity: "",
+      members: membersPage(),
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
       bi: `<div class="pg-bar"><h1>Ask Chief</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${chiefMsgPanel()}${ctPanel()}${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
       stats: `<div class="pg-bar"><h1>Stats</h1><span class="seg" role="group" aria-label="Range">${[["24h", "24 hours"], ["7d", "7 days"]].map(([r, l]) => `<button type="button" class="${(r === "7d") === (st.range === "7d") ? "on" : ""}" data-range="${r === "7d" ? "7d" : "24h"}">${l}</button>`).join("")}</span></div>${recCard("stats")}${recordsPanel}${flowPanel}${rail}`,
