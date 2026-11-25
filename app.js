@@ -7004,7 +7004,25 @@ function sendWpSnap(ch, cloudPicks, results, live) {
   } catch {}
 }
 
+// Before the first kickoff every score is 0, so the leaderboard becomes the
+// pick board: who has picked how many games and set a tiebreaker. Others'
+// picks are still hidden ({ hidden: true }), so only the counts show.
+function renderPickBoard(cloudPicks) {
+  const total = GAMES.length, me = typeof currentManager !== "undefined" ? currentManager : null;
+  const rows = MANAGERS.map((n) => {
+    const st = cloudPicks?.[n] || {}, made = GAMES.filter((g) => { const p = st.picks?.[g.id]; return p && (p.hidden || p.team); }).length;
+    const tb = String(st.tiebreaker ?? "").trim() !== "";
+    return { n, made, tb, done: made >= total && tb };
+  }).sort((a, b) => b.done - a.done || b.made - a.made || b.tb - a.tb || shown(a.n).localeCompare(shown(b.n)));
+  const allIn = rows.filter((r) => r.done).length;
+  rankingsList.innerHTML = `<div class="pbd-sum"><b>${allIn}</b> of ${rows.length} all in · picks stay hidden until each kickoff</div><div class="pbd">${rows.map((r) => {
+    const stat = r.done ? `<span class="pbd-st ok">ALL IN</span>` : r.made === 0 ? `<span class="pbd-st no">NONE</span>` : `<span class="pbd-st">${r.made < total ? `${total - r.made} LEFT` : "NO TB"}</span>`;
+    return `<div class="pbd-c${r.n === me ? " me" : ""}${r.done ? " done" : ""}"><span class="pbd-av" style="--accent:${accentFor(r.n)}">${escapeCd(avatarOverrides[r.n] || shown(r.n)[0])}</span><div class="pbd-m"><div class="pbd-top"><b>${escapeCd(shown(r.n))}</b>${stat}</div><div class="pbd-pips" aria-label="${r.made} of ${total} picks">${GAMES.map((_, i) => `<i class="${i < r.made ? "on" : ""}"></i>`).join("")}</div><div class="pbd-meta"><span>${r.made}/${total} picks</span><span class="${r.tb ? "ok" : ""}">TB ${r.tb ? "✓" : "—"}</span></div></div></div>`;
+  }).join("")}</div>`;
+}
+
 function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
+  if (window.LEAGUE?.sport !== "nfl" && GAMES.length && !firstKickoffPassed()) { rankingsList.classList.remove("wp-live"); return renderPickBoard(cloudPicks); }
   const rows = precomputed || rankManagers(cloudPicks, results);
   if (anyGameLive(live)) {
     const tbGame = tiebreakerGameOf() || GAMES[0];
