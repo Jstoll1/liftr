@@ -33,8 +33,8 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Chakra+Petch:wght@500;600;700&family=VT323&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Chakra+Petch:wght@500;600;700&family=VT323&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Chakra+Petch:wght@500;600;700&family=VT323&display=swap" rel="stylesheet" /></noscript>
-  <meta name="build" content="429921798201" />
-  <link rel="stylesheet" href="styles.css?v=088624949451" />
+  <meta name="build" content="375473859387" />
+  <link rel="stylesheet" href="styles.css?v=584401392205" />
   <link rel="stylesheet" href="history.css?v=609823000375" />
 </head>
 <body>
@@ -549,6 +549,27 @@
     </main>
   </div>
 
+  <!-- HELP SCREEN -->
+  <main id="help-screen" class="screen help-screen hidden">
+    <div class="wrap">
+      <h1 class="help-title">HELP</h1>
+      <section class="help-card">
+        <h2 class="help-h">🦃 How it works</h2>
+        <div id="help-rules"></div>
+      </section>
+      <section class="help-card">
+        <h2 class="help-h">❓ Questions</h2>
+        <details class="help-q"><summary>How do I make my picks?</summary><p>Tap <b>Picks</b>, then tap a team or the spread on each game. Every pick saves by itself; the card shows <b>SAVED</b> with the time once it reaches the league.</p></details>
+        <details class="help-q"><summary>Can I change a pick?</summary><p>Yes, as often as you like until that game kicks off. Then it locks.</p></details>
+        <details class="help-q"><summary>Where do I see who's winning?</summary><p>Tap <b>Scores</b> for the live games, the leaderboard and everyone's picks once games start.</p></details>
+        <details class="help-q"><summary>I got a new phone, or it signed me out</summary><p>Open the site and tap <b>I already joined</b>. Type your name and the PIN you picked when you joined.</p></details>
+        <details class="help-q"><summary>I forgot my PIN</summary><p>Text Jake. He can set a new one for you.</p></details>
+        <details class="help-q"><summary>Something looks wrong</summary><p>Pull down to refresh first. Still wrong? Send Jake a screenshot.</p></details>
+      </section>
+      <div class="help-go"><button type="button" class="help-btn" data-help-go="picks">Make my picks ›</button><button type="button" class="help-btn alt" data-help-go="scores">See scores ›</button></div>
+    </div>
+  </main>
+
   <!-- TRIVIA SCREEN -->
   <main id="trivia-screen" class="screen history-screen hidden">
     <div class="archive-main">
@@ -604,6 +625,10 @@
       <svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M2 9h3v5H2zm4.5-6h3v11h-3zm4.5 3h3v8h-3zM1 14h14v1H1z"/></svg>
       <span class="nav-btn-label">Scores</span>
     </button>
+    <button id="nav-help-btn" class="nav-btn" type="button">
+      <svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M5 1h6v1h2v1h1v2h1v6h-1v2h-1v1h-2v1H5v-1H3v-1H2v-2H1V5h1V3h1V2h2zm1 3v1H5v1h2V5h2v2H8v1H7v2h2V9h1V8h1V5h-1V4zm1 7v2h2v-2z"/></svg>
+      <span class="nav-btn-label">Help</span>
+    </button>
     <button id="nav-side-btn" class="nav-btn nav-side hidden" type="button">
       <svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" fill-rule="evenodd" d="M5 1h6v1h2v2h1v8h-1v2h-2v1H5v-1H3v-2H2V4h1V2h2zM7 3h2v1H7zM6 4h5v1H6zM5 5h2v2H5zM6 7h4v1H6zM9 8h2v2H9zM5 10h5v1H5zM7 11h2v1H7z"/></svg>
       <span class="nav-btn-label">Side bet</span>
@@ -658,6 +683,6 @@
   <script data-goatcounter="https://brochiefs.goatcounter.com/count"
           data-goatcounter-settings='{"no_onload": true}'
           async src="https://gc.zgo.at/count.js"></script>
-  <script src="app.js?v=078467987351"></script>
+  <script src="app.js?v=832074865188"></script>
 </body>
 </html>

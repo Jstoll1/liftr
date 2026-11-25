@@ -1225,14 +1225,17 @@ const brandSub = document.getElementById("brand-sub");
 const RULES_SEEN_KEY = "brochiefs_rules_seen_v1";
 
 function openRules() {
+  fillRules();
+  rulesModal.classList.remove("hidden");
+  noteUse?.("rules-open");
+}
+function fillRules() {
   // The tiebreaker game and the most a perfect card can score, from this week's slate.
   try {
     const tb = (GAMES || []).find((g) => g.tiebreakerGame), max = (GAMES || []).length * 3 + (lockRule()?.hit || 0);
     const t = document.getElementById("rules-tb"); if (t && tb) t.textContent = `Guess the total points both teams score in ${tb.awayShort || tb.away} @ ${tb.homeShort || tb.home}. Closest wins a tie; going over is fine.`;
     const m = document.getElementById("rules-max"); if (m) m.textContent = GAMES?.length ? `${GAMES.length} games · perfect card: ${max} PTS` : "";
   } catch {}
-  rulesModal.classList.remove("hidden");
-  noteUse?.("rules-open");
 }
 // First sign-in on the family site: the rules come up once.
 function introOnce() { if (window.LEAGUE?.sport === "nfl" && !localStorage.getItem(RULES_SEEN_KEY)) setTimeout(openRules, 900); }
@@ -1819,6 +1822,8 @@ function setActiveNav(target) {
   [navPicksBtn, navScoreboardBtn, navHistoryBtn, navTriviaBtn, document.getElementById("nav-side-btn")].forEach((btn) => btn?.classList.remove("active"));
   // The Side bet screen is only hidden here, the one place every screen
   // change passes through.
+  document.getElementById("nav-help-btn")?.classList.toggle("active", target === "help");
+  if (target !== "help") document.getElementById("help-screen")?.classList.add("hidden");
   if (target === "side") document.getElementById("nav-side-btn")?.classList.add("active");
   else document.getElementById("side-screen")?.classList.add("hidden");
   if (target === "history") navHistoryBtn.classList.add("active");
@@ -2232,6 +2237,21 @@ function showHistory() {
   enterScreen("history");
 }
 navHistoryBtn.addEventListener("click", showHistory);
+
+// Help: the rules (the same sections as the pop-up, kept in step) and the
+// questions people ask Jake.
+function showHelp() {
+  rememberScroll();
+  fillRules();
+  const box = document.getElementById("help-rules");
+  if (box) box.replaceChildren(...[...rulesModal.querySelectorAll(".rules-section:not(.hidden)")].map((n) => { const c = n.cloneNode(true); c.querySelectorAll("[id]").forEach((x) => x.removeAttribute("id")); return c; }));
+  [loginScreen, picksScreen, scoreboardScreen, historyScreen, triviaScreen].forEach((el) => el?.classList.add("hidden"));
+  document.getElementById("help-screen")?.classList.remove("hidden");
+  setActiveNav("help");
+  enterScreen("help");
+}
+document.getElementById("nav-help-btn")?.addEventListener("click", showHelp);
+document.addEventListener("click", (e) => { if (e.target.closest("[data-help-go]")) { const t = e.target.closest("[data-help-go]").dataset.helpGo; document.getElementById(t === "scores" ? "nav-scoreboard-btn" : "nav-picks-btn")?.click(); } });
 
 function showTrivia() {
   ensureExtras();

@@ -11006,3 +11006,21 @@ html[data-sport="nfl"] #season-panel { display: none !important; }
 /* NFL: the lock sits in the card's head row beside G#, not hanging off
    the corner. */
 html[data-sport="nfl"] .scorebug .bug-head .bug-lk { position: static; flex: none; width: 14px; height: 14px; margin: 0 -2px; font-size: 8px; box-shadow: 0 0 6px rgba(var(--arcade-gold-rgb), .5); }
+
+/* ==== RETRO: Help screen (NFL) ==== */
+.help-screen .wrap { display: flex; flex-direction: column; gap: 12px; padding-bottom: 24px; }
+.help-title { margin: 4px 0 0; text-align: center; font: 16px/1.4 'Press Start 2P', monospace; color: var(--neon-cyan); }
+.help-card { padding: 14px 16px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--card-bg); }
+.help-h { margin: 0 0 8px; font: 11px/1.5 'Press Start 2P', monospace; color: var(--neon-yellow); }
+.help-card .rules-section { margin: 0; padding: 10px 0; border-top: 1px dashed rgba(255, 255, 255, .1); }
+.help-card .rules-section:first-child { border-top: 0; padding-top: 0; }
+.help-q { border-top: 1px solid rgba(255, 255, 255, .08); }
+.help-q:first-of-type { border-top: 0; }
+.help-q summary { padding: 12px 0; font-size: 15px; font-weight: 600; color: var(--text); cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 10px; }
+.help-q summary::-webkit-details-marker { display: none; }
+.help-q summary::after { content: "+"; color: var(--neon-cyan); font-weight: 700; }
+.help-q[open] summary::after { content: "−"; }
+.help-q p { margin: 0 0 12px; font-size: 14px; line-height: 1.5; color: var(--text-dim); }
+.help-go { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.help-btn { padding: 14px 10px; border-radius: 10px; border: 0; background: var(--neon-cyan); color: var(--bg); font: 10px 'Press Start 2P', monospace; cursor: pointer; }
+.help-btn.alt { background: transparent; color: var(--neon-cyan); border: 1px solid rgba(var(--neon-cyan-rgb), .5); }
