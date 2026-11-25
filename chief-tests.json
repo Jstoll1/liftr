@@ -667,6 +667,46 @@
       "source": "miss",
       "regression": true,
       "note": "Nov 25 (Curt): no rankings tool, so the Chief named only Michigan vs Ohio State from general knowledge with no ranks or records; now stakes gives the CFP poll and every ranked game with records and conference records"
+    },
+    {
+      "id": "500-seasons",
+      "screen": "fantasy",
+      "turns": [
+        "Compootah, does any other fantasy team have more seasons with a .500 reagular season win pct than me?"
+      ],
+      "checks": {
+        "tools": [
+          "archive"
+        ],
+        "must": [
+          "10",
+          "Dewitt"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 25 (Skills): read '.500 seasons' as exactly 6-6 (5) and said nobody had more without checking anyone else; at or above .500 Skills has 10, tied with Dewitt (10), and Dewitt has 9 over .500 to Skills' 5"
+    },
+    {
+      "id": "misquote-check",
+      "screen": "fantasy",
+      "turns": [
+        "Compootah, does any other fantasy team have more seasons with a .500 reagular season win pct than me?",
+        "Compootah, you just told me I had 10 of seasons over .500"
+      ],
+      "checks": {
+        "must": [
+          "\\b5\\b"
+        ],
+        "mustNot": [
+          "^\\s*You're right"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 25 (Skills): the Chief agreed it had said 10 seasons over .500 when it never had; 10 is .500 or better, over .500 is 5. Check earlier answers and correct the misquote"
     }
   ]
 }
