@@ -1450,16 +1450,28 @@ async function handleAuth(request, env, corsHeaders, url) {
     return json({ ok: true, manager, token: await signToken(env, manager) }, 200, corsHeaders);
   }
 
+  // A backup PIN (NFL family): the phone signs in with its own secret; the
+  // PIN, if the member set one, signs them in on another phone.
+  if (action === "setpin") {
+    if (!stored) return json({ error: "Sign in first." }, 404, corsHeaders);
+    if ((await tokenOwner(env, body?.token)) !== manager) return json({ error: "Sign in first." }, 401, corsHeaders);
+    const pin = String(body?.pin ?? "").trim();
+    if (!/^\d{4,8}$/.test(pin)) return json({ error: "Use 4 to 8 digits." }, 400, corsHeaders);
+    const salt = crypto.randomUUID();
+    await env.LIFTR_KV.put(authKey(manager), JSON.stringify({ ...stored, pin: { salt, hash: await codeHash(pin, salt), setAt: Date.now() } }));
+    await authEvent(env, request, { manager, kind: "set pin", deviceId, client });
+    return json({ ok: true, manager }, 200, corsHeaders);
+  }
   if (action === "login") {
     if (!stored) return json({ error: `${manager} has not been claimed yet. Set a code to claim it.`, claimed: false }, 404, corsHeaders);
     if (await tooManyTries(env, manager)) {
       await authEvent(env, request, { manager, kind: "locked out", ok: false, deviceId, client });
       return json({ error: "Too many tries. Wait ten minutes." }, 429, corsHeaders);
     }
-    const ok = code.length >= 1 && sameSecret(await codeHash(code, stored.salt), stored.hash);
+    const ok = code.length >= 1 && (sameSecret(await codeHash(code, stored.salt), stored.hash) || (!!stored.pin && sameSecret(await codeHash(code, stored.pin.salt), stored.pin.hash)));
     await noteTry(env, manager, ok);
     await authEvent(env, request, { manager, kind: "login", ok, deviceId, client });
-    if (!ok) return json({ error: "That code is not right." }, 401, corsHeaders);
+    if (!ok) return json({ error: SPORT === "nfl" && !stored.pin ? `${manager} hasn't set a PIN. Ask Jake for a new phone link.` : "That PIN is not right." }, 401, corsHeaders);
     return json({ ok: true, manager, token: await signToken(env, manager) }, 200, corsHeaders);
   }
 

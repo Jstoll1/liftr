@@ -81,3 +81,19 @@ test("join: remove takes a member off the roster and clears their sign-in and re
   assert.equal((await (await call(e, `/join?id=${id}`)).json()).status, "gone");
   assert.equal([...e.LIFTR_KV.m.keys()].some((k) => /invite:test|auth:Test/.test(k)), false);
 });
+
+test("join: backup PIN signs a member in on a second phone; only the signed-in owner can set it", async () => {
+  const e = { ...env(), AUTH_SECRET: "s" };
+  const { id } = await (await call(e, "/join", { name: "Nana", email: "n@x.com" })).json();
+  await call(e, "/joins?key=adm", { id, action: "approve" });
+  const { invite } = await (await call(e, `/join?id=${id}`)).json();
+  const { token } = await (await call(e, "/auth", { action: "claim", manager: "Nana", code: "c".repeat(32), invite })).json();
+  const noPin = await call(e, "/auth", { action: "login", manager: "Nana", code: "1234" });
+  assert.equal(noPin.status, 401);
+  assert.match((await noPin.json()).error, /new phone link/);
+  assert.equal((await call(e, "/auth", { action: "setpin", manager: "Nana", pin: "1234" })).status, 401);
+  assert.equal((await call(e, "/auth", { action: "setpin", manager: "Nana", pin: "12", token })).status, 400);
+  assert.equal((await call(e, "/auth", { action: "setpin", manager: "Nana", pin: "2468", token })).status, 200);
+  assert.ok((await (await call(e, "/auth", { action: "login", manager: "Nana", code: "2468" })).json()).token);
+  assert.ok((await (await call(e, "/auth", { action: "login", manager: "Nana", code: "c".repeat(32) })).json()).token); // the first phone still works
+});

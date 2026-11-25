@@ -1055,14 +1055,16 @@ function requireOwnerAuth(name) {
   const claimed = authState.claimed.includes(name);
   const modal = document.getElementById("code-modal");
   if (!modal) return Promise.resolve(true);
-  document.getElementById("code-title").textContent = claimed ? "🔑 YOUR CODE" : "🔑 SET YOUR CODE";
+  const nflFam = window.LEAGUE?.sport === "nfl";
+  document.getElementById("code-title").textContent = claimed ? (nflFam ? "🔑 YOUR PIN" : "🔑 YOUR CODE") : "🔑 SET YOUR CODE";
   document.getElementById("code-subtext").textContent = claimed
-    ? `Enter the code you set for ${shown(name)}.`
+    ? (nflFam ? `New phone? Enter the backup PIN you set for ${shown(name)}. No PIN? Ask Jake for a new phone link.` : `Enter the code you set for ${shown(name)}.`)
     : `Nobody has claimed ${shown(name)} yet. Pick a code of six characters or more — you will need it on every device.`;
   document.getElementById("code-owner").textContent = shown(name).toUpperCase();
   const input = document.getElementById("code-input");
   input.value = "";
-  input.placeholder = claimed ? "your code" : "at least 6 characters";
+  input.placeholder = claimed ? (nflFam ? "your PIN" : "your code") : "at least 6 characters";
+  input.inputMode = claimed && nflFam ? "numeric" : "text";
   document.getElementById("code-ok").textContent = claimed ? "Sign in" : "Claim it";
   setCodeStatus(authRequired() ? "" : "Optional for now — picks still save without it.");
   modal.dataset.owner = name;
@@ -1491,10 +1493,29 @@ async function autoClaim(name, invite) {
     if (!authState.claimed.includes(name)) authState.claimed = [...authState.claimed, name];
     saveMe(name); selectManager(name);
     lotwToast?.(`You're in, ${name}! 🦃 Make your picks.`);
+    setTimeout(() => offerPin(name), 2500);
     track("join-auto-signin", { event: true });
     return true;
   } catch { return false; }
 }
+// Optional backup PIN, offered once after the phone signs itself in: it
+// lets them sign in on another phone without asking Jake.
+function offerPin(name) {
+  if (document.getElementById("pin-modal")) return;
+  const m = document.createElement("div");
+  m.id = "pin-modal"; m.className = "modal-overlay";
+  m.innerHTML = `<div class="modal-card"><span class="modal-title">🔒 BACKUP PIN</span><span class="modal-subtext">Optional. This phone already signs you in. Set a PIN to sign in on another phone too.</span><input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" class="code-input" id="pin-in" placeholder="4 to 8 digits" autocomplete="new-password" /><span class="code-status" id="pin-st"></span><div class="modal-actions"><button type="button" class="ghost-btn" id="pin-no">Not now</button><button type="button" class="primary-btn" id="pin-ok">Set PIN</button></div></div>`;
+  document.body.appendChild(m);
+  const st = m.querySelector("#pin-st"), close = () => m.remove();
+  m.querySelector("#pin-no").onclick = () => { track("pin-skip", { event: true }); close(); };
+  m.querySelector("#pin-ok").onclick = async () => {
+    const pin = m.querySelector("#pin-in").value.trim();
+    if (!/^\d{4,8}$/.test(pin)) { st.textContent = "Use 4 to 8 digits."; return; }
+    st.textContent = "Saving…";
+    try { const { status, data } = await authPost({ action: "setpin", manager: name, pin, token: tokenFor(name) }); if (status === 200) { lotwToast?.("Backup PIN set 🔒"); track("pin-set", { event: true }); close(); } else st.textContent = data?.error || "That did not work."; } catch { st.textContent = "No connection."; }
+  };
+}
+window.offerPin = offerPin;
 async function autoLogin(name) {
   const code = autoSecret(name); if (!code) return false;
   try { const { status, data } = await authPost({ action: "login", manager: name, code }); if (status === 200 && data?.token) { saveAuth(name, data.token); return true; } } catch {}
@@ -1509,6 +1530,8 @@ if (window.LEAGUE?.sport === "nfl") {
     // Once the roster has the name, go straight to setting their PIN.
     setTimeout(async () => { await loadRoster(); if (MANAGERS.includes(name) && inviteFor(name) && await autoClaim(name, inviteFor(name))) return; if (MANAGERS.includes(name) && !loadMe()) { lotwToast?.(`Welcome, ${name}! Set a PIN to finish.`); if (await requireOwnerAuth(name)) { saveMe(name); selectManager(name); try { localStorage.removeItem(INVITE_KEY); } catch {} } } }, 900);
   }
+  // ?pin=1: set or change the backup PIN later (signed-in phones only).
+  if (q.get("pin") === "1") { history.replaceState(null, "", location.pathname); setTimeout(() => { const me = loadMe(); if (me && tokenFor(me)) offerPin(me); }, 1500); }
   // brochiefs.com/join (NFL) lands here as ?join=1.
   if (q.get("join") === "1") { history.replaceState(null, "", location.pathname); setTimeout(openJoin, 700); }
   document.getElementById("join-form")?.addEventListener("submit", sendJoin);
