@@ -2178,12 +2178,14 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     };
     const joinPanel = () => {
       const list = (st.joins || []).filter((r) => r.status === "pending" || (r.status === "approved" && r.link && Date.now() - (r.decidedAt || 0) < 14 * 86400000));
-      if (!list.length) return "";
+      const mem = st.jmembers || [];
+      if (!list.length && !mem.length) return "";
       const nPend = list.filter((r) => r.status === "pending").length;
       return `<section class="newstrip audit open joins"><div class="au-head"><span class="ns-h"><b>✋ ${nPend ? `${nPend} JOIN REQUEST${nPend === 1 ? "" : "S"}` : "JOIN LINKS TO SEND"}</b><small>NFL league</small></span></div>
         <div class="au-list">${list.map((r) => `<div class="au-row jr"><div class="au-top"><b>${esc(r.name)}</b><span class="jr-when">${esc(hm(r.at))}</span></div>
           <div class="jr-in"><span class="jr-mail">${esc(r.email)}</span>${r.message ? `<span class="jr-msg">“${esc(r.message)}”</span>` : ""}
           ${r.status === "pending" ? `<span class="jr-act"><button type="button" class="jr-ok" data-join="${esc(r.id)}" data-act="approve">Approve</button><button type="button" class="jr-no" data-join="${esc(r.id)}" data-act="deny">Deny</button></span>` : `<span class="jr-act"><span class="jr-done">✓ Approved</span><button type="button" class="au-cp" data-joinlink="${esc(r.link)}" data-joinname="${esc(r.name)}">${st.copied === `jl:${r.id}` ? "✓ Copied" : "Copy invite"}</button><button type="button" class="jr-no" data-join="${esc(r.id)}" data-act="remove" data-joinname="${esc(r.name)}">Remove</button></span>`}</div></div>`).join("")}</div>
+        ${mem.length ? `<div class="au-list jr-mem"><div class="au-top"><b>Members (${mem.length})</b></div>${mem.map((n) => `<div class="au-row jr"><div class="au-top"><b>${esc(n)}</b><span class="jr-act"><span class="jr-when">${(st.jclaimed || []).includes(n) ? "signed in" : "not signed in"}</span><button type="button" class="jr-no" data-join="m" data-act="remove" data-joinname="${esc(n)}">Remove</button></span></div></div>`).join("")}</div>` : ""}
         <small class="au-note">Each approved player gets a one-time link; only that link can claim their name.</small></section>`;
     };
     const auditStrip = () => {
@@ -2815,7 +2817,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       if (b.dataset.act === "deny" && !confirm("Deny this request?")) return;
       b.disabled = true;
       try {
-        const x = await fetch(`${WORKER}/joins?${auth()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: b.dataset.join, action: b.dataset.act, ...(b.dataset.joinname ? { name: b.dataset.joinname } : {}) }) });
+        const x = await fetch(`${WORKER}/joins?${auth()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...(b.dataset.join !== "m" ? { id: b.dataset.join } : {}), action: b.dataset.act, ...(b.dataset.joinname ? { name: b.dataset.joinname } : {}) }) });
         const j = await x.json().catch(() => ({}));
         if (!x.ok) { alert(j.error || "Couldn't save that."); b.disabled = false; return; }
       } catch { alert("No connection."); b.disabled = false; return; }
@@ -3078,7 +3080,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
   // NFL join requests (name, email, message), newest first.
   async function loadJoins() {
     if (LEAGUE !== "nfl") { st.joins = null; return; }
-    try { const x = await fetch(`${WORKER}/joins?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); if (Array.isArray(j.requests)) { st.joins = j.requests; st.sig = ""; render(); } } } catch {}
+    try { const x = await fetch(`${WORKER}/joins?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); if (Array.isArray(j.requests)) { st.joins = j.requests; st.jmembers = Array.isArray(j.members) ? j.members : null; st.jclaimed = j.claimed || []; st.sig = ""; render(); } } } catch {}
   }
   async function runAudit() {
     clearTimeout(runAudit.t); runAudit.t = setTimeout(runAudit, 2 * 60000);
