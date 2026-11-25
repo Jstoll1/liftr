@@ -459,7 +459,14 @@
         const hitWays = (g) => marg(g).filter((r) => pk(who, g, r) > 0);
         const rivals = MANAGERS.filter((n) => n !== who).map((n) => { let lo = banked(n).pts; const agree = []; for (const g of open) { const ways = hitWays(g); if (!ways.length) continue; const m = Math.min(...ways.map((r) => pk(n, g, r))); lo += m; if (m > 0) agree.push(gName(g)); } return { n, lo, agree }; }).filter((x) => x.lo >= me0.max).sort((x, y) => y.lo - x.lo);
         if (rivals.length) { const r = rivals[0]; return { outBecause: `Even if every open ${who} pick hits, he tops out at ${me0.max} (${me0.pts} now). ${r.n} would still have at least ${r.lo}${r.agree.length ? `, because he has the same side on ${r.agree.slice(0, 3).join(", ")}` : " from points already banked"}.${rivals.length > 1 ? ` ${rivals.slice(1, 3).map((x) => `${x.n} (${x.lo})`).join(" and ")} also stay at or above him.` : ""}`, blockedBy: r.n, bestCase: me0.max }; }
-        return { outBecause: `${who} has ${me0.pts} now and ${me0.max} at most. ${lead.n} leads with ${lead.b.pts}. No single mix of the open results puts ${who} on top: the games he needs also lift whoever he is chasing (checked exactly).` }; })() : {};
+        // No single rival beats every best case, but one always beats this
+        // one: every open pick of his hits, each game landing the way that
+        // helps his rivals least. Name who is still ahead there, and why.
+        const sc = Object.fromEntries(MANAGERS.map((n) => [n, banked(n).pts])), same = Object.fromEntries(MANAGERS.map((n) => [n, []]));
+        for (const g of open) { const ways = hitWays(g); if (!ways.length) continue; const r = ways.slice().sort((x, y) => Math.max(...MANAGERS.filter((n) => n !== who).map((n) => pk(n, g, x))) - Math.max(...MANAGERS.filter((n) => n !== who).map((n) => pk(n, g, y))))[0]; for (const n of MANAGERS) { const v = pk(n, g, r); sc[n] += v; if (n !== who && v > 0) same[n].push(gName(g)); } }
+        const top = MANAGERS.filter((n) => n !== who && sc[n] >= sc[who]).sort((x, y) => sc[y] - sc[x])[0];
+        if (top) return { outBecause: `Even if every open ${who} pick hits (${sc[who]} points), ${top} would still have at least ${sc[top]} in that case${same[top].length ? `, because he has the same side on ${same[top].slice(0, 3).join(", ")}` : ""}. Every other way the games can land, someone else finishes ahead of ${who} too (checked exactly).`, blockedBy: top };
+        return { outBecause: `${who} has ${me0.pts} now and ${me0.max} at most. No mix of the open results puts ${who} on top: whenever his picks land, someone else lands with him and stays ahead (checked exactly).` }; })() : {};
       return { ...hiddenNote(), member: who, chanceToWin: r3(d.pct), ...statusOf(d), ...why, swings: (d.games || []).slice(0, 5).map((x) => ({ game: gName(x.game), pick: `${short(x.game, x.pick.team)} ${x.pick.mode === "ATS" ? `${x.pick.team === x.game.favorite ? "−" : "+"}${x.game.spread}` : "to win"}${x.pick.lock ? " (lock)" : ""}`, chanceIfHits: r3(x.ifHit), chanceIfMisses: r3(x.ifMiss), likelyToHit: r3(x.pHit) })) };
     },
     picks(a = {}) {
@@ -841,7 +848,7 @@
   // screen decides it.
   function grade(c, turns) {
     const ck = c.checks || {}, tools = turns.flatMap((t) => t.tools.map((x) => x.name)), text = turns.map((t) => t.a || "").join("\n"), why = [];
-    for (const t of ck.tools || []) if (!t.split("|").some((n) => tools.includes(n))) why.push(`didn't call ${t}`);
+    for (const t of ck.tools || []) if (!t.split("|").some((n) => (n === "none" ? !tools.length : tools.includes(n)))) why.push(`didn't call ${t}`);
     for (const r of ck.must || []) { try { if (!new RegExp(r, "i").test(text)) why.push(`missing /${r}/`); } catch {} }
     for (const r of ck.mustNot || []) { try { if (new RegExp(r, "i").test(text)) why.push(`said /${r}/`); } catch {} }
     if (ck.noAsk && /WHICH_LEAGUE|fantasy league or the pick/i.test(text)) why.push("asked which league");
