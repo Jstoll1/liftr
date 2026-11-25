@@ -10984,3 +10984,13 @@ html[data-sport="nfl"] .console-tab[data-tab="ledger"],
 html[data-sport="nfl"] .console-tab[data-tab="feeds"],
 html[data-sport="nfl"] .console-tab[data-tab="experts"] { display: none !important; }
 html[data-sport="nfl"] #logo-screen { display: none !important; }
+/* NFL is one Thanksgiving week: no recap, pot, season stats, last
+   week's champion or season VS. */
+html[data-sport="nfl"] #week-champ,
+html[data-sport="nfl"] #recap-toggle,
+html[data-sport="nfl"] #recap-panel,
+html[data-sport="nfl"] #side-pot,
+html[data-sport="nfl"] .pot-head,
+html[data-sport="nfl"] #payouts-panel,
+html[data-sport="nfl"] #season-toggle,
+html[data-sport="nfl"] #season-panel { display: none !important; }

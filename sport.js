@@ -81,7 +81,7 @@
       var copy = document.querySelector("#logo-screen .arcade-copyright");
       if (copy) copy.textContent = "\u00a9 2026 BROCHIEFS NFL";
       // NFL has no fantasy history or trivia: take their tabs and screens out.
-      ["nav-history-btn", "nav-trivia-btn", "history-screen", "trivia-screen", "admin-qotw-btn", "admin-qotw"].forEach(function (id) { var el = document.getElementById(id); if (el) { el.style.setProperty("display", "none", "important"); el.setAttribute("aria-hidden", "true"); } });
+      ["nav-history-btn", "nav-trivia-btn", "history-screen", "trivia-screen", "admin-qotw-btn", "admin-qotw", "week-champ", "recap-toggle", "recap-panel", "side-pot", "payouts-toggle", "sh2h-open", "payouts-panel", "season-toggle", "season-panel"].forEach(function (id) { var el = document.getElementById(id); if (el) { el.style.setProperty("display", "none", "important"); el.setAttribute("aria-hidden", "true"); } });
     });
   }
 })();

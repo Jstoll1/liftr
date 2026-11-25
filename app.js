@@ -9390,7 +9390,7 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
 // card. Everything comes from the sealed weeks, so it is what was graded.
 function playerSeason(name) {
   // The detailed weeks (with every pick) when they are loaded, else the plain ones.
-  const weeks = (seasonLedger && seasonLedger.length ? seasonLedger : Object.values(weekSummaries).filter((w) => w?.complete)).slice().sort((a, b) => a.week - b.week);
+  const weeks = (seasonLedger && seasonLedger.length ? seasonLedger : Object.values(weekSummaries).filter((w) => w?.complete)).slice().sort((a, b) => a.week - b.week).filter((w) => window.LEAGUE?.sport !== "nfl" || w.week === currentWeek);
   const scores = [], picks = [];
   let w = 0, l = 0, atsW = 0, atsN = 0, suW = 0, suN = 0, lockW = 0, lockL = 0;
   for (const wk of weeks) {
