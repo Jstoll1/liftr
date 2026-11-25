@@ -239,6 +239,7 @@
   const FLASH = (n) => `brochiefs_lt_seen_${n.id}`;
   async function check() {
     await load(true);
+    if (window.NO_POPUPS) return;
     if (!night || !open() || !me() || mine() || passed()) return;
     let seen = null; try { seen = sessionStorage.getItem(FLASH(night)); } catch {}
     if (seen || document.getElementById("lt-modal")) return;

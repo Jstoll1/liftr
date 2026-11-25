@@ -127,7 +127,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=858628939543", "lightning-ui.js?v=812074492059", "attract-facts.js?v=621767480045", "history.js?v=174497337064", "fantasy-ui.js?v=444657960762", "sim.js?v=374204176553", "gridcard.js?v=867340868336"];
+const EXTRAS = ["ask-ui.js?v=858628939543", "pickboard.js?v=343540649553", "lightning-ui.js?v=906038752210", "attract-facts.js?v=621767480045", "history.js?v=174497337064", "fantasy-ui.js?v=444657960762", "sim.js?v=374204176553", "gridcard.js?v=867340868336"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -1349,6 +1349,9 @@ const brandSub = document.getElementById("brand-sub");
 
 // --- Logo / splash screen ---------------------------------------------
 
+// No pop-ups open by themselves on the college site (Jake, Nov 25): every
+// prompt, poll and nudge waits for a tap. The buttons that open them stay.
+window.NO_POPUPS = window.LEAGUE?.sport !== "nfl";
 const RULES_SEEN_KEY = "brochiefs_rules_seen_v1";
 
 function openRules() {
@@ -3121,6 +3124,7 @@ function lotwToast(text) {
 // Shown when the last pick goes in, or on leaving the picks screen; once a
 // week at most if skipped.
 function maybeLockReminder(why) {
+  if (window.NO_POPUPS) return false;
   const lr = lockRule();
   if (!lr || !currentManager || window.__liveView) return false;
   const s = getManagerState(currentManager);
@@ -3977,6 +3981,7 @@ setInterval(() => {
 // Asked once, on the board, when it opens. Not over another pop-up: if one
 // is up, the next refresh asks again.
 function maybeShowSidePrompt() {
+  if (window.NO_POPUPS) return;
   const pot = potNow();
   if (sidePromptShown || !sideOpen(pot) || !currentManager || window.__adminEntry || window.__adminOpen || window.__liveView) return;
   const owes = sideNeedsPicks(pot, currentManager);
@@ -7022,7 +7027,6 @@ function renderPickBoard(cloudPicks) {
 }
 
 function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
-  if (window.LEAGUE?.sport !== "nfl" && GAMES.length && !firstKickoffPassed()) { rankingsList.classList.remove("wp-live"); return renderPickBoard(cloudPicks); }
   const rows = precomputed || rankManagers(cloudPicks, results);
   if (anyGameLive(live)) {
     const tbGame = tiebreakerGameOf() || GAMES[0];
@@ -7715,6 +7719,7 @@ const GRID_NAG_MS = 24 * 3600 * 1000;
 let gridTimer = null;
 function gridKey() { return `brochiefs_grid_v1_w${currentWeek}`; }
 function maybeShowGridCheck(force = false) {
+  if (window.NO_POPUPS && !force) return;
   const el = document.getElementById("grid-modal");
   if (!el || !currentManager || !GAMES.length) return;
   const lockAt = weekLockTime() ?? Math.min(...GAMES.map((g) => new Date(g.kickoff).getTime()));
@@ -7836,6 +7841,7 @@ document.addEventListener("click", (e) => {
 const BONER_UNTIL = Date.parse("2026-09-29T03:59:00Z"); // Mon 11:59 PM ET
 let bonerShownThisLoad = false;
 function maybeShowBoner() {
+  if (window.NO_POPUPS) return;
   const el = document.getElementById("boner-modal");
   if (!el || bonerShownThisLoad || !currentManager || window.__liveView) return;
   if (currentWeek !== 4 || Date.now() >= BONER_UNTIL || !GAMES.length || !GAMES.every(isGameLocked)) return;
@@ -7906,6 +7912,7 @@ const QOTW = null;
 window.QOTW = QOTW;
 let qotwShownThisLoad = false;
 async function maybeShowQotw() {
+  if (window.NO_POPUPS) return;
   // Not on the way into the admin panel: the prompt would sit on top of the key gate.
   if (qotwShownThisLoad || !currentManager || !WORKER_URL || !QOTW || window.__adminEntry || window.__adminOpen || window.__liveView) return;
   const doneKey = `brochiefs_qotw_${QOTW.id}_${currentManager}`;
@@ -10223,6 +10230,7 @@ function rxCountUp(root) {
 const THEME_POLL = "theme-v1", THEME_POLL_SEEN = `brochiefs_poll_${THEME_POLL}`;
 let themePollBusy = false, themePollVoted = false;
 async function maybeThemePoll() {
+  if (window.NO_POPUPS) return;
   if (themePollBusy || themePollVoted) return;
   const me = loadMe();
   if (!me || !MANAGERS.includes(me) || !WORKER_URL || PREVIEW || window.__liveView || window.__adminEntry) return;
@@ -12021,7 +12029,7 @@ document.getElementById("sim-open")?.addEventListener("click", () => {
   const A = { id: "fantasy-page-2026", until: Date.parse("2026-11-21T20:50:00Z"), kicker: "NEW FEATURE", title: "Fantasy page", body: "Track this week's fantasy matchups, gain insights, and make history.", cta: "Take me there", go: () => document.getElementById("nav-history-btn")?.click() };
   const KEY = `brochiefs_announce_${A.id}`;
   const show = () => {
-    try { if (localStorage.getItem(KEY) || Date.now() > A.until || window.__liveView || window.__adminEntry) return; } catch { return; }
+    try { if (window.NO_POPUPS || localStorage.getItem(KEY) || Date.now() > A.until || window.__liveView || window.__adminEntry) return; } catch { return; }
     if (document.getElementById("theme-poll") || document.querySelector(".modal-overlay:not(.hidden)")) return setTimeout(show, 4000);
     const m = document.createElement("div");
     m.id = "announce"; m.className = "ann-ov"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", A.title);
