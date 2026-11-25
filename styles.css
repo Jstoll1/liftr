@@ -925,6 +925,14 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   .bug-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+/* Two across on a phone: an odd last game centres under the pair above
+   instead of sitting alone on the left. */
+@media (min-width: 341px) and (max-width: 699px) {
+  .bug-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .bug-grid > * { grid-column: span 2; }
+  .bug-grid > :last-child:nth-child(odd) { grid-column: 2 / span 2; }
+}
+
 /* Two cards across stops working around 340px: the head cannot hold a
    clock, a channel and a stake pill, and something gets cut. One card
    across costs scrolling and keeps every card readable, which is the
