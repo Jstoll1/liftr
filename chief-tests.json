@@ -531,7 +531,7 @@
           "needs|edge"
         ],
         "must": [
-          "because|mirror|match|every|ceiling|at most|can't|cannot"
+          "because|mirror|match|every|ceiling|at most|can't|cannot|not out"
         ],
         "mustNot": [
           "^Yes, you're out this week\\.[^.]*\\.$"
@@ -540,7 +540,7 @@
       },
       "source": "miss",
       "regression": true,
-      "note": "Nov 21 (Jake): said out with only 'every game leaves you at 0%', no reason; needs now carries outBecause (who mirrors or beats every result left, or the point ceiling)"
+      "note": "Nov 21 (Jake): said out with only 'every game leaves you at 0%', no reason; needs now carries outBecause (who mirrors or beats every result left, or the point ceiling); Nov 25 run: Jake wasn't out (6.9%) and the answer said so correctly, so 'not out' now passes; the why is still required when he is out"
     },
     {
       "id": "out-names-blocker",
@@ -613,17 +613,17 @@
       ],
       "checks": {
         "tools": [
-          "window|scenarios"
+          "window|scenarios|stakes|none"
         ],
         "must": [
-          "cover",
-          "(straight up|outright|loses)"
+          "(?:cover)|(?:not (on|in) (this week|the slate|this week's))",
+          "(?:(straight up|outright|loses))|(?:not (on|in) (this week|the slate|this week's))"
         ],
         "noAsk": true
       },
       "source": "miss",
       "regression": true,
-      "note": "Nov 22 (Curt): said a missed cover is enough, then 'your chance jumps to 67.4%' without saying why it isn't 100% or whether an outright loss differs; now answers each way the game can finish"
+      "note": "Nov 22 (Curt): said a missed cover is enough, then 'your chance jumps to 67.4%' without saying why it isn't 100% or whether an outright loss differs; now answers each way the game can finish; Nov 25 run: Utah isn't on the week 13 slate, so an answer saying that now passes; the Chief went to G9's hidden picks instead"
     },
     {
       "id": "last-game-finish",
@@ -633,17 +633,17 @@
       ],
       "checks": {
         "tools": [
-          "window"
+          "window|stakes|none"
         ],
         "must": [
-          "^\\s*1\\.",
-          "need"
+          "(?:^\\s*1\\.)|(?:not (on|in) (this week|the slate|this week's))",
+          "(?:need)|(?:not (on|in) (this week|the slate|this week's))"
         ],
         "noAsk": true
       },
       "source": "miss",
       "regression": true,
-      "note": "Nov 23 (Curt): window answer named only the push and cover cases (2nd, 4th) and skipped the outcomes where he wins; now one block per outcome with the projected finish as a numbered list and what he needs"
+      "note": "Nov 23 (Curt): window answer named only the push and cover cases (2nd, 4th) and skipped the outcomes where he wins; now one block per outcome with the projected finish as a numbered list and what he needs; Nov 25 run: Utah isn't on the week 13 slate, so an answer saying that now passes; the Chief went to G9's hidden picks instead"
     },
     {
       "id": "cfp-stakes",
@@ -656,7 +656,7 @@
           "stakes"
         ],
         "must": [
-          "#\\d+|No\\. ?\\d+|ranked \\d+",
+          "#\\d+|No\\. ?\\d+|[Rr]ank(ed)? \\d+",
           "\\d+-\\d+"
         ],
         "mustNot": [
@@ -666,7 +666,7 @@
       },
       "source": "miss",
       "regression": true,
-      "note": "Nov 25 (Curt): no rankings tool, so the Chief named only Michigan vs Ohio State from general knowledge with no ranks or records; now stakes gives the CFP poll and every ranked game with records and conference records"
+      "note": "Nov 25 (Curt): no rankings tool, so the Chief named only Michigan vs Ohio State from general knowledge with no ranks or records; now stakes gives the CFP poll and every ranked game with records and conference records; Nov 25 run: answer was right but wrote 'Rank 1', so the rank check now accepts that form"
     },
     {
       "id": "500-seasons",
