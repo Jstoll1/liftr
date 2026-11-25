@@ -1085,7 +1085,9 @@ html, body { overflow-x: hidden; }
 .mb-b.ok { color: #07120c; background: #39ff88; border-color: transparent; font-weight: 700; } .mb-b.no { color: #ff8aa0; border-color: rgba(255, 79, 109, .45); background: none; } .mb-b.cp { color: #ffd23f; border-color: rgba(255, 210, 63, .45); }
 .mb-empty, .mb-note { margin: 12px 0 0; font-size: 13px; color: var(--meta, #9a94b8); line-height: 1.5; }
 .mb-nudge { display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255, 210, 63, .45); background: rgba(255, 210, 63, .06); color: inherit; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
-.mb-nudge span { margin-left: auto; color: #ffd23f; font-size: 13px; }
+.mb-nudge em { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-style: normal; color: var(--dim, #9aa); font-size: 13px; }
+.mb-nudge { margin-bottom: 12px; }
+.mb-nudge span { flex: none; margin-left: auto; color: #ffd23f; font-size: 13px; }
 @media (max-width: 640px) { .mb-row { grid-template-columns: minmax(0, 1fr) auto; } .mb-acts { grid-column: 1 / -1; justify-content: flex-start; } }
 .pg-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pg-bar h1 { margin: 0; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--meta, #9a94b8); }
@@ -2211,7 +2213,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
         <p class="mb-note">Approving signs their phone in by itself the next time they open the page. Their PIN (picked when they joined) signs them in on another phone; Set PIN gives them a new one to text. Remove takes them out of the league.</p>`;
     };
     // Overview: a one-line nudge when someone is waiting; the work is on Members.
-    const joinNudge = () => { const n = (st.joins || []).filter((r) => r.status === "pending").length; return n ? `<button type="button" class="mb-nudge" data-page="members">✋ <b>${n} join request${n === 1 ? "" : "s"}</b> waiting <span>Open Members ›</span></button>` : ""; };
+    const joinNudge = () => { const p = (st.joins || []).filter((r) => r.status === "pending"), n = p.length; return n ? `<button type="button" class="mb-nudge" data-page="members">✋ <b>${n} join request${n === 1 ? "" : "s"}</b><em>${esc(p.slice(0, 3).map((r) => r.name).join(", "))}${n > 3 ? ` +${n - 3}` : ""}</em><span>Review ›</span></button>` : ""; };
     const joinPanel = () => {
       const list = (st.joins || []).filter((r) => r.status === "pending" || (r.status === "approved" && r.link && Date.now() - (r.decidedAt || 0) < 14 * 86400000));
       const mem = st.jmembers || [];
@@ -2664,7 +2666,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     const themeCard = !tp || !tp.of ? "" : `<section class="card tpl"><div class="tpl-h"><b>Theme poll</b><span>${tp.voted} of ${tp.of} voted</span></div>
       <div class="tpl-bars">${Object.keys(TPL).map((k) => { const n = tp.counts?.[k] || 0, pct = tp.voted ? Math.round((100 * n) / tp.voted) : 0; const who = Object.entries(tp.votes || {}).filter(([, v]) => v === k).map(([m]) => esc(name(m))); return `<div class="tpl-r"><span class="tpl-l">${TPL[k]}</span><span class="tpl-b"><i style="width:${pct}%"></i></span><b>${n}</b><small>${who.join(", ") || "&nbsp;"}</small></div>`; }).join("")}</div>
       ${(tp.waitingOn || []).length ? `<div class="tpl-w">Still to vote: ${tp.waitingOn.map((m) => `${esc(name(m))}${tp.views?.[m] ? ` <em>(seen ${tp.views[m].n}×)</em>` : ""}`).join(", ")}</div>` : `<div class="tpl-w">Everyone has voted.</div>`}</section>`;
-    const strips = `<div class="vote-wrap">${themeCard}${joinNudge()}${auditStrip()}</div>`;
+    const strips = `<div class="vote-wrap">${themeCard}${auditStrip()}</div>`;
     // Notification bar: who came in and who asked BI since you last
     // cleared it (never you). Tap a part to go there; ✕ marks it seen.
     const ME = "Jake";
@@ -2685,7 +2687,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     ].filter(Boolean).join("");
     const kpisNb = kpis.replace("<!--NB-->", nRows ? `<div class="nb-rows">${nRows}</div>` : "");
     const pageBody = {
-      home: `${kpisNb}${timeline}${feedHtml}${st.range !== "3h" && (wk || st.range === "7d") ? `<section class="tl panel wk-rest">${weekView("rest")}</section>` : ""}${overview}${recCard("home")}${ucPanel}${strips}`,
+      home: `${joinNudge()}${kpisNb}${timeline}${feedHtml}${st.range !== "3h" && (wk || st.range === "7d") ? `<section class="tl panel wk-rest">${weekView("rest")}</section>` : ""}${overview}${recCard("home")}${ucPanel}${strips}`,
       activity: "",
       members: membersPage(),
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
