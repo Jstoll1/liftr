@@ -1087,6 +1087,11 @@ html, body { overflow-x: hidden; }
 .mb-nudge { display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255, 210, 63, .45); background: rgba(255, 210, 63, .06); color: inherit; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
 .mb-nudge em { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-style: normal; color: var(--dim, #9aa); font-size: 13px; }
 .mb-nudge { margin-bottom: 12px; }
+.mb-notes { display: flex; flex-direction: column; gap: 8px; }
+.mb-note-c { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(5, 217, 232, .35); background: rgba(5, 217, 232, .05); }
+.mb-note-c.done { opacity: .55; border-color: rgba(255, 255, 255, .1); background: none; }
+.mb-note-c p { margin: 6px 0 0; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mb-unv { font-weight: 400; font-size: 11px; color: var(--dim); }
 .mb-nudge span { flex: none; margin-left: auto; color: #ffd23f; font-size: 13px; }
 @media (max-width: 640px) { .mb-row { grid-template-columns: minmax(0, 1fr) auto; } .mb-acts { grid-column: 1 / -1; justify-content: flex-start; } }
 .pg-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -1789,7 +1794,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
   async function poll(full) {
     clearTimeout(poll.t);
     if (!runAudit.t) runAudit();
-    if (!loadJoins.t || Date.now() - loadJoins.t > 60000) { loadJoins.t = Date.now(); loadJoins(); }
+    if (!loadJoins.t || Date.now() - loadJoins.t > 60000) { loadJoins.t = Date.now(); loadJoins(); loadNotes(); }
     if (!loadAdminFriction.t || Date.now() - loadAdminFriction.t > 60000) { loadAdminFriction.t = Date.now(); loadAdminFriction(); }
     if (!loadOps.t || Date.now() - loadOps.t > 60000) { loadOps.t = Date.now(); loadOps(); }
     if (!loadRecords.t) { loadRecords.t = Date.now(); loadRecords(); }
@@ -2197,6 +2202,11 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     };
     // NFL Members page: requests waiting on you, then everyone in the league
     // with their state and what you can do for them.
+    const notesNew = () => (st.notes || []).filter((x) => !x.done);
+    const notesSec = () => { const all = st.notes || []; if (!all.length) return "";
+      const card = (x) => `<div class="mb-note-c${x.done ? " done" : ""}"><div class="mb-rq-m"><b>${esc(x.name)}${x.verified ? "" : ` <small class="mb-unv">not signed in</small>`}</b><span>${esc(hm(x.at))}</span><p>${esc(x.text)}</p></div><div class="mb-acts"><button type="button" class="mb-b ${x.done ? "" : "ok"}" data-note="${esc(x.id)}" data-nact="${x.done ? "undone" : "done"}">${x.done ? "Reopen" : "Done"}</button><button type="button" class="mb-b no" data-note="${esc(x.id)}" data-nact="delete">Delete</button></div></div>`;
+      const n = notesNew().length;
+      return `<section class="mb-sec"><h2>Messages${n ? ` · ${n} new` : ""}</h2><div class="mb-notes">${all.slice().sort((a, b) => (a.done - b.done) || b.at - a.at).map(card).join("")}</div></section>`; };
     const membersPage = () => {
       const reqs = st.joins || [], mem = st.jmembers || [], claimed = new Set(st.jclaimed || []);
       const pend = reqs.filter((r) => r.status === "pending");
@@ -2206,13 +2216,15 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       const rows = mem.map((n) => { const r = byName.get(n.toLowerCase()), on = claimed.has(n);
         const stt = on ? `<span class="mb-st on">Signed in</span>` : r ? `<span class="mb-st wait">Approved · not opened yet</span>` : `<span class="mb-st off">Not signed in</span>`;
         return `<div class="mb-row"><div class="mb-who"><b>${esc(n)}</b><span>${r ? esc(r.email) : ""}${r?.message ? ` · ${esc(r.message)}` : ""}</span></div>${stt}<div class="mb-acts">${!on && r?.link ? btn("cp", `data-joinlink="${esc(r.link)}" data-joinname="${esc(n)}"`, st.copied === `jl:${r.id}` ? "✓ Copied" : "Copy invite") : ""}${btn("", `data-join="m" data-act="setpin" data-joinname="${esc(n)}"`, "Set PIN")}${btn("no", `data-join="m" data-act="remove" data-joinname="${esc(n)}"`, "Remove")}</div></div>`; }).join("");
-      return `<div class="pg-bar"><h1>Members</h1><span class="mb-sum">${mem.length} member${mem.length === 1 ? "" : "s"}${pend.length ? ` · <b>${pend.length} waiting</b>` : ""}</span></div>
+      return `<div class="pg-bar"><h1>Members</h1><span class="mb-sum">${mem.length} member${mem.length === 1 ? "" : "s"}${pend.length ? ` · <b>${pend.length} waiting</b>` : ""}${notesNew().length ? ` · <b>${notesNew().length} message${notesNew().length === 1 ? "" : "s"}</b>` : ""}</span></div>
         ${st.joins == null ? `<p class="mb-empty">Loading…</p>` : ""}
+        ${notesSec()}
         ${pend.length ? `<section class="mb-sec"><h2>Waiting for you</h2><div class="mb-reqs">${pendCards}</div></section>` : ""}
         <section class="mb-sec"><h2>In the league</h2>${rows ? `<div class="mb-list">${rows}</div>` : `<p class="mb-empty">Nobody yet. Send the family nfl.brochiefs.com/join.</p>`}</section>
         <p class="mb-note">Approving signs their phone in by itself the next time they open the page. Their PIN (picked when they joined) signs them in on another phone; Set PIN gives them a new one to text. Remove takes them out of the league.</p>`;
     };
     // Overview: a one-line nudge when someone is waiting; the work is on Members.
+    const noteNudge = () => { const p = notesNew(), n = p.length; return n ? `<button type="button" class="mb-nudge" data-page="members">💬 <b>${n} message${n === 1 ? "" : "s"}</b><em>${esc(p[0].name)}: ${esc(p[0].text.slice(0, 60))}</em><span>Read ›</span></button>` : ""; };
     const joinNudge = () => { const p = (st.joins || []).filter((r) => r.status === "pending"), n = p.length; return n ? `<button type="button" class="mb-nudge" data-page="members">✋ <b>${n} join request${n === 1 ? "" : "s"}</b><em>${esc(p.slice(0, 3).map((r) => r.name).join(", "))}${n > 3 ? ` +${n - 3}` : ""}</em><span>Review ›</span></button>` : ""; };
     const joinPanel = () => {
       const list = (st.joins || []).filter((r) => r.status === "pending" || (r.status === "approved" && r.link && Date.now() - (r.decidedAt || 0) < 14 * 86400000));
@@ -2457,7 +2469,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     const since = (pg) => pseen[pg] || 0;
     const issuesNew = (st.afr || []).filter((r) => !afrFix(r) && r.at > since("issues")).length + opsDay.filter((r) => (OPS_KIND[r.k] || [])[1] === "err" && r.at > since("issues")).length;
     const biNew = biOthers.filter((r) => r.at > since("bi")).length;
-    const badge = { home: inNow.length || "", issues: issuesNew || "", bi: biNew || "", members: (st.joins || []).filter((r) => r.status === "pending").length || "" };
+    const badge = { home: inNow.length || "", issues: issuesNew || "", bi: biNew || "", members: ((st.joins || []).filter((r) => r.status === "pending").length + notesNew().length) || "" };
     const att = (page, n, lab, sub, tone) => `<button type="button" class="att-c ${tone}" data-page="${page}"><b class="num">${n}</b><span>${lab}</span><small>${sub}</small></button>`;
     const attCards = [
       att("issues", afrOpenN, "Friction open", afrOpenN ? "rage, dead taps, errors" : "all ticked off", afrOpenN ? "warn" : "ok"),
@@ -2687,7 +2699,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     ].filter(Boolean).join("");
     const kpisNb = kpis.replace("<!--NB-->", nRows ? `<div class="nb-rows">${nRows}</div>` : "");
     const pageBody = {
-      home: `${joinNudge()}${kpisNb}${timeline}${feedHtml}${st.range !== "3h" && (wk || st.range === "7d") ? `<section class="tl panel wk-rest">${weekView("rest")}</section>` : ""}${overview}${recCard("home")}${ucPanel}${strips}`,
+      home: `${joinNudge()}${noteNudge()}${kpisNb}${timeline}${feedHtml}${st.range !== "3h" && (wk || st.range === "7d") ? `<section class="tl panel wk-rest">${weekView("rest")}</section>` : ""}${overview}${recCard("home")}${ucPanel}${strips}`,
       activity: "",
       members: membersPage(),
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
@@ -2851,6 +2863,12 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     if (b.dataset.open) { st.open.has(b.dataset.open) ? st.open.delete(b.dataset.open) : st.open.add(b.dataset.open); render(); return; }
     if (b.dataset.older) { st.shown += 20; render(); return; }
     if (b.dataset.reload) { location.reload(); return; }
+    if (b.dataset.note) {
+      if (b.dataset.nact === "delete" && !confirm("Delete this message?")) return;
+      b.disabled = true;
+      try { const x = await fetch(`${WORKER}/notes?${auth()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: b.dataset.note, action: b.dataset.nact }) }); if (!x.ok) { alert("Couldn't save that."); b.disabled = false; return; } } catch { alert("No connection."); b.disabled = false; return; }
+      await loadNotes(); return;
+    }
     if (b.dataset.join) {
       if (b.dataset.act === "remove" && !confirm(`Remove ${b.dataset.joinname} from the league? Their sign-in and picks access go away.`)) return;
       if (b.dataset.act === "deny" && !confirm("Deny this request?")) return;
@@ -3123,7 +3141,12 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
   async function loadJoins() {
     if (LEAGUE !== "nfl") { st.joins = null; return; }
     try { const x = await fetch(`${WORKER}/joins?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); if (Array.isArray(j.requests)) { st.joins = j.requests; st.jmembers = Array.isArray(j.members) ? j.members : null; st.jclaimed = j.claimed || []; st.sig = ""; render(); } } } catch {}
+  }  // NFL messages to Jake from Help and the sign-in screen, newest first.
+  async function loadNotes() {
+    if (LEAGUE !== "nfl") { st.notes = null; return; }
+    try { const x = await fetch(`${WORKER}/notes?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); if (Array.isArray(j.notes)) { st.notes = j.notes; st.sig = ""; render(); } } } catch {}
   }
+
   async function runAudit() {
     clearTimeout(runAudit.t); runAudit.t = setTimeout(runAudit, 2 * 60000);
     try { const x = await fetch(`${WORKER}/games?audit=1&${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const a = await x.json(); if (Array.isArray(a?.problems)) { st.audit = a; st.sig = ""; render(); } } } catch {}
