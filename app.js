@@ -7921,8 +7921,8 @@ async function openInsights(gameId) {
     const brk = /^(HALF|END \d|END \dH)/i.test(st0) || /halftime|end of/i.test(String(lv.detail || ""));
     const brkLabel = /half/i.test(st0) || /halftime/i.test(String(lv.detail || "")) ? "HALFTIME" : (st0 || "BREAK");
     const field = `<div class="gc-stage">${brk ? `<div class="gc-brk"><span>${esc(brkLabel)}</span></div>` : ""}<div class="gc-field crt${brk ? " brk" : ""}">${mid}
-      <div class="gc-ez l" style="--tc:${aCol}"><span>${esc(A)}</span></div>
-      <div class="gc-ez r" style="--tc:${hCol}"><span>${esc(H)}</span></div>
+      <div class="gc-ez l" style="--tc:${aCol}"><i class="gc-gp" aria-hidden="true"><i class="gp-bar"></i></i><span>${esc(A)}</span></div>
+      <div class="gc-ez r" style="--tc:${hCol}"><i class="gc-gp" aria-hidden="true"><i class="gp-bar"></i></i><span>${esc(H)}</span></div>
       ${ticks}${brk ? "" : drive + gain + ball}
     </div></div>`;
     const status = shortStatus(lv.detail || `Q${lv.period ?? "?"} ${lv.clock ?? ""}`);
@@ -10333,3 +10333,41 @@ renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
   addEventListener("error", (e) => { if (e.message && !foreignError(e)) err(e.message); });
   addEventListener("unhandledrejection", (e) => err(e.reason?.message || e.reason));
 })();
+
+// Goalposts on the Gamecast field, drawn in screen space over the tilted
+// field: each back line carries a hidden anchor (.gp-bar) the field's tilt
+// slants like the line itself. From its two ends: a stem rises from the
+// middle, the crossbar runs parallel to the back line at the stem's top,
+// and the uprights stand straight up from the crossbar's ends.
+function drawGoalposts(stage) {
+  stage.querySelector(".gc-gpsvg")?.remove();
+  const sr = stage.getBoundingClientRect(); if (!sr.width) return;
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("class", "gc-gpsvg"); svg.setAttribute("width", sr.width); svg.setAttribute("height", sr.height);
+  svg.setAttribute("aria-hidden", "true");
+  for (const ez of stage.querySelectorAll(".gc-ez")) {
+    const bar = ez.querySelector(".gp-bar"); if (!bar) continue;
+    const r = bar.getBoundingClientRect(), left = ez.classList.contains("l");
+    // The back line leans out at the bottom: on the left goal the top end is
+    // to the right, on the right goal to the left.
+    const top = { x: (left ? r.right : r.left) - sr.left, y: r.top - sr.top }, bot = { x: (left ? r.left : r.right) - sr.left, y: r.bottom - sr.top };
+    const mid = { x: (top.x + bot.x) / 2, y: (top.y + bot.y) / 2 };
+    const H = 16, U = 20; // stem height, uprights above the crossbar
+    const a = { x: top.x, y: top.y - H }, b = { x: bot.x, y: bot.y - H };
+    const d = `M${mid.x} ${mid.y} L${mid.x} ${mid.y - H} M${a.x} ${a.y} L${b.x} ${b.y} M${a.x} ${a.y} L${a.x} ${a.y - U} M${b.x} ${b.y} L${b.x} ${b.y - U}`;
+    const g = document.createElementNS(NS, "g");
+    g.setAttribute("class", "gp" + (ez.classList.contains("show") && ez.classList.contains("fg") ? (ez.classList.contains("miss") ? " miss" : " lit") : ""));
+    g.innerHTML = `<path class="gp-sh" d="${d}"/><path class="gp-ln" d="${d}"/><ellipse class="gp-base" cx="${mid.x}" cy="${mid.y}" rx="4" ry="1.6"/>`;
+    svg.appendChild(g);
+  }
+  stage.appendChild(svg);
+}
+new MutationObserver((muts) => {
+  for (const m of muts) for (const n of m.addedNodes) {
+    if (n.nodeType !== 1) continue;
+    const st = n.matches?.(".gc-stage") ? [n] : n.querySelectorAll?.(".gc-stage") || [];
+    for (const s of st) requestAnimationFrame(() => drawGoalposts(s));
+  }
+}).observe(document.documentElement, { childList: true, subtree: true });
+addEventListener("resize", () => document.querySelectorAll(".gc-stage").forEach(drawGoalposts));
