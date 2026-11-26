@@ -1245,8 +1245,9 @@ async function hmacHex(secret, message) {
   return b64url(sig);
 }
 
+const SPORT_TAG = () => (typeof SPORT !== "undefined" && SPORT === "nfl" ? "nfl" : "cfb");
 async function signToken(env, manager) {
-  const payload = b64url(utf8(JSON.stringify({ m: manager, exp: Date.now() + AUTH_TOKEN_DAYS * 86400000 })));
+  const payload = b64url(utf8(JSON.stringify({ m: manager, s: SPORT_TAG(), exp: Date.now() + AUTH_TOKEN_DAYS * 86400000 })));
   return `${payload}.${await hmacHex(env.AUTH_SECRET, payload)}`;
 }
 
@@ -1263,6 +1264,9 @@ async function tokenOwner(env, token) {
   } catch {
     return null;
   }
+  // A token names its league; one from the other league never signs in here
+  // (tokens from before the tag have none and still work until they expire).
+  if (claims?.s && claims.s !== SPORT_TAG()) return null;
   if (!PICKS_MANAGERS.includes(claims?.m)) return null;
   if (!Number.isFinite(claims?.exp) || Date.now() >= claims.exp) return null;
   return claims.m;
