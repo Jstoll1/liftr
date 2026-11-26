@@ -1,21 +1,33 @@
 // Pick board image (Jake only): the rodeo art with each member's name,
 // picks made, tiebreaker set or not, and a flag (red none, yellow part,
 // green all in). Picks themselves stay hidden: only counts are drawn.
-// A nav shortcut makes it and hands it over to save or share.
+// A hidden nav sequence makes it and hands it over to save or share.
 (function () {
   const ME = "Jake", ART = "images/pickboard-rodeo.jpg";
   // Flag centre of each card on the 1024 x 1536 art (measured), left
   // column then right; every other spot is an offset from it.
   const ROWS = [382, 600, 824, 1048, 1301], COLS = [468, 978];
-  const btn = document.createElement("button");
-  btn.id = "nav-board-btn"; btn.className = "nav-btn hidden"; btn.type = "button";
-  btn.innerHTML = `<svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M2 2h12v12H2zm1 1v10h10V3zm1 1h3v3H4zm5 0h3v3H9zM4 9h3v3H4zm5 0h3v3H9z"/></svg><span class="nav-btn-label">Board</span>`;
-  const nav = document.getElementById("bottom-nav");
-  if (nav) nav.appendChild(btn);
+  // Hidden: tap the bottom nav's buttons left to right, one after another
+  // (each within 1.5s), to make the board. Jake only, college only.
   const who = () => { try { return typeof currentManager !== "undefined" ? currentManager : null; } catch { return null; } };
-  const sync = () => btn.classList.toggle("hidden", who() !== ME || !!window.LEAGUE && window.LEAGUE.sport === "nfl");
-  sync(); setInterval(sync, 2000);
-
+  const mine = () => who() === ME && !(window.LEAGUE && window.LEAGUE.sport === "nfl");
+  let seq = 0, last = 0, ready = null, busy = false;
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("#bottom-nav .nav-btn"); if (!b || !mine()) return;
+    const btns = [...document.querySelectorAll("#bottom-nav .nav-btn")].filter((x) => x.offsetParent && !x.classList.contains("hidden"));
+    const i = btns.indexOf(b), now = Date.now();
+    seq = i === 0 ? 1 : i === seq && now - last < 1500 ? seq + 1 : 0; last = now;
+    if (seq === 1) refresh();
+    if (btns.length > 1 && seq === btns.length) { seq = 0; share(); }
+  }, true);
+  // The phone only opens the share sheet straight after a tap, so the image
+  // is drawn ahead of time and kept fresh while Jake has the app open.
+  async function refresh() {
+    if (busy || !mine()) return; busy = true;
+    try { const cv = await draw(); ready = { at: Date.now(), blob: await new Promise((ok) => cv.toBlob(ok, "image/jpeg", 0.9)) }; } catch {}
+    busy = false;
+  }
+  setTimeout(refresh, 8000); setInterval(refresh, 120000);
   const img = (src) => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
   function rows(picks) {
     const total = GAMES.length;
@@ -63,17 +75,12 @@
     });
     return cv;
   }
-  async function share() {
-    btn.disabled = true;
-    try {
-      const cv = await draw();
-      const blob = await new Promise((ok) => cv.toBlob(ok, "image/jpeg", 0.9));
-      const file = new File([blob], `brochiefs-board-week-${typeof currentWeek !== "undefined" ? currentWeek : ""}.jpg`, { type: "image/jpeg" });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }).catch(() => {}); }
-      else { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); }
-    } catch (e) { alert("Couldn't make the board. Try again."); }
-    btn.disabled = false;
+  function share() {
+    if (!ready) { refresh(); return alert("Board is still loading. Try the taps again in a few seconds."); }
+    const file = new File([ready.blob], `brochiefs-board-week-${typeof currentWeek !== "undefined" ? currentWeek : ""}.jpg`, { type: "image/jpeg" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file] }).catch(() => {});
+    else { const a = document.createElement("a"); a.href = URL.createObjectURL(ready.blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); }
+    refresh();
   }
-  btn.addEventListener("click", share);
   window.__pickBoardDraw = draw;
 })();
