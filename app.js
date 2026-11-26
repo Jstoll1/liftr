@@ -1913,7 +1913,7 @@ function goToPlayerSelect() {
   if (me) {
     currentManager = me;
     if (window.LEAGUE?.sport !== "nfl" && fantasyDay()) { loginScreen.classList.add("hidden"); showHistory(); return; }
-    if (window.LEAGUE?.sport === "nfl" ? false : !picksStillOpen()) {
+    if (!picksStillOpen()) {
       loginScreen.classList.add("hidden");
       showScoreboard();
     } else {
@@ -11996,8 +11996,7 @@ function goToScoresNow() {
   // Picks while any game can still be picked or changed; Scores once all are locked.
   // A game on right now (kicked off in the last four hours) opens Scores.
   const now = Date.now(), liveNow = GAMES.some((g) => { const k = new Date(g.kickoff).getTime(); return k <= now && now - k < 4 * 3600e3; });
-  if (window.LEAGUE?.sport === "nfl") showPicksScreen();
-  else if (fantasyDay()) showHistory(); else if (picksStillOpen() && !liveNow) showPicksScreen(); else showScoreboard();
+  if (fantasyDay()) showHistory(); else if (picksStillOpen() && !liveNow) showPicksScreen(); else showScoreboard();
   document.documentElement.classList.remove("known");
 }
 (async () => {
