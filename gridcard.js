@@ -1,4 +1,4 @@
-// Grid card: the week's starting grid as a shareable picture, on the pool hall
+// Grid card: the week's starting grid as a shareable picture, on the rodeo
 // art: each manager's name on a panel, picks and tiebreaker below, and a
 // green, yellow or red pixel flag for full, partial or nothing in.
 // Opens by tapping the four nav buttons left to right within a few seconds.
@@ -52,9 +52,9 @@
   // columns, measured from the art. Everything drawn is relative to a
   // panel's name-bar corner.
   const PANELS = [[265, 410], [263, 614], [259, 825], [256, 1047], [251, 1276], [697, 410], [705, 614], [715, 825], [724, 1047], [737, 1277]]; // measured from the art
-  // Pool hall art (week 12 on). The race-grid art it replaced was
-  // assets/grid-bg-100-v3.webp, with bars at the old coordinates in git.
-  const BG = "assets/grid-bg-pool-v1.webp";
+  // Rodeo art (week 14 on). The pool hall art before it was
+  // assets/grid-bg-pool-v1.webp, with bars at the old coordinates in git.
+  const BG = "assets/grid-bg-rodeo-v1.webp";
   let bgImg = null;
   const loadBg = () => new Promise((res) => { if (bgImg) return res(bgImg); const im = new Image(); im.onload = () => { bgImg = im; res(im); }; im.onerror = () => res(null); im.src = BG; });
   const SMALL_FLAG = ["FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "P.......", "P.......", "P......."];
@@ -110,17 +110,17 @@
     // Name-bar top-left corners and widths on the $100 race-grid art
     // (1024x1536), left column then right. Every other part of a panel sits
     // at a fixed offset from its name bar (measured from panel 1).
-    // Measured on the pool hall art: the purple USER bars, users 1 to 5 down
-    // the left, 6 to 10 down the right.
-    const BARS = [[260, 304, 236], [266, 531, 232], [270, 757, 230], [281, 992, 222], [271, 1215, 230], [783, 304, 228], [794, 529, 220], [786, 757, 226], [791, 992, 222], [794, 1215, 220]];
-    const O = { nameH: 42, cntY: 65, cntR: 227, cellX: 15, cellY: 89, cellW: 145, cellH: 24, tbX: 118, tbY: 138, flagX: 176, flagY: 87, flagW: 62, flagH: 62 };
+    // Measured on the rodeo art: the red USER bars, users 1 to 5 down the
+    // left, 6 to 10 down the right (each bar's top-left corner and width).
+    const BARS = [[270, 267, 225], [270, 485, 225], [270, 709, 225], [270, 933, 225], [270, 1186, 225], [782, 267, 228], [782, 485, 228], [782, 709, 228], [782, 933, 228], [782, 1186, 228]];
+    const O = { nameH: 42, cntY: 66, cntR: 215, cellX: 27, cellY: 86, cellW: 131, cellH: 26, tbX: 123, tbY: 140, flagX: 168, flagY: 88, flagW: 60, flagH: 63 };
     // The week and the ready count ride in one plate under the title.
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     const sub = `${WEEK_LABEL.toUpperCase()} · ${left} · ${ready}/${rows.length} READY`;
     ctx.font = "700 15px 'Press Start 2P', monospace";
     const sw = ctx.measureText(sub).width + 30;
     // In the gap between the $100 title and the first row of panels.
-    const PY = 246;
+    const PY = 212;
     ctx.fillStyle = "rgba(14,8,34,.9)"; ctx.fillRect(512 - sw / 2, PY, sw, 32);
     ctx.strokeStyle = "#ffd21f"; ctx.lineWidth = 3; ctx.strokeRect(512 - sw / 2, PY, sw, 32);
     ctx.fillStyle = "#ffe45e"; ctx.fillText(sub, 512, PY + 17);
@@ -130,8 +130,8 @@
       const [bx, by, bw] = BARS[i];
       // The right column's panels are narrower: every across-offset scales
       // with the panel's own bar width (measured on panel 1, 236 wide).
-      const k = bw / 236;
-      const o = { ...O, cntR: O.cntR * k, cellX: O.cellX * k, cellW: O.cellW * k, tbX: O.tbX * k, flagX: O.flagX * k };
+      // The right column's cards start their cells further left.
+      const o = i < 5 ? O : { ...O, cntR: 218, cellX: 11, cellW: 144 };
       const p = ctx.getImageData(bx + bw - 30, by + 30, 1, 1).data; // right of the art's USER text
       const colour = `rgb(${p[0]},${p[1]},${p[2]})`;
       const dark = (p[0] * 0.299 + p[1] * 0.587 + p[2] * 0.114) > 170;
@@ -149,7 +149,7 @@
         ctx.fillStyle = "#2a1e00"; ctx.fillText(tag, bx + 14, by - 8);
       }
       // Selections count.
-      ctx.fillStyle = BODY; ctx.fillRect(bx + o.cntR - 88, by + o.cntY - 16, 120, 32);
+      ctx.fillStyle = BODY; ctx.fillRect(bx + o.cntR - 62, by + o.cntY - 14, 68, 28);
       ctx.font = "700 20px \"Chakra Petch\", system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = "#fff";
       ctx.fillText(`${r.n} / ${total}`, bx + o.cntR, by + o.cntY);
       // Ten cells.
@@ -161,12 +161,12 @@
         ctx.fillStyle = k < r.n ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.12)"; ctx.fillRect(cx, by + o.cellY, cw, 5);
       }
       // Tiebreaker in or not; the number stays private until kickoff.
-      ctx.fillStyle = BODY; ctx.fillRect(bx + o.tbX - 6, by + o.tbY - 15, 74, 30);
-      ctx.font = "900 20px \"Chakra Petch\", system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = r.tb ? "#39ff88" : "#e0102a";
+      ctx.fillStyle = BODY; ctx.fillRect(bx + o.tbX - 4, by + o.tbY - 13, o.flagX - o.tbX - 2, 26);
+      ctx.font = "900 17px \"Chakra Petch\", system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = r.tb ? "#39ff88" : "#e0102a";
       ctx.fillText(r.tb ? "✓ IN" : "✗", bx + o.tbX, by + o.tbY);
       // Flag box in the state colour.
       const fx = bx + o.flagX, fy = by + o.flagY;
-      ctx.fillStyle = BODY; ctx.fillRect(fx - 8, fy - 8, o.flagW + 18, o.flagH + 18);
+      ctx.fillStyle = BODY; ctx.fillRect(fx - 3, fy - 3, o.flagW + 6, o.flagH + 6);
       ctx.strokeStyle = fc; ctx.lineWidth = 5; ctx.strokeRect(fx + 2, fy + 2, o.flagW - 4, o.flagH - 4);
       px_(ctx, SMALL_FLAG, fx + 12, fy + 18, 5, { F: fc, P: "#ddd" });
       if (r.state === "go") for (let yy = 0; yy < 6; yy++) for (let xx = 0; xx < 8; xx++) if ((xx + yy) % 2) { ctx.fillStyle = "#052010"; ctx.fillRect(fx + 12 + xx * 5, fy + 18 + yy * 5, 5, 5); }
