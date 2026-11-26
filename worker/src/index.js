@@ -1493,6 +1493,9 @@ export function maskPicks(picks, kickoffs, now, viewer) {
     if (!st || m === viewer?.me) { out[m] = st; continue; }
     const p = {};
     for (const [id, pick] of Object.entries(st.picks || {})) {
+      // An empty or cleared entry is no pick: it must not show as hidden,
+      // or the grid card counts it as one.
+      if (!pick || typeof pick !== "object" || !pick.team) continue;
       const ko = kickoffs?.[id];
       p[id] = Number.isFinite(ko) && now >= ko ? pick : { hidden: true };
     }
