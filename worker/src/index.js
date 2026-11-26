@@ -40,7 +40,7 @@ async function useLeague(env) {
   setSport(SPORT);
   // College: from week 4 every pick locks at the first kickoff. NFL: each
   // game locks at its own kickoff, all season.
-  LOCK_ALL_FROM_WEEK = SPORT === "nfl" ? Infinity : 4;
+  LOCK_ALL_FROM_WEEK = SPORT === "nfl" ? 1 : 4;
   if (SPORT === "nfl") await loadRoster(env);
 }
 
@@ -1763,8 +1763,9 @@ export function sundayLockAt(times) {
   return at.length ? Math.min(...at) : null;
 }
 export function nflLocks(times) {
-  const anchor = sundayLockAt(times);
-  return times.map((t) => (anchor == null || !Number.isFinite(t) ? t : Math.min(t, anchor)));
+  // Every NFL pick locks at the week's first kickoff (Jake, Nov 26 2026).
+  const ok = times.filter(Number.isFinite), first = ok.length ? Math.min(...ok) : null;
+  return times.map((t) => (first == null || !Number.isFinite(t) ? t : first));
 }
 async function kickoffsFor(env, week) {
   const wk = await env.LIFTR_KV.get(gamesKey(week), "json");

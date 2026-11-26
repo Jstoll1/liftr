@@ -39,10 +39,10 @@
     // reads them on open (see loadRoster in app.js).
     roster: null,
     maxGames: 16,                  // every game of the week
-    lockAllFromWeek: Infinity,     // not the college rule; see lockAtSunday1pm
+    lockAllFromWeek: 1,            // every pick locks at the week's first kickoff (Jake, Nov 26)
     // Every game from Sunday's 1pm ET kickoff on locks at that kickoff; a
     // game before it (Thursday night, London) locks at its own.
-    lockAtSunday1pm: true,
+    lockAtSunday1pm: false,
     seasonWeeks: 18,
     // NFL finals land about 14 points either side of the line (Stern,
     // "On the probability of winning a football game", The American
