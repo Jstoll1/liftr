@@ -89,3 +89,30 @@ test("movement is season rank before and after the week", () => {
   assert.equal(seasonMovement([], wk(1, 2, 3).rows, false), null, "first counting week");
   assert.equal(seasonMovement([wk(1, 2, 3)], wk(1, 2, 3).rows, true), null, "exhibition");
 });
+
+test("worst pick moves off the pick of the week's game when another miss is close", () => {
+  // Logan alone on Michigan (pick of the week); three on Oklahoma lost the
+  // same game, two lost game 2. Worst pick tells the other story.
+  const rows = [
+    row("Logan", 1, 0, 0, [L(1, "Michigan", "ATS", "+5.5", "hit", 2, 2, "10-17"), L(2, "B", "ATS", "-3", "hit", 2, 2, "20-24")]),
+    row("a", 2, 0, 0, [L(1, "Oklahoma", "ATS", "-5.5", "miss", 0, 2, "10-17"), L(2, "A", "ATS", "+3", "miss", 0, 2, "20-24")]),
+    row("b", 2, 0, 0, [L(1, "Oklahoma", "ATS", "-5.5", "miss", 0, 2, "10-17"), L(2, "A", "ATS", "+3", "miss", 0, 2, "20-24")]),
+    row("c", 2, 0, 0, [L(1, "Oklahoma", "ATS", "-5.5", "miss", 0, 2, "10-17"), L(2, "B", "ATS", "-3", "hit", 2, 2, "20-24")]),
+  ];
+  const r = buildRecap(games, rows, 44, games[1], null);
+  assert.equal(r.best.team, "Michigan");
+  assert.equal(r.worst.team, "A");
+  assert.equal(r.worst.takers, 2);
+});
+
+test("worst pick is the biggest miss, not the most taken", () => {
+  // Three missed A +3 by 1 (lost by 4); one missed C -1.5 by 31.5 (lost by 30).
+  const rows = [
+    row("a", 0, 0, 0, [L(2, "A", "ATS", "+3", "miss", 0, 2, "20-24")]),
+    row("b", 0, 0, 0, [L(2, "A", "ATS", "+3", "miss", 0, 2, "20-24")]),
+    row("c", 0, 0, 0, [L(2, "A", "ATS", "+3", "miss", 0, 2, "20-24")]),
+    row("d", 0, 0, 0, [L(1, "Oklahoma", "ATS", "-1.5", "miss", 0, 2, "10-40")]),
+  ];
+  const r = buildRecap(games, rows, 44, games[1], null);
+  assert.equal(r.worst.team, "Oklahoma");
+});

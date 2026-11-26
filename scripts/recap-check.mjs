@@ -64,8 +64,36 @@ for (const wk of weeks) {
     const k = teamHit ? `${l.g}|${l.team}|${l.mode}` : `${l.g}|${l.team}`;
     groups.set(k, (groups.get(k) || 0) + 1);
   }
-  const most = Math.max(...groups.values());
-  r.worst?.takers === most ? ok(wk, `worst pick ${r.worst.pick}, ${most} takers`) : fail(wk, `worst pick says ${r.worst?.takers} takers, ledger's biggest losing group is ${most}`);
+  // Rule 2 (12 Nov 2026, recap.worstRule): worst pick avoids pick of the week's game unless that
+  // game is clearly the story (whole league lost on it, or the next miss
+  // elsewhere drew half as many or fewer). Older cards keep the old rule.
+  const lossSorted = [...groups.entries()].sort((a, b) => b[1] - a[1]);
+  let most = lossSorted[0][1];
+  if (r.worstRule === 2 && r.best) {
+    const bestG = settled.find((l) => l.result === "hit" && (wk.slate || []).some((g) => Number(g.id) === Number(l.g) && [g.awayShort, g.homeShort].includes(r.best.team)))?.g;
+    const gOf = (k) => k.split("|")[0];
+    if (bestG != null && gOf(lossSorted[0][0]) === String(bestG)) {
+      const alt = lossSorted.find(([k]) => gOf(k) !== String(bestG));
+      if (alt && most < rows.length && alt[1] * 2 > most) most = alt[1];
+    }
+  }
+  // Rule 4 (16 Nov 2026): worst pick is the biggest miss against the line
+  // (points short of what the pick needed); takers only break ties. Still
+  // off pick of the week's game unless the whole league lost on it.
+  if (r.worstRule >= 3) {
+    const slateOf = (g) => (wk.slate || []).find((x) => Number(x.id) === Number(g));
+    const missBy = (l) => { const g = slateOf(l.g); const [a, h] = String(l.score || "").split("-").map(Number); if (!g || !Number.isFinite(a) || !Number.isFinite(h)) return 0; const m = l.team === g.away ? a - h : h - a; const n = l.mode === "SU" ? 0 : Number(String(l.line || "").replace("\u2212", "-")); return -(m + (Number.isFinite(n) ? n : 0)); };
+    const misses = settled.filter((l) => l.result === "miss");
+    const bestG = r.best ? settled.find((l) => l.result === "hit" && [slateOf(l.g)?.awayShort, slateOf(l.g)?.homeShort].includes(r.best.team))?.g : null;
+    const top = Math.max(...misses.map(missBy));
+    const topG = misses.find((l) => missBy(l) === top)?.g;
+    const pool = bestG != null && String(topG) === String(bestG) && misses.filter((l) => String(l.g) === String(bestG)).length < rows.length ? misses.filter((l) => String(l.g) !== String(bestG)) : misses;
+    const want = Math.round(Math.max(...pool.map(missBy)) * 10) / 10;
+    const wantL = pool.find((l) => Math.round(missBy(l) * 10) / 10 === want), wantTeam = wantL ? (wantL.team === slateOf(wantL.g)?.away ? slateOf(wantL.g)?.awayShort : slateOf(wantL.g)?.homeShort) : null;
+    const good = r.worst?.team === wantTeam && (r.worst?.missBy == null || r.worst.missBy === want);
+    good ? ok(wk, `worst pick ${r.worst.pick}, missed by ${want}`) : fail(wk, `worst pick says ${r.worst?.team} (missed by ${r.worst?.missBy ?? "?"}), expected ${wantTeam} missed by ${want}`);
+  } else
+  r.worst?.takers === most ? ok(wk, `worst pick ${r.worst.pick}, ${most} takers`) : fail(wk, `worst pick says ${r.worst?.takers} takers, expected ${most}`);
 
   // Coin flip: the game with the smallest gap between its two most-taken sides.
   const gaps = [...new Set(all.map((l) => l.g))].map((g) => {
@@ -84,9 +112,12 @@ for (const wk of weeks) {
     ? ok(wk, `tiebreaker ${closest} off by ${minOff}`) : fail(wk, `tiebreaker ${JSON.stringify(r.tb)}; expected ${closest} off by ${minOff}`);
 
   // Movement: season rank through the previous counting week vs through this one.
-  const earlier = weeksAll.filter((w) => w.week < wk.week && w.complete && !w.exhibition);
+  // Week 1 (the exhibition) counts toward season points (league call, 63e00f5
+  // on 21 Oct 2026); weeks sealed before that froze their card without it.
+  const RULE_AT = Date.parse("2026-10-21T02:37:01Z"), withEx = (wk.sealedAt || 0) >= RULE_AT;
+  const earlier = weeksAll.filter((w) => w.week < wk.week && w.complete && (withEx || !w.exhibition));
   if (wk.exhibition) r.movement ? fail(wk, "movement card on an exhibition") : ok(wk, "movement: exhibition, card absent");
-  else if (!earlier.length) r.movement ? fail(wk, "movement card on the first counting week") : ok(wk, "movement: first counting week, card absent");
+  else if (!earlier.some((w) => !w.exhibition)) r.movement ? fail(wk, "movement card on the first counting week") : ok(wk, "movement: first counting week, card absent");
   else {
     const before = seasonRanks(earlier), after = seasonRanks([...earlier, wk]);
     const climbs = rows.filter((x) => before.has(x.name)).map((x) => ({ name: x.name, d: before.get(x.name) - after.get(x.name), from: before.get(x.name), to: after.get(x.name) }));

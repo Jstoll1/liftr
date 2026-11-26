@@ -10,6 +10,9 @@ phone width (390px) and, for shared pages, desktop width:
   header and its button sit on one row; lists line up in columns.
 - **Deadspace**: no empty bands or padding with nothing in it; nothing
   wraps onto its own line leaving a gap; cards hug their content.
+- **Odd counts stay balanced**: a grid of tiles must look balanced at every
+  count. In a two-column grid an odd last tile centres under the pair above
+  (never alone on the left); test with an odd count.
 
 Screenshot the real component (every state: closed, open, empty, long text)
 and look at it before committing. If it fails BAD, fix it first.
@@ -26,4 +29,95 @@ landscape) before pushing.
 ## Keep the "SAVED" stamp on game cards
 The "SAVED <day> <time>" line on each pick card stays: it is the user's
 audit trail that a pick reached the league. Never hide or shorten it to
-save space.
+save space. One exception, at Jake's request: the leaderboard player sheet
+(tap a row) shows picks without the saved time.
+
+## Tick off fixes from a pasted friction log
+When Jake pastes lines from the Live "Admin friction" log and a fix ships,
+add one entry to `fixes.json` (main) in the same push:
+`{ "k": "<dead-tap|rage|js-error|quick-exit>", "match": "<text from the line>", "at": <commit time in ms>, "commit": "<short sha>", "note": "<what changed>" }`.
+Live then ticks every matching entry from before the fix; a repeat after it
+stays open, which flags a fix that did not hold.
+
+The same goes for a pasted health log brief ("Brochiefs CFB health log:
+..."): add `{ "k": "<health kind, e.g. worker-fail, espn-fail, upstream-fail>",
+"match": "<text from the entry, e.g. /auth>", "at": <commit time in ms>,
+"commit": "<short sha>", "note": "<what changed>" }` to `fixes.json` in the
+same push, and Live closes every matching health entry from before it.
+
+## "Check Live"
+`BROCHIEFS_KEY=… node scripts/live-brief.mjs` prints everything open on Live
+(health, stuck moments, Ask the Chief misses; last 24h, filtered like Live).
+When Jake says "check Live", run it, fix what it lists, and add the
+`fixes.json` entries as above. Needs `BROCHIEFS_KEY` in the environment and
+`liftr-ai.jhs797.workers.dev` allowed by its network policy. Never run it in
+a GitHub Action and never commit its output.
+
+## Retro arcade rules
+Retro is the base look (`styles.css`; Pro overrides in `themes/pro.css`).
+One look everywhere, a clean arcade, not a funhouse:
+
+- **Background**: navy glass (`--bg`, `--bg2`, `--card-bg`).
+- **Frames**: standard cards wear a thin subtle charcoal frame
+  (`--card-border`), no glow. Purple (`--card-border-feature`) and gold
+  are for featured content only; the one standout per screen glows (the
+  replay champion, gold).
+- **Corners**: Retro 10px radius. No chamfers.
+- **Type**: pixel font (Press Start 2P) for kickers, headings and big
+  numbers; body stays plain.
+- **Colour, with meaning**: cyan = you / live / structure; green = right /
+  won; pink = wrong / lost; gold = money / champion; purple = featured frames. Use
+  the tokens in `:root` (`var(--neon-*)`, `rgba(var(--*-rgb), a)`), never
+  raw hex in a Retro rule.
+- **No boxes inside boxes**: stats sit on one line with thin dividers.
+- **One block per component**: change a Retro rule where it lives (search
+  `==== RETRO:`); never append another override layer below it.
+- Run `node scripts/check-retro.mjs` before pushing style changes, and
+  screenshot with animations finished (not disabled) so the check matches
+  a real phone.
+
+## Pushing to main: one deploy at a time
+Every push to main starts a GitHub Pages deploy, and a new push cancels the
+one still running. Before pushing again, check the last "pages build and
+deployment" run (workflow 346657123) has finished. If its publish step times
+out or fails, the site stays on the last good build: push a real change
+(never an empty commit) to start a fresh deploy, then check it went green.
+Check the run's head_sha too: Pages has built the commit before the one
+just pushed, which leaves the site a push behind while showing green.
+
+## Teach the Chief every new term
+Ask Chief only knows what its prompt and tools tell it. When a feature adds
+a name members will say (a stat, a line, a button, a pot), add one line to
+the glossary in `weekChatSystem` (`worker/src/weekask.js`): what it means
+and which tool has its numbers. Terms the Chief still doesn't know show on
+Live as "UNKNOWN TERM"; add each to the glossary when you see it.
+
+## Always keep the rank
+A ranked team shows its rank (#12) wherever it shows on a card. When space
+is short the name shortens (Va Tech, Ohio St) or truncates; the rank never
+drops or shrinks.
+
+## Every team mention gets its logo
+Anywhere a team is named on screen, show its logo with it. In a line of
+text use `teamInline(name, espnId)` or `matchInline(game)` from app.js
+(logo then name, sized to the text); cards and rows use their own logo
+slot. Never print a bare team name in new UI. One logo per team per card:
+if the card's art or an earlier line already shows that team, the name
+stays plain text.
+
+## Pressure test the Chief
+`chief-tests.json` is the Chief's test set (run from Live's Ask Chief page:
+Pressure test, on Jake's phone). When a Chief fix ships, add the question
+that exposed it as a test in the same push (`"regression": true`, a `note`
+with the date and what broke, `checks` a good answer must pass). When a
+feature adds something members will ask about, add a test for it
+(`"source": "feature"`). When Jake pastes a pressure test report, grade
+every answer against its tool data, rank the problems with their cause,
+recommend fixes, and after the fixes ask for a rerun. The same goes for a
+pasted "Brochiefs Chief test brief" (failures only): fix every failing
+test, regressions first; for each test give it `checks` that would have
+caught the bad answer (a flagged test arrives with none); never loosen a
+check just to pass unless the answer was actually right, and say so when
+you do. The score should only move up: if a fix trades one failure for
+another, say which and why.
+

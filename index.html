@@ -33,8 +33,14 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Chakra+Petch:wght@500;600;700&family=VT323&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Chakra+Petch:wght@500;600;700&family=VT323&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Chakra+Petch:wght@500;600;700&family=VT323&display=swap" rel="stylesheet" /></noscript>
-  <meta name="build" content="712121826916" />
-  <link rel="stylesheet" href="styles.css?v=433052966505" />
+  <meta name="build" content="129075939944" />
+  <link rel="stylesheet" href="styles.css?v=682928191965" />
+  <!-- Retro is the look for everyone again (2026-11-02; Pro was default from 2026-10-31); the
+       preview site runs the opposite (Pro) so both stay in view.
+       ?theme=classic switches a phone back to Retro and remembers it;
+       ?theme=pro returns. To roll everyone back to Retro, set trial=false. Scoped to
+       html.pro, so Retro never sees a rule of it. -->
+  <script>(function(){var trial=false,pv=/(^|\.)brochiefs-preview\.pages\.dev$/.test(location.hostname),q=location.search,k="brochiefs_style";if(!trial&&!pv){try{localStorage.removeItem(k)}catch(e){}window.APP_STYLE="classic";return;}try{if(/[?&]theme=pro\b/.test(q))localStorage.setItem(k,"pro");if(/[?&]theme=classic\b/.test(q))localStorage.setItem(k,"classic");}catch(e){}var v="";try{v=localStorage.getItem(k)||""}catch(e){}var main=trial,on=v?v==="pro":(pv?!main:main);window.APP_STYLE=on?"pro":"classic";if(!on)return;document.documentElement.classList.add("pro");var l=document.createElement("link");l.rel="stylesheet";l.href="themes/pro.css?v=710080433415";document.head.appendChild(l);})();</script>
   <link rel="stylesheet" href="history.css?v=609823000375" />
 </head>
 <body>
@@ -300,6 +306,7 @@
   <main id="scoreboard-screen" class="screen hidden">
     <div class="wrap wide">
       <div id="week-champ" class="week-champ hidden" aria-live="polite"></div>
+      <button id="since-line" class="since-line hidden" type="button"></button>
       <!-- No screen title here: the bottom nav already says which tab this
            is, and the board's state now rides in the score strip below.
            The standalone stamp is the fallback for when there is no strip
@@ -310,6 +317,8 @@
            sit under it. -->
       <button id="recap-toggle" class="rules-heading section-heading all-picks-toggle hidden" type="button" aria-expanded="true">📰 RECAP <span class="all-picks-caret">▾</span></button>
       <div id="recap-panel" class="recap-panel hidden"></div>
+      <div id="next-slate" class="next-slate hidden" role="status"></div>
+      <div id="season-strip" class="season-strip hidden"></div>
 
       <button id="scoreboard-updated" class="updated-stamp" type="button" title="Tap to refresh">updating…</button>
       <button id="insert-coin" class="insert-coin hidden" type="button"></button>
@@ -321,7 +330,8 @@
 
       <div class="lb-head">
         <button id="leaderboard-toggle" class="rules-heading section-heading all-picks-toggle" type="button" aria-expanded="true">🏆 LEADERBOARD <span class="all-picks-caret">▾</span></button>
-        <button id="h2h-open" class="h2h-btn" type="button" title="Compare two cards">VS</button>
+        <button id="sim-open" class="sim-btn" type="button" title="Watch the simulator run every game">SIM</button>
+<button id="h2h-open" class="h2h-btn" type="button" title="Compare two cards">VS</button>
       </div>
       <div id="rankings-list" class="rankings-list"></div>
 
@@ -344,6 +354,24 @@
   <!-- LEAGUE HISTORY SCREEN (archive rendered by history.js) -->
   <main id="history-screen" class="screen history-screen hidden">
     <div class="archive-main">
+    <section id="fx" class="fx" aria-label="Fantasy league"></section>
+    <div class="fx-ask">
+        <form id="archive-ask" class="archive-ask" autocomplete="off">
+          <label class="archive-ask-label" for="archive-q">ASK CHIEF ANYTHING</label>
+          <div class="archive-ask-line">
+            <span class="archive-ask-prompt">&gt;</span>
+            <div class="archive-ask-field">
+              <div class="archive-ask-render" aria-hidden="true"><span id="archive-mirror-text"></span><span class="archive-ask-cursor"></span><span id="archive-ghost" class="archive-ask-ghost">ask about any season, owner or record</span></div>
+              <textarea id="archive-q" class="archive-ask-input" rows="1" maxlength="300" enterkeyhint="send" aria-label="Ask Chief" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+            </div>
+          </div>
+          <div id="archive-a" class="archive-ask-answer hidden"></div>
+          <div id="archive-receipts" class="archive-receipts hidden" aria-label="Receipts"></div>
+          <div id="archive-followups" class="archive-followups hidden" aria-label="Ask next"></div>
+        </form>
+    </div>
+    <details class="hist-fold" id="hist-fold">
+      <summary><span>LEAGUE HISTORY</span><small>2014–2025 · 12 seasons</small><i aria-hidden="true">▾</i></summary>
     <section class="archive-hero" id="top">
       <div>
         <div class="hero-content">
@@ -353,19 +381,7 @@
           <p class="hero-copy">Twelve seasons have crowned twelve champions, and every title, finish and name is preserved here.</p>
         </div>
 
-        <form id="archive-ask" class="archive-ask" autocomplete="off">
-          <label class="archive-ask-label" for="archive-q">ASK THE ARCHIVE ANYTHING</label>
-          <div class="archive-ask-line">
-            <span class="archive-ask-prompt">&gt;</span>
-            <div class="archive-ask-field">
-              <div class="archive-ask-render" aria-hidden="true"><span id="archive-mirror-text"></span><span class="archive-ask-cursor"></span><span id="archive-ghost" class="archive-ask-ghost">ask about any season, owner or record</span></div>
-              <textarea id="archive-q" class="archive-ask-input" rows="1" maxlength="300" enterkeyhint="send" aria-label="Ask the archive" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
-            </div>
-          </div>
-          <div id="archive-a" class="archive-ask-answer hidden"></div>
-          <div id="archive-receipts" class="archive-receipts hidden" aria-label="Receipts"></div>
-          <div id="archive-followups" class="archive-followups hidden" aria-label="Ask next"></div>
-        </form>
+
 
         <div class="hero-stat-grid" aria-label="League history summary">
           <div class="hero-stat"><strong>12</strong><span>Completed seasons</span></div>
@@ -427,6 +443,7 @@
     </section>
 
     <footer class="methodology"><strong>Record note</strong><p>Regular-season records, points for and points against come from ESPN season standings. Final standing, championship, runner-up and third-place finish come from ESPN league history. The active Record Book excludes former members. Former members remain part of season history and league-wide records. Raw scoring totals are not adjusted for scoring changes across eras.</p></footer>
+    </details>
   </div>
   </main>
 
@@ -520,6 +537,8 @@
         <div id="admin-season-note" class="admin-season-note"></div>
 
         <button id="admin-suggest-btn" class="admin-btn primary wide" type="button">★ SUGGEST 10 GAMES</button>
+
+        <details id="admin-slate" class="admin-slate"><summary><span class="as-h">YOUR SLATE</span><span id="admin-slate-n" class="as-n"></span><i class="as-car">▾</i></summary><ol id="admin-slate-list" class="as-list"></ol></details>
 
         <div class="admin-filter-row">
           <label class="admin-search"><input id="admin-search" type="search" inputmode="search" enterkeyhint="search" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Filter by team, e.g. van" /></label>
@@ -641,8 +660,8 @@
       <span class="nav-btn-label">Side bet</span>
     </button>
     <button id="nav-history-btn" class="nav-btn" type="button">
-      <svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M4 1h8v1h2v1h1v3h-1v1h-1v1h-1v1h-1v1H9v2h2v1h1v1H4v-1h1v-1h2v-2H6V9H5V8H4V7H3V6H2V3h1V2h1zm0 2H3v2h1v1h1V3zm8 0v3h1V5h1V3z"/></svg>
-      <span class="nav-btn-label">History</span>
+      <svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M8 0h1v1h1v2h1v1h1v1h1v2h1v4h-1v2h-1v1h-2v1H6v-1H4v-1H3v-2H2V7h1V6h1v1h1V5h1V3h1V1h1z"/><path fill="#ffd23f" d="M8 7h1v1h1v1h1v3h-1v1H9v1H7v-1H6v-1H5V9h1v1h1V8h1z"/></svg>
+      <span class="nav-btn-label">Fantasy</span>
     </button>
     <button id="nav-trivia-btn" class="nav-btn" type="button">
       <svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M3 4h10v1h1v1h1v5h-1v1h-1v1h-2v-1H5v1H3v-1H2v-1H1V6h1V5h1zm1 2v2H3v1h1v2h1V9h1V8H5V6zm7 0v1h1v1h-1v1h1v-1h1V7h-1V6zm-2 2v1h1V8z"/></svg>
@@ -690,6 +709,6 @@
   <script data-goatcounter="https://brochiefs.goatcounter.com/count"
           data-goatcounter-settings='{"no_onload": true}'
           async src="https://gc.zgo.at/count.js"></script>
-  <script src="app.js?v=050528261695"></script>
+  <script src="app.js?v=310213532833"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 // that a run never touches the slate, results or picks. Run: node --test worker/test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sideOf, extractPicks, gamePicks, picksKey, outletRank, tidyNote, verifyQuote, parseRoster, fillPositions, parseGdelt, extractInjuries, gameInjuries, injuriesKey, searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineSampleAdded, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
+import { gameNews, sideOf, extractPicks, gamePicks, picksKey, outletRank, tidyNote, verifyQuote, parseRoster, fillPositions, parseGdelt, extractInjuries, gameInjuries, injuriesKey, searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineSampleAdded, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
 
 const game = { id: 3, away: "Coastal Carolina", home: "Georgia Southern", awayShort: "Coastal", homeShort: "GA Southern", awayId: 324, homeId: 290, favorite: "Georgia Southern", spread: 2.5, kickoff: "2099-10-03T23:00:00Z", kickoffLabel: "Sat 7:00 PM ET" };
 
@@ -338,4 +338,20 @@ test("logins and app opens answer only the app owner's key, never the slate key"
     assert.notEqual(await call("SLATE"), 200, path);
     assert.notEqual(await call(""), 200, path);
   }
+});
+
+test("gameNews answers from a stale saved copy at once and refreshes in the background", async () => {
+  const m = new Map();
+  const env = { LIFTR_KV: { get: async (k, t) => { const v = m.get(k); return v == null ? null : t === "json" ? JSON.parse(v) : v; }, put: async (k, v) => { m.set(k, v); } } };
+  const key = `news:v2:g:${game.awayId}:${game.homeId}`;
+  m.set(key, JSON.stringify({ at: Date.now() - 2 * 3600e3, items: [{ title: "old" }], errors: [] }));
+  const later = [];
+  const t0 = Date.now();
+  const r = await gameNews(env, game, { waitUntil: (p) => later.push(p) });
+  assert.ok(Date.now() - t0 < 200, "did not wait on the feeds");
+  assert.equal(r.stale, true); assert.equal(r.items[0].title, "old");
+  assert.equal(later.length, 1);
+  const r2 = await gameNews(env, game, { waitUntil: (p) => later.push(p) });
+  assert.equal(r2.stale, true); assert.equal(later.length, 1, "one refresh at a time");
+  await Promise.allSettled(later);
 });

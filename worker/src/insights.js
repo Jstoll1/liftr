@@ -432,12 +432,13 @@ export function parseGdelt(json) {
 }
 // One fetch with a single retry after a short pause when the host is
 // throttling (Google's RSS answers 503 to busy edges).
-// Successful feed bodies are kept in KV for thirty minutes so repeat opens
-// of the same game do not hit the same throttled host again.
+// Successful feed bodies are fresh for thirty minutes, so repeat opens of
+// the same game do not hit the same throttled host again, and kept a day
+// as the fallback when a source fails or misses its deadline.
 // A service that answered 429 is left alone for ten minutes (GDELT in
 // particular); a failed call falls back to the last copy we kept.
 const COOL_MS = 10 * 60 * 1000, SOURCE_MS = 4000;
-const coolUntil = {};
+const coolUntil = {}, timeoutsInRow = {};
 const hostOf = (url) => { try { return new URL(url).hostname; } catch { return ""; } };
 async function fetchText(url, accept, env = null) {
   const key = feedCacheKey(url), host = hostOf(url);
@@ -450,12 +451,24 @@ async function fetchText(url, accept, env = null) {
   // turns us away (Google News answers the Worker 503) no longer holds the
   // whole news answer up; whatever arrived in time is used.
   let res;
-  try { res = await fetch(url, { headers: { "User-Agent": UA, Accept: accept, "Accept-Language": "en-US,en;q=0.9" }, signal: AbortSignal.timeout(SOURCE_MS) }); }
-  catch (err) { return fallback(err?.name === "TimeoutError" || err?.name === "AbortError" ? `timed out after ${SOURCE_MS / 1000}s` : String(err?.message || err)); }
+  // With an older copy in hand the wait is a second and a half, not four:
+  // a slightly old headline beats a sheet that hangs.
+  const wait = stale ? 1500 : SOURCE_MS;
+  try { res = await fetch(url, { headers: { "User-Agent": UA, Accept: accept, "Accept-Language": "en-US,en;q=0.9" }, signal: AbortSignal.timeout(wait) }); }
+  catch (err) {
+    const timedOut = err?.name === "TimeoutError" || err?.name === "AbortError";
+    // A host that just timed out is left alone for five minutes, so the
+    // next opens answer at once instead of each waiting out the timer.
+    // Each timeout in a row doubles the rest (5, 10, 20, then 60 minutes),
+    // so a source that keeps crawling (GDELT) stops being asked at all.
+    if (timedOut) { const n = (timeoutsInRow[host] = (timeoutsInRow[host] || 0) + 1); const ms = Math.min(60 * 60 * 1000, (COOL_MS / 2) * 2 ** (n - 1)); coolUntil[host] = Date.now() + ms; if (env?.LIFTR_KV) { try { await env.LIFTR_KV.put(`cool:${host}`, String(coolUntil[host]), { expirationTtl: Math.round(ms / 1000) + 60 }); } catch {} } }
+    return fallback(timedOut ? `timed out after ${wait / 1000}s` : String(err?.message || err));
+  }
   if (res.ok) {
+    timeoutsInRow[host] = 0;
     const text = await res.text();
     // Feed bodies are small; the site's feed file is not, so the cap is generous.
-    if (env?.LIFTR_KV) { try { await env.LIFTR_KV.put(key, JSON.stringify({ at: Date.now(), text: text.slice(0, 4000000) }), { expirationTtl: 6 * 3600 }); } catch {} }
+    if (env?.LIFTR_KV) { try { await env.LIFTR_KV.put(key, JSON.stringify({ at: Date.now(), text: text.slice(0, 4000000) }), { expirationTtl: 24 * 3600 }); } catch {} }
     return { ok: true, text };
   }
   if (res.status === 429 || res.status === 503) {
@@ -487,10 +500,30 @@ export function filterNews(items) {
 // Slate names carry poll ranks ("#4 Miami") and parentheses ("Miami (OH)");
 // neither appears in headlines, so strip them before searching.
 export const searchName = (n) => String(n || "").replace(/^#\d+\s+/, "").replace(/[()]/g, "").replace(/\s+/g, " ").trim();
-export async function gameNews(env, game) {
+// News for a game. Fresh for 30 minutes; after that the saved copy (kept six
+// hours) answers at once and a new one is fetched in the background, so an
+// open never waits on the feeds (that wait was 4 to 5 seconds) unless there
+// is nothing saved at all.
+const newsRefreshing = new Set();
+export async function gameNews(env, game, ctx = null) {
   const key = `news:v2:g:${game.awayId}:${game.homeId}`;
   const hit = await env.LIFTR_KV.get(key, "json");
-  if (hit && Date.now() - hit.at < 30 * 60 * 1000) return hit;
+  if (hit && Date.now() - hit.at < (hit.items?.length ? 30 : 15) * 60 * 1000) return hit;
+  if (hit?.items?.length && ctx?.waitUntil) {
+    if (!newsRefreshing.has(key)) { newsRefreshing.add(key); ctx.waitUntil(fetchGameNews(env, game, key).catch(() => {}).finally(() => newsRefreshing.delete(key))); }
+    return { ...hit, stale: true };
+  }
+  return withBudget(fetchGameNews(env, game, key), ctx, { items: [], pending: true });
+}
+// A cold fetch (nothing stored yet) answers within about three seconds:
+// whatever is done by then, or an empty "still looking" reply while the
+// fetch finishes behind the response and stores its result for the next open.
+function withBudget(work, ctx, fallback, ms = 3000) {
+  if (!ctx?.waitUntil) return work;
+  ctx.waitUntil(work.catch(() => {}));
+  return Promise.race([work, new Promise((r) => setTimeout(() => r(fallback), ms))]);
+}
+async function fetchGameNews(env, game, key) {
   const q = (s) => `https://news.google.com/rss/search?q=${encodeURIComponent(s)}+when:7d&hl=en-US&gl=US&ceid=US:en`;
   const A = searchName(game.away), H = searchName(game.home);
   const queries = [
@@ -526,8 +559,10 @@ export async function gameNews(env, game) {
   const all = filterNews(results.flatMap((r) => r.items))
     .sort((a, b) => (a.about === "game" ? 0 : 1) - (b.about === "game" ? 0 : 1) || String(b.published).localeCompare(String(a.published)));
   const out = { at: Date.now(), items: all.slice(0, 18), errors: results.filter((r) => r.error).map((r) => `${r.tag}: ${r.error}`) };
-  // Only cache a result that found something; an empty one retries next open.
-  if (out.items.length) { try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 6 * 3600 }); } catch {} }
+  // A result with articles is kept a day (served stale and refreshed behind
+  // the response after 30 minutes). An empty one is kept 15 minutes, so a
+  // game with no coverage does not run all eleven searches on every open.
+  try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: out.items.length ? 24 * 3600 : 15 * 60 }); } catch {}
   return out;
 }
 
@@ -954,7 +989,7 @@ export async function gameInjuries(env, week, game, fromPhone = null, ctx = null
     ctx.waitUntil(refreshInjuries(env, week, game, key).catch((err) => console.error("injuries refresh", String(err?.message || err))));
     return { ...hit, stale: true };
   }
-  return refreshInjuries(env, week, game, key, fromPhone);
+  return withBudget(refreshInjuries(env, week, game, key, fromPhone), ctx, { away: hit?.away || [], home: hit?.home || [], pending: true });
 }
 async function refreshInjuries(env, week, game, key, fromPhone = null) {
   const clean = (list) => (Array.isArray(list) ? list : []).filter((n) => n && typeof n.headline === "string").slice(0, 12).map((n) => ({ headline: String(n.headline).slice(0, 200), blurb: n.blurb ? String(n.blurb).slice(0, 3000) : null, source: n.source ? String(n.source).slice(0, 60) : null, link: typeof n.link === "string" ? n.link.slice(0, 300) : null, published: n.published || null }));

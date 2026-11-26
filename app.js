@@ -1,5 +1,7 @@
 // Arrived via brochiefs.com/admin: set before anything else runs.
 window.__adminEntry = /[?&]admin(=|&|$)/.test(location.search) || location.hash === "#admin";
+// Live hosts the slate editor in a frame (?admin=1&embed=slate): either key opens the editor, never the console.
+window.__slateEmbed = window.__adminEntry && /[?&]embed=slate\b/.test(location.search) && window.parent !== window;
 // Opened by the admin's live page as a preview (?view=game&x=401): a quiet
 // look at one screen, nobody signed in, no popups, nothing reported.
 window.__liveView = new URLSearchParams(location.search).get("view") || "";
@@ -85,7 +87,7 @@ const WORKER_URL = window.LEAGUE?.worker || "https://liftr-ai.jhs797.workers.dev
 const PREVIEW = /(^|\.)brochiefs-preview\.pages\.dev$/.test(location.hostname);
 if (PREVIEW) {
   const realFetch = window.fetch.bind(window);
-  const readOnlyPost = /^\/(insights\/|history-ask$)/;
+  const readOnlyPost = /^\/(insights\/|history-ask$|week-ask$|week-chat$|season-roast$)/;
   window.fetch = (input, init = {}) => {
     const url = typeof input === "string" ? input : input?.url || "";
     const method = String(init.method || (typeof input === "string" ? "GET" : input?.method) || "GET").toUpperCase();
@@ -125,13 +127,28 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["attract-facts.js?v=621767480045", "history.js?v=009172634093", "sim.js?v=374204176553", "gridcard.js?v=298316201101"];
+const EXTRAS = ["ask-ui.js?v=858628939543", "lightning-ui.js?v=906038752210", "attract-facts.js?v=621767480045", "history.js?v=174497337064", "fantasy-ui.js?v=807149169642", "sim.js?v=374204176553", "gridcard.js?v=604833626597"];
 let extrasP = null;
 function ensureExtras() {
-  if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
+  // NFL: no Ask Chief and no fantasy page.
+  if (!extrasP) extrasP = EXTRAS.filter((src) => window.LEAGUE?.sport !== "nfl" || !/^(ask-ui|fantasy-ui)\.js/.test(src)).reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
   return extrasP;
 }
-const extrasSoon = () => setTimeout(() => (window.requestIdleCallback || ((f) => setTimeout(f, 1)))(() => ensureExtras(), { timeout: 2000 }), 600);
+const extrasSoon = () => setTimeout(() => (window.requestIdleCallback || ((f) => setTimeout(f, 1)))(() => { ensureExtras(); seasonSoon(); }, { timeout: 2000 }), 600);
+// The season strip's pick download (every pick, every week) waits until the
+// screen is usable, so it never competes with what the moment needs: the
+// slate, sign in and picks while picks are open; live scores and standings
+// once games are under way. It is skipped while a week is being played
+// (the strip only shows before the first kickoff or on the week's replay);
+// opening a player card or the season window still fetches on demand.
+function seasonSoon() {
+  try {
+    if (!loadMe() || typeof fetchSeasonLedger !== "function") return;
+    const weekDone = !!weekSummaries?.[currentWeek]?.complete;
+    if (firstKickoffPassed() && !weekDone) return;
+    fetchSeasonLedger().then((l) => { if (l && l.length) try { renderRecap(); } catch {} }).catch(() => {});
+  } catch {}
+}
 addEventListener("load", () => setTimeout(ensureExtras, 4000));
 function markUsable() { if (appHealth.ld == null) { extrasSoon(); appHealth.ld = Math.round(performance.now() - healthT0); if (appHealth.ld > 6000 && !document.hidden && hiddenSince === 0) opsEvent("slow-load", `first screen ${(appHealth.ld / 1000).toFixed(1)}s`); } }
 // Each failure as it happens, for the live page's health log: batched a few
@@ -143,7 +160,19 @@ const opsQueue = [], opsSent = new Set();
 let pageLeaving = false;
 addEventListener("beforeunload", () => { pageLeaving = true; });
 addEventListener("pageshow", () => { pageLeaving = false; });
+// Several calls slow in the same few seconds is the phone's connection
+// (or a wake from sleep), not each route: one line for the burst.
+let slowBurst = [];
 function opsEvent(k, d) {
+  if (/-slow$/.test(k)) {
+    slowBurst.push({ k, d });
+    clearTimeout(opsEvent.sb);
+    opsEvent.sb = setTimeout(() => { const b = slowBurst; slowBurst = []; if (b.length >= 3) opsEventNow("slow-load", `${b.length} calls slow together (connection): ${b.map((x) => x.d).join(", ").slice(0, 120)}`); else b.forEach((x) => opsEventNow(x.k, x.d)); }, 3000);
+    return;
+  }
+  opsEventNow(k, d);
+}
+function opsEventNow(k, d) {
   const key = `${k}|${d}`;
   if (pageLeaving || opsSent.has(key) || opsSent.size >= 10 || window.__liveView) return;
   opsSent.add(key); opsQueue.push({ k, d });
@@ -185,7 +214,17 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) hidde
       if (performance.now() - t0 > 4000 && onScreen()) { appHealth.sl[b]++; opsEvent(`${b}-slow`, `${where} ${((performance.now() - t0) / 1000).toFixed(1)}s`); }
       return r;
     } catch (err) {
-      if (err?.name !== "AbortError") { appHealth.ff[b]++; if (navigator.onLine !== false) opsEvent(`${b}-fail`, `${(() => { try { return new URL(url).pathname; } catch { return ""; } })()} ${String(err?.message || "network").slice(0, 40)}`); }
+      // One dropped read (Safari's "Load failed") is usually a blip or the
+      // phone going to the background mid-call: try once more, and log only
+      // a read that fails twice while the page stayed on screen.
+      const get = !init?.method || /^get$/i.test(init.method);
+      if (err?.name !== "AbortError" && get && !pageLeaving) {
+        await new Promise((ok) => setTimeout(ok, 1000));
+        try { return await raw(input, init); } catch (e2) { if (!onScreen()) throw e2; err = e2; }
+      }
+      // A read with its own fallback (soft) is logged by its caller, and only
+      // if the fallback fails too.
+      if (err?.name !== "AbortError" && (!get || onScreen()) && !init?.soft) { appHealth.ff[b]++; if (navigator.onLine !== false) opsEvent(`${b}-fail`, `${(() => { try { return new URL(url).pathname; } catch { return ""; } })()} ${String(err?.message || "network").slice(0, 40)}`); }
       throw err;
     }
   };
@@ -311,11 +350,24 @@ function weekIsFinal() {
 // 50px logo on a 3x screen and about a sixth of the 500px file's weight.
 // A failed resized logo falls back to the full file, then to the light cut.
 const LOGO_PX = 160;
+// A team named in a line of text: its logo, then its name. Small and on the
+// text's baseline; the name stands alone if the logo cannot load.
+function teamInline(name, id) {
+  const n = escapeCd(name ?? "");
+  return id ? `<em class="t-inl"><img class="t-inl-logo" src="${logoUrl(id)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">${n}</em>` : n;
+}
+const matchInline = (g, sep = "@") => `${teamInline(g.awayShort, g.awayId)} ${sep} ${teamInline(g.homeShort, g.homeId)}`;
 function logoUrl(espnId) {
   return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/${window.LEAGUE?.logos || "ncaa"}/${window.LEAGUE?.logoCut || "500-dark"}/${espnId}.png&w=${LOGO_PX}&h=${LOGO_PX}`;
 }
 document.addEventListener("error", (e) => {
   const img = e.target;
+  // Last five logos, once the dark and plain ESPN logos have both failed:
+  // ESPN's own link for that opponent, then the team code as text.
+  if (img instanceof HTMLImageElement && img.closest?.(".gs-g") && !/combiner|\/500-dark\//.test(img.src)) {
+    if (img.dataset.alt && img.src !== img.dataset.alt) { const a = img.dataset.alt; delete img.dataset.alt; img.src = a; return; }
+    const b = document.createElement("b"); b.textContent = (img.alt || "?").slice(0, 4); img.replaceWith(b); return;
+  }
   if (!(img instanceof HTMLImageElement) || !img.src.includes("a.espncdn.com/")) return;
   // When there is a fallback to try, the error stops here: an <img> whose
   // own onerror hides it would otherwise hide the fallback as it loads.
@@ -361,7 +413,11 @@ const AVATAR_PALETTE = [
 ];
 // A player's avatar colour: their own pick if they set one, else the
 // roster default by position.
+// Pro uses one standard categorical palette (muted, distinct, readable on
+// dark) instead of each player's neon; a player keeps the same slot.
+const PRO_PALETTE = ["#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#59A14F", "#EDC948", "#B07AA1", "#FF9DA7", "#9C755F", "#BAB0AC"];
 function accentFor(name) {
+  if (window.APP_STYLE === "pro") { const i = MANAGERS.indexOf(name); return PRO_PALETTE[(i >= 0 ? i : 0) % PRO_PALETTE.length]; }
   const own = typeof avatarColors !== "undefined" && avatarColors[name];
   if (own) return own;
   const i = MANAGERS.indexOf(name);
@@ -475,7 +531,8 @@ function mergeStates(a, b) {
 const PENDING_KEY = "brochiefs_pending_push_v1";
 let syncStatus = "idle"; // idle | saving | saved | failed
 const syncListeners = new Set();
-function setSyncStatus(next) { syncStatus = next; syncListeners.forEach((fn) => fn(next)); }
+// A redraw that throws must never abort a save: each listener runs alone.
+function setSyncStatus(next) { syncStatus = next; syncListeners.forEach((fn) => { try { fn(next); } catch (e) { try { opsEvent?.("js-error", `sync redraw: ${String(e?.message || e).slice(0, 80)}`); } catch {} } }); }
 
 // The queue, not the last tap, is the truth about whether a pick reached
 // the cloud. A badge tied to the tap goes stale the moment the pulse timer
@@ -487,14 +544,22 @@ function pendingPushFor(manager) {
 // The state the Worker sent back on the last successful push, so the
 // tiebreaker card can confirm what the cloud actually holds.
 let lastPushEcho = null;
-async function pushManagerState(manager, state, { attempts = 3 } = {}) {
+// In flight: written before the save goes out, so a save cut off by the app
+// closing is retried on the next open. The queue (PENDING_KEY) only marks
+// saves that failed; PENDING_WEEK_KEY says which week they belong to.
+const INFLIGHT_KEY = "brochiefs_push_inflight_v1", PENDING_WEEK_KEY = "brochiefs_pending_week_v1";
+const weekStorageKey = (w) => (w === 1 ? STORAGE_KEY_BASE : `${STORAGE_KEY_BASE}_w${w}`);
+function queuePush(manager, week) { try { localStorage.setItem(PENDING_KEY, manager); localStorage.setItem(PENDING_WEEK_KEY, String(week)); } catch {} }
+async function pushManagerState(manager, state, { attempts = 3, week = currentWeek } = {}) {
   if (!WORKER_URL) return false;
   setSyncStatus("saving");
+  try { localStorage.setItem(INFLIGHT_KEY, JSON.stringify({ manager, week, at: Date.now() })); } catch {}
+  const otherWeek = week !== currentWeek;
   // Read, merge, then write: only this device's newer picks go up, and a
   // stale copy of the other games never overwrites what the cloud holds.
   // Locked games are always taken from the cloud.
   let toSend = state;
-  try {
+  if (!otherWeek) try {
     const cloud = await fetchAllPicks(manager);
     const remote = cloud && cloud[manager] ? { ...cloud[manager], picks: sanitizePicks(cloud[manager].picks) } : null;
     if (remote) {
@@ -513,30 +578,54 @@ async function pushManagerState(manager, state, { attempts = 3 } = {}) {
       const res = await fetch(`${WORKER_URL}/picks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ manager, state: toSend, week: currentWeek, token: tokenFor(manager) || undefined }),
+        body: JSON.stringify({ manager, state: toSend, week, token: tokenFor(manager) || undefined }),
         cache: "no-store",
       });
       // Signed out: retrying cannot help, so stop and ask for the code.
       if (res.status === 401) {
         // A family phone signs itself back in and sends again.
         if (i === 0 && autoSecret(manager) && await autoLogin(manager)) continue;
+        queuePush(manager, week);
+        try { localStorage.removeItem(INFLIGHT_KEY); } catch {}
         setSyncStatus("failed");
         handleAuthFailure(manager);
         return false;
       }
       if (res.ok) {
         try { lastPushEcho = (await res.json())?.state || null; } catch { lastPushEcho = null; }
-        try { localStorage.removeItem(PENDING_KEY); } catch {}
+        try { localStorage.removeItem(INFLIGHT_KEY); } catch {}
+        // Check what the league actually kept. A pick the Worker turned away
+        // (it reached it after kickoff) is not saved, whatever the reply code.
+        const kept = lastPushEcho?.picks || null;
+        const refused = kept ? Object.entries(toSend.picks || {}).filter(([id, p]) => p && (!kept[id] || kept[id].team !== p.team || kept[id].mode !== p.mode)) : [];
+        if (kept) {
+          // The Worker's clock on every kept pick, so SAVED shows when the
+          // league got it, not when the phone was tapped.
+          try {
+            const key = weekStorageKey(week), all = JSON.parse(localStorage.getItem(key) || "{}"), mine = all[manager];
+            if (mine?.picks) {
+              for (const [id, p] of Object.entries(mine.picks)) { const k = kept[id]; if (k && p && k.team === p.team && k.mode === p.mode && k.savedAt) p.savedAt = k.savedAt; }
+              // A refused pick on a game now locked: the league's pick stands.
+              for (const [id] of refused) { const g = GAMES.find((x) => String(x.id) === String(id)); if (!otherWeek && g && isGameLocked(g)) { if (kept[id]) mine.picks[id] = kept[id]; else delete mine.picks[id]; } }
+              localStorage.setItem(key, JSON.stringify(all));
+            }
+          } catch {}
+        }
+        if (refused.length && typeof opsEvent === "function") opsEvent("pick-refused", `${manager} wk${week} game${refused.length > 1 ? "s" : ""} ${refused.map(([id]) => id).join(",")}`);
+        // Refused on a game still open is a race, not a lock: keep it queued.
+        const retryable = refused.some(([id]) => { const g = GAMES.find((x) => String(x.id) === String(id)); return !otherWeek && g && !isGameLocked(g); });
+        try { if (retryable) queuePush(manager, week); else { localStorage.removeItem(PENDING_KEY); localStorage.removeItem(PENDING_WEEK_KEY); } } catch {}
         boardPicks.at = 0;
-        setSyncStatus("saved");
-        return true;
+        setSyncStatus(refused.length ? "refused" : "saved");
+        return !refused.length;
       }
     } catch {
       // fall through to retry
     }
     await new Promise((r) => setTimeout(r, 600 * (i + 1)));
   }
-  try { localStorage.setItem(PENDING_KEY, manager); } catch {}
+  queuePush(manager, week);
+  try { localStorage.removeItem(INFLIGHT_KEY); } catch {}
   setSyncStatus("failed");
   return false;
 }
@@ -544,10 +633,17 @@ async function pushManagerState(manager, state, { attempts = 3 } = {}) {
 // Retry anything that failed to reach the Worker, on a timer and whenever
 // the app comes back to the foreground.
 async function flushPendingPush() {
-  let manager = null;
-  try { manager = localStorage.getItem(PENDING_KEY); } catch {}
-  if (!manager) return;
-  const ok = await pushManagerState(manager, getManagerState(manager), { attempts: 1 });
+  let manager = null, week = currentWeek;
+  try {
+    manager = localStorage.getItem(PENDING_KEY);
+    week = Number(localStorage.getItem(PENDING_WEEK_KEY)) || currentWeek;
+    // A save cut off mid-flight (the app closed): queue it now.
+    const f = JSON.parse(localStorage.getItem(INFLIGHT_KEY) || "null");
+    if (!manager && f?.manager && Date.now() - f.at > 20000) { manager = f.manager; week = f.week || currentWeek; queuePush(manager, week); localStorage.removeItem(INFLIGHT_KEY); }
+  } catch {}
+  if (!manager || syncStatus === "saving") return;
+  const stateFor = () => { try { const s = (JSON.parse(localStorage.getItem(weekStorageKey(week)) || "{}"))[manager] || { picks: {} }; return { ...s, picks: sanitizePicks(s.picks) }; } catch { return getManagerState(manager); } };
+  const ok = await pushManagerState(manager, week === currentWeek ? getManagerState(manager) : stateFor(), { attempts: 1, week });
   if (ok && manager === currentManager && !picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
 }
 
@@ -584,7 +680,10 @@ function espnScoreboardDates() {
   // A day whose games this phone has already seen finish is not asked
   // again: finished games carry over from the last read. Saturday night
   // reads one day, not Thursday through Saturday.
-  const done = (g) => latestLiveWeek === currentWeek && latestLive[g.id]?.completed;
+  // Only a final this session read fresh from ESPN counts as done: one that
+  // came from the saved board (or a carry-over) is asked for again, so a
+  // bad saved final cannot stick for good by never being re-read.
+  const done = (g) => latestLiveWeek === currentWeek && latestLive[g.id]?.completed && confirmedFinals.has(String(g.id));
   const open = GAMES.filter((g) => !done(g));
   for (const g of open.length ? open : GAMES) {
     const t = new Date(g.kickoff).getTime();
@@ -592,6 +691,10 @@ function espnScoreboardDates() {
     // Eastern, because that is the day ESPN files a game under, and a
     // Friday night kickoff is already Saturday in UTC.
     days.add(new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, ""));
+    // A game ESPN moved (postponed to Sunday, say) is filed under its new
+    // day; ask that day too or the card never goes live or final.
+    const moved = Date.parse(latestLive[g.id]?.espnKickoff);
+    if (Number.isFinite(moved)) days.add(new Date(moved).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, ""));
   }
   return [...days].sort();
 }
@@ -614,16 +717,60 @@ function ptsValueTier(points) {
   return points >= 3 ? "upset" : points === 2 ? "hit2" : points > 0 ? "hit" : "miss";
 }
 
+// Point totals: Retro keeps its two digit LED look ("03"); Pro shows "3".
+const pts2 = (n) => (window.APP_STYLE === "pro" ? String(n) : String(n).padStart(2, "0"));
+// A team name short enough for the scorebug row next to a rank and a
+// spread: Virginia Tech is Va Tech, Ohio State is Ohio St, North Carolina
+// is N Carolina. Names that already fit are left alone.
+function bugName(name) {
+  let n = String(name || "");
+  if (n.length <= 9) return n;
+  const known = { "Virginia Tech": "Va Tech", "West Virginia": "W Virginia", "Mississippi State": "Miss St", "Mississippi St": "Miss St", "Michigan State": "Mich St", "Oklahoma State": "Okla St", "Washington State": "Wash St", "Northwestern": "N'western", "Georgia Tech": "Ga Tech", "Texas Tech": "Tex Tech" };
+  if (known[n]) return known[n];
+  n = n.replace(/^(South|North|East|West|Central)\s/, (m, d) => d[0] + " ").replace(/\sState$/, " St");
+  return n;
+}
 function rankBadge(rank) {
   return rank ? `<i class="tm-rank" title="AP rank">${rank}</i>` : "";
 }
 
+// A game ESPN has moved (its date is an hour or more off the slate's):
+// the new kickoff, as a label like the slate's ("Sun 12:00 PM ET").
+function movedKickoff(game, lv = latestLive?.[game.id]) {
+  const at = Date.parse(lv?.espnKickoff), was = Date.parse(game.kickoff);
+  if (!Number.isFinite(at) || !Number.isFinite(was) || Math.abs(at - was) < 3600000 || lv?.state !== "pre") return null;
+  const d = new Date(at);
+  const tbd = d.getUTCHours() === 4 && d.getUTCMinutes() === 59; // ESPN's "time to be decided" placeholder
+  const day = d.toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" });
+  const date = d.toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" });
+  const time = tbd ? "TBD" : d.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
+  return { at, label: `${day} ${date} ${time}`, short: `${day} ${time}` };
+}
+// The notice at the top of the game preview for a moved, postponed or
+// canceled game: what changed, when it is now, and what happens to picks.
+function gameChangeNote(game) {
+  const lv = latestLive?.[game.id], mv = movedKickoff(game, lv);
+  const was = game.kickoffLabel.replace(/ ET$/, "");
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  let k, h, lines;
+  if (mv) { k = "RESCHEDULED"; h = `Now ${esc(mv.label)} ET`; lines = [`Was ${esc(was)}.`, "Picks on this game stay as made and score when it's played.", "The week stays open until it's final."]; }
+  else if (lv?.voided) { k = lv.voided; h = lv.voided === "CANCELED" ? "This game won't be played" : "No new date yet"; lines = [`Was ${esc(was)}.`, lv.voided === "CANCELED" ? "Picks on this game will score 0 for everyone." : "Picks stay as made. If it isn't played this week, the commissioner may void it (0 for everyone)."]; }
+  else return "";
+  return `<div class="ins-moved"><span class="ins-moved-k">⚠ ${esc(k)}</span><b>${h}</b>${lines.map((l) => `<span>${l}</span>`).join("")}</div>`;
+}
 function parseEspnEvents(events, games = GAMES) {
   const byId = {};
   games.forEach((game) => {
     const event = events.find((e) => {
       const ids = ((e?.competitions?.[0]?.competitors) || []).map((c) => Number(c?.team?.id));
-      return ids.includes(game.awayId) && ids.includes(game.homeId);
+      // The slate's game, not another meeting of the two teams.
+      const ea = Date.parse(e?.date), kb = Date.parse(game.kickoff);
+      // A postponed game keeps the teams but gets a new date (or none), so
+      // a voided status matches whatever its date says.
+      const voidNow = /^STATUS_(POSTPONED|CANCELED|CANCELLED|SUSPENDED|FORFEIT)/.test(e?.status?.type?.name || e?.competitions?.[0]?.status?.type?.name || "");
+      // A rescheduled game keeps its teams and gets a later date: up to ten
+      // days after the slate's kickoff still counts as this game.
+      return ids.includes(game.awayId) && ids.includes(game.homeId) && (voidNow || !Number.isFinite(ea) || !Number.isFinite(kb) || Math.abs(ea - kb) < 36 * 3600000 || (ea > kb && ea - kb < 10 * 86400000));
     });
     if (!event) return;
     const comp = event.competitions[0];
@@ -640,8 +787,12 @@ function parseEspnEvents(events, games = GAMES) {
     // final, and free-text status strings are never used for scoring.
     const isVoid = (t) => /^STATUS_(POSTPONED|CANCELED|CANCELLED|SUSPENDED|FORFEIT)/.test(t.name || "");
     const isFinal = (t) => !isVoid(t) && (t.completed === true || /^STATUS_FINAL/.test(t.name || ""));
-    const finalNow = isFinal(st1) || isFinal(st2);
-    const statusType = finalNow ? { ...st2, ...st1, completed: true, state: "post", shortDetail: (st1.shortDetail && /final/i.test(st1.shortDetail)) ? st1.shortDetail : (st2.shortDetail && /final/i.test(st2.shortDetail)) ? st2.shortDetail : "Final" } : (Object.keys(st1).length ? st1 : st2);
+    // Nothing is final before it could have been played (2 h 15 m after kickoff).
+    const kk = Date.parse(game.kickoff), tooSoon = Number.isFinite(kk) && Date.now() < kk + 135 * 60000;
+    const finalNow = !tooSoon && (isFinal(st1) || isFinal(st2));
+    // Alarm: ESPN says final before the game could be over. Shown on Live's Health.
+    if (tooSoon && (isFinal(st1) || isFinal(st2))) { try { opsEvent("espn-fail", `early final rejected: G${game.id} ${game.awayShort} ${away?.score}-${home?.score} ${game.homeShort} (${st1.name || st2.name || "final"})`); } catch {} }
+    const statusType = finalNow ? { ...st2, ...st1, completed: true, state: "post", shortDetail: (st1.shortDetail && /final/i.test(st1.shortDetail)) ? st1.shortDetail : (st2.shortDetail && /final/i.test(st2.shortDetail)) ? st2.shortDetail : "Final" } : tooSoon && (isFinal(st1) || isFinal(st2)) ? { ...(Object.keys(st1).length ? st1 : st2), completed: false, state: "in", shortDetail: "In progress", detail: "In progress" } : (Object.keys(st1).length ? st1 : st2);
     const prob = comp.situation?.lastPlay?.probability;
     const winProb = prob && Number.isFinite(prob.homeWinPercentage) && Number.isFinite(prob.awayWinPercentage)
       ? { home: prob.homeWinPercentage * 100, away: prob.awayWinPercentage * 100 }
@@ -659,6 +810,9 @@ function parseEspnEvents(events, games = GAMES) {
       spread: Number.isFinite(oSpread) ? Math.abs(oSpread) : null,
       favoriteSide: o.homeTeamOdds?.favorite === true ? "home" : o.awayTeamOdds?.favorite === true ? "away" : Number.isFinite(oSpread) ? (oSpread < 0 ? "home" : "away") : null,
       overUnder: Number.isFinite(Number(o.overUnder)) ? Number(o.overUnder) : null,
+      // Moneylines, for the market's own straight-up price.
+      mlHome: Number.isFinite(Number(o.homeTeamOdds?.moneyLine)) ? Number(o.homeTeamOdds.moneyLine) : null,
+      mlAway: Number.isFinite(Number(o.awayTeamOdds?.moneyLine)) ? Number(o.awayTeamOdds.moneyLine) : null,
     } : null;
     byId[game.id] = {
       id: game.id,
@@ -673,6 +827,10 @@ function parseEspnEvents(events, games = GAMES) {
       awayRecord: recordOf(away),
       homeRecord: recordOf(home),
       state: statusType.state || "pre",
+      // ESPN's own kickoff: differs from the slate when a game was moved.
+      espnKickoff: event.date || null,
+      // Postponed, canceled, suspended or forfeit: ESPN's word for it.
+      voided: isVoid(statusType) || isVoid(st1) || isVoid(st2) || /postpon|cancel|suspend/i.test(`${st1.shortDetail || ""} ${st1.detail || ""} ${st2.shortDetail || ""} ${st2.detail || ""} ${st1.description || ""} ${st2.description || ""}`) ? (/CANCEL/i.test(`${statusType.name || ""} ${st1.name || ""} ${st2.name || ""} ${st1.detail || ""} ${st2.detail || ""}`) ? "CANCELED" : /SUSPEND/.test(statusType.name || st1.name || st2.name || "") ? "SUSPENDED" : /FORFEIT/.test(statusType.name || st1.name || st2.name || "") ? "FORFEIT" : "POSTPONED") : null,
       completed: !!statusType.completed,
       rawStatus: { comp: { name: st1.name, state: st1.state, completed: st1.completed, detail: st1.shortDetail }, event: { name: st2.name, state: st2.state, completed: st2.completed, detail: st2.shortDetail } },
       detail: statusType.shortDetail || statusType.detail || "",
@@ -698,6 +856,8 @@ function parseEspnEvents(events, games = GAMES) {
         downDistance: comp.situation.downDistanceText || comp.situation.shortDownDistanceText || null,
         possessionText: comp.situation.possessionText || null,
         isRedZone: !!comp.situation.isRedZone,
+        awayTimeouts: Number.isFinite(comp.situation.awayTimeouts) ? comp.situation.awayTimeouts : null,
+        homeTimeouts: Number.isFinite(comp.situation.homeTimeouts) ? comp.situation.homeTimeouts : null,
         lastPlay: comp.situation.lastPlay?.text || null,
         lastPlayTeamId: comp.situation.lastPlay?.team?.id != null ? Number(comp.situation.lastPlay.team.id) : null,
       } : null,
@@ -731,6 +891,7 @@ function fetchCapped(url, opts = {}, ms = 5000) {
 // no CORS header), stop asking it for a while and go straight to the
 // Worker, instead of paying for the failed request on every refresh.
 let espnDirectOffUntil = 0;
+const schedCache = {};
 async function fetchLiveFromEspn() {
   if (Date.now() < espnDirectOffUntil) throw new Error("espn direct paused");
   const events = [];
@@ -741,7 +902,9 @@ async function fetchLiveFromEspn() {
     try {
       const res = await fetchCapped(
         `${window.ESPN_API}/scoreboard?dates=${date}${window.LEAGUE?.groups ?? "&groups=80"}&limit=300&t=${Date.now()}`,
-        { cache: "no-store" }, 4000
+        // soft: the Worker's copy stands in when ESPN refuses (Firefox reports
+        // that as "Cross-Origin Request Blocked"), so this alone is not a failure.
+        { cache: "no-store", soft: true }, 4000
       );
       return res.ok ? await res.json() : null;
     } catch { return null; }
@@ -757,7 +920,21 @@ async function fetchLiveFromEspn() {
     throw new Error("espn scoreboard unavailable");
   }
   espnPartial = ok < answers.length;
-  return parseEspnEvents(events);
+  // Locked games ESPN's scoreboard no longer lists (postponed to another
+  // date, or dropped): look each up on the home team's schedule, at most
+  // every ten minutes, so the card can say POSTPONED instead of Waiting.
+  const missing = GAMES.filter((g) => isGameLocked(g) && Date.now() - Date.parse(g.kickoff) > 15 * 60000 && !events.some((e) => { const ids = (e?.competitions?.[0]?.competitors || []).map((c) => Number(c?.team?.id)); return ids.includes(g.awayId) && ids.includes(g.homeId); }));
+  for (const g of missing.slice(0, 4)) {
+    const k = `sched:${g.homeId}`;
+    if (!schedCache[k] || Date.now() - schedCache[k].at > 10 * 60000) {
+      schedCache[k] = { at: Date.now(), events: [] };
+      try { const r = await fetchCapped(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${g.homeId}/schedule`, { cache: "no-store", soft: true }, 4000); if (r.ok) schedCache[k].events = (await r.json())?.events || []; } catch {}
+    }
+    events.push(...schedCache[k].events.filter((e) => { const ids = (e?.competitions?.[0]?.competitors || []).map((c) => Number(c?.team?.id)); return ids.includes(g.awayId) && ids.includes(g.homeId); }).map((e) => { for (const c of e.competitions?.[0]?.competitors || []) if (c.score && typeof c.score === "object") c.score = c.score.value ?? c.score.displayValue ?? null; return e; }));
+  }
+  const parsed = parseEspnEvents(events);
+  freshFinals = Object.keys(parsed).filter((id) => parsed[id]?.completed);
+  return parsed;
 }
 
 async function fetchLiveFromWorker() {
@@ -781,6 +958,8 @@ async function fetchLiveFromWorker() {
 // Latest live map, shared with the picks screen so locked games there show
 // the score without their own fetch.
 let latestLive = {}, latestLiveWeek = null;
+const confirmedFinals = new Set(); // finals read fresh from ESPN this session
+let freshFinals = [];
 // Team records and ranks from the last scores fetch, kept on the phone so
 // the cards show them at once on the next open. Only records and ranks:
 // nothing here is a score, so a stale copy can never show a wrong result.
@@ -827,18 +1006,34 @@ async function fetchLiveScoresNow() {
     if (window.LEAGUE?.liveViaWorker) throw new Error("live via Worker");
     live = await fetchLiveFromEspn();
     answered = true;
+    // Games the phone could not place (postponed off the scoreboard): ask
+    // the Worker, which also checks the team schedules, and take its status.
+    if (GAMES.some((g) => !live[g.id]?.found && Date.now() - Date.parse(g.kickoff) > 15 * 60000)) {
+      try { const w = await fetchLiveFromWorker(); for (const [id, x] of Object.entries(w)) if (!live[id]?.found && x?.found) live[id] = x; } catch {}
+    }
   } catch (err) {
     console.warn("ESPN direct fetch failed, falling back to Worker", err);
   }
   if (!Object.keys(live).length) {
-    try { live = await fetchLiveFromWorker(); answered = true; } catch { live = {}; }
+    try { live = await fetchLiveFromWorker(); answered = true; }
+    catch {
+      // Both down at once is nearly always the phone's signal: give it three
+      // seconds and try the Worker once more before logging anything.
+      live = {};
+      await new Promise((r) => setTimeout(r, 3000));
+      try { live = await fetchLiveFromWorker(); answered = true; }
+      catch { live = {}; if (!answered && navigator.onLine !== false && !document.hidden) opsEvent("espn-fail", "scoreboard and Worker /live both failed"); }
+    }
   } else if (espnPartial) {
     // A day that timed out would leave its games blank; the Worker fills them.
     try { const w = await fetchLiveFromWorker(); for (const [id, g] of Object.entries(w)) if (!live[id]) live[id] = g; } catch {}
   }
   // A game this phone already saw finish stays finished: a read that
   // missed it is no reason to play it out again.
-  if (Object.keys(live).length && latestLiveWeek === currentWeek) for (const [id, g] of Object.entries(latestLive)) if (g?.completed && !live[id]) live[id] = g;
+  if (Object.keys(live).length && latestLiveWeek === currentWeek) for (const [id, g] of Object.entries(latestLive)) if (g?.completed && !live[id] && !finalTooSoon(id)) live[id] = g;
+  // Alarm: a final whose score then changes means one of the two reads was wrong.
+  for (const [id, g] of Object.entries(live)) { const p = latestLive[id]; if (latestLiveWeek === currentWeek && p?.completed && g?.completed && confirmedFinals.has(String(id)) && (p.awayScore !== g.awayScore || p.homeScore !== g.homeScore)) { try { opsEvent("espn-fail", `final changed: G${id} ${p.awayScore}-${p.homeScore} -> ${g.awayScore}-${g.homeScore}`); } catch {} } }
+  for (const id of freshFinals) confirmedFinals.add(String(id)); freshFinals = [];
   if (Object.keys(live).length) { latestLive = live; latestLiveWeek = currentWeek; saveRecords(live); }
   // A failed fetch is never reused; an answer (even "no games yet") is.
   if (answered) liveFetchedAt = Date.now();
@@ -1038,15 +1233,25 @@ function tokenFor(name) {
   return held && held.manager === name ? held.token : null;
 }
 
-async function refreshAuthState() {
+// The login mode, kept from the last good answer: a dropped connection
+// ("Load failed") keeps the last known mode instead of falling back to
+// "off", is tried once more after a short pause, and never waits more
+// than six seconds, so nothing on screen ever hangs on it.
+const AUTH_STATE_KEY = "brochiefs_auth_state_v1";
+try { const saved = JSON.parse(localStorage.getItem(AUTH_STATE_KEY) || "null"); if (saved && typeof saved.mode === "string") authState = { mode: saved.mode, claimed: Array.isArray(saved.claimed) ? saved.claimed : [] }; } catch {}
+async function refreshAuthState(retry = true) {
   if (!WORKER_URL) return;
   try {
-    const res = await fetch(`${WORKER_URL}/auth?t=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) return;
+    const res = await fetch(`${WORKER_URL}/auth?t=${Date.now()}`, { cache: "no-store", signal: AbortSignal.timeout ? AbortSignal.timeout(6000) : undefined });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (typeof data.mode === "string") authState = { mode: data.mode, claimed: Array.isArray(data.claimed) ? data.claimed : [] };
+    if (typeof data.mode === "string") {
+      authState = { mode: data.mode, claimed: Array.isArray(data.claimed) ? data.claimed : [] };
+      try { localStorage.setItem(AUTH_STATE_KEY, JSON.stringify(authState)); } catch {}
+    }
   } catch {
-    // Login stays off if the Worker cannot be reached; picks still queue.
+    // Keep the last known mode; one more try in a moment, in the background.
+    if (retry) setTimeout(() => { refreshAuthState(false); }, 2500);
   }
 }
 
@@ -1222,6 +1427,9 @@ const brandSub = document.getElementById("brand-sub");
 
 // --- Logo / splash screen ---------------------------------------------
 
+// No pop-ups open by themselves on the college site (Jake, Nov 25): every
+// prompt, poll and nudge waits for a tap. The buttons that open them stay.
+window.NO_POPUPS = true; // NFL too: its only pop-up is the welcome rules (introOnce)
 const RULES_SEEN_KEY = "brochiefs_rules_seen_v1";
 
 function openRules() {
@@ -1257,12 +1465,13 @@ const appScroll = document.getElementById("app-scroll");
 let headerCompact = false;
 function syncHeaderSize() {
   const y = appScroll.scrollTop;
-  // Tight all the time, like CFB: the header never grows or shrinks on scroll.
-  const next = true;
+  // Retro keeps the header tight all the time: no expansion at the top.
+  const next = true; // tight all the time, both themes: no grow or shrink on scroll
   if (next === headerCompact) return;
   headerCompact = next;
   homeHeader.classList.toggle("compact", next);
   renderHeadScore();
+  requestAnimationFrame(() => { try { fitHeaderLogo(); } catch {} });
 }
 
 // Your score, in the header's left slot, once the board has scrolled past
@@ -1288,21 +1497,50 @@ function renderHeadScore() {
 // chip changes width (KICK 21H 22M, T-1ST 06 PTS +4), so instead of a
 // guessed max size the logo is measured to whatever room the chips leave,
 // with a small gap either side. No chip on the left, no limit.
+// Retro wears its own wordmark: set the file directly (iOS can ignore a
+// CSS content swap on an img).
+// The page loads it directly; Pro swaps to its own file here.
+const WORDMARK = window.LEAGUE?.sport === "nfl" ? "themes/wordmark-nfl.png" : window.APP_STYLE === "pro" ? "themes/wordmark-pro.png" : "themes/wordmark-retro.png";
+{ const li = document.querySelector(".home-logo-img"); if (li && !li.src.endsWith(WORDMARK)) li.src = WORDMARK; }
+// iOS can drop a decoded image while the app sits in the background and
+// come back with an empty header. On every return, reload it if it is
+// blank and measure it again.
+function reviveHeaderLogo() {
+  const li = document.querySelector(".home-logo-img");
+  if (li && (!li.complete || !li.naturalWidth || !li.offsetWidth)) { delete li.dataset.retry; li.src = `${WORDMARK}?r=${Date.now()}`; li.addEventListener("load", () => fitHeaderLogo(), { once: true }); }
+  requestAnimationFrame(() => fitHeaderLogo());
+}
+addEventListener("pageshow", reviveHeaderLogo);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) reviveHeaderLogo(); });
 function fitHeaderLogo() {
   const img = homeHeader.querySelector(".home-logo-img");
   if (!img) return;
-  img.style.maxWidth = "";
-  const left = [document.getElementById("head-score"), document.getElementById("header-countdown")].find((el) => el && !el.classList.contains("hidden"));
-  if (!left) return;
+  const btn = img.closest("button") || img;
+  img.style.maxWidth = ""; btn.style.transform = "";
+  const left = [document.getElementById("head-score"), document.getElementById("header-countdown")].find((el) => el && !el.classList.contains("hidden") && el.offsetWidth > 0);
+  if (!left) {
+    // No left chip: keep the logo dead centre, narrow enough to clear the
+    // name pill with the same gap it would leave on the left.
+    const pill = document.getElementById("me-pill"), row = homeHeader.querySelector(".head-row") || homeHeader;
+    if (pill && pill.offsetWidth) { const rb = row.getBoundingClientRect(), room = 2 * (pill.getBoundingClientRect().left - (rb.left + rb.width / 2)) - 24; if (room > 40) img.style.maxWidth = `${Math.floor(room)}px`; }
+    return;
+  }
   const row = homeHeader.querySelector(".head-row") || homeHeader;
   const rb = row.getBoundingClientRect(), mid = rb.left + rb.width / 2;
   const lEdge = left.getBoundingClientRect().right;
   const pill = document.getElementById("me-pill");
   const rEdge = pill && !pill.classList.contains("hidden") ? pill.getBoundingClientRect().left : rb.right;
-  const room = 2 * Math.min(mid - lEdge, rEdge - mid) - 16;
+  // The chips are rarely the same width (T-4TH 00 PTS +2 against a name),
+  // so the logo sits in the middle of the gap between them, not the middle
+  // of the screen: equal room either side instead of one side jammed.
+  const room = rEdge - lEdge - 16;
   if (room > 40) img.style.maxWidth = `${Math.floor(room)}px`;
+  const shift = (lEdge + rEdge) / 2 - mid;
+  if (Math.abs(shift) > 2) btn.style.transform = `translateX(${Math.round(shift)}px)`;
 }
 addEventListener("resize", fitHeaderLogo);
+// The header shrinks on scroll with a short transition; measure again once it settles.
+homeHeader.addEventListener("transitionend", (e) => { if (e.target === homeHeader || e.target.classList?.contains("home-logo-img") || e.target.id === "me-pill") fitHeaderLogo(); });
 
 // A phone is always the phone layout: vertical scroll and tap, never the
 // desktop columns or the pick sheet, whatever width it reports (an iPhone
@@ -1377,7 +1615,7 @@ async function sheetLoad(g) {
     // ATS: ESPN's summary often leaves it out. Same fallbacks as the info
     // sheet: the Worker's stored read of the game, then the line in ESPN's
     // preview ("against the spread: Team 1-6, Team 2-4").
-    if (false) {
+    if (!d.ats?.away && !d.ats?.home) {
       const snap = await withTimeout(fetchGameSnapshot(g.id), 3500, null).catch(() => null);
       const brief = (await fetchInsights().catch(() => null))?.briefs?.[g.id];
       const alt = snap?.glance?.ats || brief?.glance?.ats;
@@ -1419,15 +1657,15 @@ function sheetHtml(g, d) {
   const dots = (list) => {
     const l = (list || []).slice(0, 5);
     if (!l.length) return "<em>—</em>";
-    const boxes = l.map((e) => `<i class="${wl(e)}" title="${tip(e)}"></i>`).join("");
-    const chips = l.map((e) => `<span class="gs-g ${wl(e)}" title="${tip(e)}">${e.oppLogo ? `<img src="${escapeCd(e.oppLogo)}" alt="" loading="lazy">` : `<b>${escapeCd((e.opp || "?").slice(0, 4))}</b>`}<small>${escapeCd((e.result || "").slice(0, 1).toUpperCase())} ${escapeCd(e.score || "")}</small></span>`).join("");
+    const boxes = l.map((e) => (e.id ? `<button type="button" class="${wl(e)}" data-past="${escapeCd(String(e.id))}" title="${tip(e)} · open gamecast"></button>` : `<i class="${wl(e)}" title="${tip(e)}"></i>`)).join("");
+    const chips = l.map((e) => `<${e.id ? `button type="button" data-past="${escapeCd(String(e.id))}"` : "span"} class="gs-g ${wl(e)}" title="${tip(e)}${e.id ? " · open gamecast" : ""}">${e.oppId || e.oppLogo ? `<img src="${escapeCd(e.oppId ? logoUrl(e.oppId) : e.oppLogo)}" alt="${escapeCd(e.opp || "")}" loading="lazy"${e.oppLogo ? ` data-alt="${escapeCd(e.oppLogo)}"` : ""}>` : `<b>${escapeCd((e.opp || "?").slice(0, 4))}</b>`}<small>${escapeCd((e.result || "").slice(0, 1).toUpperCase())} ${escapeCd(String(e.score || "").replace(/\s*OT$/i, "ᴼᵀ"))}</small></${e.id ? "button" : "span"}>`).join("");
     return `<span class="gs-box">${boxes}</span><span class="gs-logo">${chips}</span>`;
   };
   const fa = d?.fpi?.away, fh = d?.fpi?.home, hasF = Number.isFinite(fa) && Number.isFinite(fh);
   const fpi = (v, other) => (hasF ? `<b class="${v > other ? "lead" : ""}">${v}%</b>` : "<em>—</em>");
   const ats = (v) => (v ? `<b>${escapeCd(String(v))}</b>` : "<em>—</em>");
-  const row = (id, f, fo, a, l5) => `<img src="${logoUrl(id)}" alt="">${fpi(f, fo)}<span class="gs-dots">${dots(l5)}</span>`;
-  return `<div class="gs-t no-ats"><span></span><small title="ESPN Football Power Index win chance">FPI</small><small>LAST 5</small>${row(g.awayId, fa, fh, d?.ats?.away, d?.lastFive?.away)}${row(g.homeId, fh, fa, d?.ats?.home, d?.lastFive?.home)}</div>`;
+  const row = (id, f, fo, a, l5) => `<img src="${logoUrl(id)}" alt="">${fpi(f, fo)}${ats(a)}<span class="gs-dots">${dots(l5)}</span>`;
+  return `<div class="gs-t"><span></span><small title="ESPN Football Power Index win chance">FPI</small><small>ATS</small><small>LAST 5</small>${row(g.awayId, fa, fh, d?.ats?.away, d?.lastFive?.away)}${row(g.homeId, fh, fa, d?.ats?.home, d?.lastFive?.home)}</div>`;
 }
 const sheetData = {};
 // Quick read under a pick card (every screen but the desktop sheet): a
@@ -1438,15 +1676,60 @@ function qrBody(g, d) {
   if (!d) return `<div class="qr-wait">Loading…</div>`;
   const fa = d.fpi?.away, fh = d.fpi?.home, hasF = Number.isFinite(fa) && Number.isFinite(fh);
   const five = (list) => (list || []).slice(0, 5).map((e) => { const w = /^w/i.test(e.result || "") ? "w" : /^l/i.test(e.result || "") ? "l" : "t"; const img = e.oppId || e.oppLogo ? `<img src="${escapeCd(e.oppId ? logoUrl(e.oppId) : e.oppLogo)}" alt="${escapeCd(e.opp || "")}" loading="lazy"${e.oppLogo ? ` data-alt="${escapeCd(e.oppLogo)}"` : ""}>` : `<b>${escapeCd((e.opp || "?").slice(0, 4))}</b>`; return `<${e.id ? `button type="button" data-past="${escapeCd(String(e.id))}"` : "span"} class="gs-g qr-g ${w}" title="${escapeCd(`${e.result || ""} ${e.score || ""} ${e.oppName || e.opp || ""}`.trim())}">${img}</${e.id ? "button" : "span"}>`; }).join("") || "<em>—</em>";
-  // NFL: ESPN keeps ATS behind a 403, so the column is left out.
-  const row = (id, f, fo, a, l5) => `<img class="qr-t" src="${logoUrl(id)}" alt=""><b class="${hasF && f > fo ? "lead" : ""}">${hasF ? `${f}%` : "—"}</b><span class="qr-five${(l5 || []).length ? "" : " none"}">${(l5 || []).length ? five(l5) : "<em>not posted yet</em>"}</span>`;
-  return `<div class="qr-grid no-ats"><span></span><small>FPI</small><small>LAST 5</small>${row(g.awayId, fa, fh, d.ats?.away, d.lastFive?.away)}${row(g.homeId, fh, fa, d.ats?.home, d.lastFive?.home)}</div>`;
+  const row = (id, f, fo, a, l5) => `<img class="qr-t" src="${logoUrl(id)}" alt=""><b class="${hasF && f > fo ? "lead" : ""}">${hasF ? `${f}%` : "—"}</b><b>${a ? escapeCd(String(a)) : "—"}</b><span class="qr-five${(l5 || []).length ? "" : " none"}">${(l5 || []).length ? five(l5) : "<em>not posted yet</em>"}</span>`;
+  return `<div class="qr-grid"><span></span><small>FPI</small><small>ATS</small><small>LAST 5</small>${row(g.awayId, fa, fh, d.ats?.away, d.lastFive?.away)}${row(g.homeId, fh, fa, d.ats?.home, d.lastFive?.home)}</div>`;
 }
 function quickReadHtml(g) {
   const open = qrOpen.has(g.id);
   return `<div class="qr${open ? " open" : ""}"><div class="qr-body"><div class="qr-in">${open ? qrBody(g, sheetData[g.id]) : ""}</div></div></div>`;
 }
 try { if (localStorage.getItem("brochiefs_qr_seen")) document.documentElement.classList.add("qr-seen"); } catch {}
+// The arrow sits in the gap under AT, between the two pick columns.
+function qrToggleHtml(g) {
+  const open = qrOpen.has(g.id);
+  return `<button type="button" class="qr-tog" aria-expanded="${open}" aria-label="${open ? "Hide" : "Show"} quick read">${open ? "▴" : "▾"}</button>`;
+}
+gamesList?.addEventListener("click", (ev) => {
+  const t = ev.target.closest(".qr-tog");
+  if (t) {
+    ev.stopPropagation();
+    const card = t.closest(".game-card"), g = GAMES.find((x) => String(x.id) === card?.dataset.gameId); if (!g) return;
+    const box = card.querySelector(".qr"), inner = box?.querySelector(".qr-in"); if (!box) return;
+    if (qrOpen.has(g.id)) { qrOpen.delete(g.id); box.classList.remove("open"); t.textContent = "▾"; t.setAttribute("aria-expanded", "false"); return; }
+    qrOpen.add(g.id); inner.innerHTML = qrBody(g, sheetData[g.id]);
+    requestAnimationFrame(() => box.classList.add("open")); t.textContent = "▴"; t.setAttribute("aria-expanded", "true");
+    noteUse("quick-read", String(g.id));
+    try { localStorage.setItem("brochiefs_qr_seen", "1"); } catch {}
+    document.documentElement.classList.add("qr-seen");
+    if (!sheetData[g.id]) sheetLoad(g).then((d) => { sheetData[g.id] = d || { lastFive: {} }; const b = gamesList.querySelector(`.game-card[data-game-id="${g.id}"] .qr-in`); if (b && qrOpen.has(g.id)) b.innerHTML = qrBody(g, sheetData[g.id]); });
+    return;
+  }
+  const b = ev.target.closest(".qr [data-past]"); if (!b) return;
+  ev.stopPropagation();
+  const g = GAMES.find((x) => String(x.id) === b.closest(".game-card")?.dataset.gameId), d = g && sheetData[g.id];
+  for (const side of ["away", "home"]) { const e = (d?.lastFive?.[side] || []).find((x) => String(x.id) === b.dataset.past); if (e) { openPastGame(g, side, e); return; } }
+});
+gamesList?.addEventListener("click", (ev) => {
+  const b = ev.target.closest(".gs-ins [data-past]"); if (!b) return;
+  ev.stopPropagation();
+  const card = b.closest(".game-card"), g = GAMES.find((x) => String(x.id) === card?.dataset.gameId), d = g && sheetData[g.id];
+  if (!d) return;
+  for (const side of ["away", "home"]) { const e = (d.lastFive?.[side] || []).find((x) => String(x.id) === b.dataset.past); if (e) { openPastGame(g, side, e); return; } }
+});
+function paintSheet() {
+  if (!sheetOn()) return;
+  gamesList.querySelectorAll(".game-card[data-game-id]").forEach((card) => {
+    const g = GAMES.find((x) => String(x.id) === card.dataset.gameId);
+    if (!g) return;
+    let box = card.querySelector(":scope > .gs-ins");
+    if (!box) { box = document.createElement("div"); box.className = "gs-ins"; box.innerHTML = sheetRead[g.id]?.html || sheetHtml(g, null); card.appendChild(box); }
+    if (sheetRead[g.id]?.html) { box.innerHTML = sheetRead[g.id].html; return; }
+    sheetLoad(g).then((d) => { const html = sheetHtml(g, d); sheetData[g.id] = d; if (sheetRead[g.id]) sheetRead[g.id].html = html; const b = gamesList.querySelector(`.game-card[data-game-id="${g.id}"] > .gs-ins`); if (b) b.innerHTML = html; });
+  });
+}
+sheetMq.addEventListener?.("change", applySheet);
+document.documentElement.classList.toggle("sheet", sheetOn());
+
 // --- Ask to join (NFL) ----------------------------------------------------
 // From the "Who are you?" sheet a new visitor sends a name and email; the
 // commissioner approves on the live page. This phone remembers the request
@@ -1562,56 +1845,11 @@ if (window.LEAGUE?.sport === "nfl") {
   setTimeout(checkJoin, 1500);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkJoin(); });
 }
-
-// The arrow sits in the gap under AT, between the two pick columns.
-function qrToggleHtml(g) {
-  const open = qrOpen.has(g.id);
-  return `<button type="button" class="qr-tog" aria-expanded="${open}" aria-label="${open ? "Hide" : "Show"} quick read">${open ? "▴" : "▾"}</button>`;
-}
-gamesList?.addEventListener("click", (ev) => {
-  const t = ev.target.closest(".qr-tog");
-  if (t) {
-    ev.stopPropagation();
-    const card = t.closest(".game-card"), g = GAMES.find((x) => String(x.id) === card?.dataset.gameId); if (!g) return;
-    const box = card.querySelector(".qr"), inner = box?.querySelector(".qr-in"); if (!box) return;
-    if (qrOpen.has(g.id)) { qrOpen.delete(g.id); box.classList.remove("open"); t.textContent = "▾"; t.setAttribute("aria-expanded", "false"); return; }
-    qrOpen.add(g.id); inner.innerHTML = qrBody(g, sheetData[g.id]);
-    requestAnimationFrame(() => box.classList.add("open")); t.textContent = "▴"; t.setAttribute("aria-expanded", "true");
-    noteUse("quick-read", String(g.id));
-    try { localStorage.setItem("brochiefs_qr_seen", "1"); } catch {}
-    document.documentElement.classList.add("qr-seen");
-    if (!sheetData[g.id]) sheetLoad(g).then((d) => { sheetData[g.id] = d || { lastFive: {} }; const b = gamesList.querySelector(`.game-card[data-game-id="${g.id}"] .qr-in`); if (b && qrOpen.has(g.id)) b.innerHTML = qrBody(g, sheetData[g.id]); });
-    return;
-  }
-  const b = ev.target.closest(".qr [data-past]"); if (!b) return;
-  ev.stopPropagation();
-  const g = GAMES.find((x) => String(x.id) === b.closest(".game-card")?.dataset.gameId), d = g && sheetData[g.id];
-  for (const side of ["away", "home"]) { const e = (d?.lastFive?.[side] || []).find((x) => String(x.id) === b.dataset.past); if (e) { openPastGame(g, side, e); return; } }
-});
-gamesList?.addEventListener("click", (ev) => {
-  const b = ev.target.closest(".gs-ins [data-past]"); if (!b) return;
-  ev.stopPropagation();
-  const card = b.closest(".game-card"), g = GAMES.find((x) => String(x.id) === card?.dataset.gameId), d = g && sheetData[g.id];
-  if (!d) return;
-  for (const side of ["away", "home"]) { const e = (d.lastFive?.[side] || []).find((x) => String(x.id) === b.dataset.past); if (e) { openPastGame(g, side, e); return; } }
-});
-function paintSheet() {
-  if (!sheetOn()) return;
-  gamesList.querySelectorAll(".game-card[data-game-id]").forEach((card) => {
-    const g = GAMES.find((x) => String(x.id) === card.dataset.gameId);
-    if (!g) return;
-    let box = card.querySelector(":scope > .gs-ins");
-    if (!box) { box = document.createElement("div"); box.className = "gs-ins"; box.innerHTML = sheetRead[g.id]?.html || sheetHtml(g, null); card.appendChild(box); }
-    if (sheetRead[g.id]?.html) { box.innerHTML = sheetRead[g.id].html; return; }
-    sheetLoad(g).then((d) => { const html = sheetHtml(g, d); if (sheetRead[g.id]) sheetRead[g.id].html = html; const b = gamesList.querySelector(`.game-card[data-game-id="${g.id}"] > .gs-ins`); if (b) b.innerHTML = html; });
-  });
-}
-sheetMq.addEventListener?.("change", applySheet);
-document.documentElement.classList.toggle("sheet", sheetOn());
 const deskMq = matchMedia("(min-width: 1100px)");
 deskLayout(deskMq.matches && !IS_PHONE);
 deskMq.addEventListener?.("change", (e) => deskLayout(e.matches && !IS_PHONE));
 appScroll.addEventListener("scroll", syncHeaderSize, { passive: true });
+requestAnimationFrame(() => { try { syncHeaderSize(); } catch {} });
 const savedScroll = {};
 let activeScreenName = null;
 function rememberScroll() {
@@ -1622,8 +1860,25 @@ function rememberScroll() {
 // Re-tapping the tab you are already on sends you to the top of it.
 let navToTop = false;
 [["nav-picks-btn", "picks"], ["nav-scoreboard-btn", "scoreboard"], ["nav-history-btn", "history"], ["nav-trivia-btn", "trivia"]].forEach(([id, name]) => {
-  document.getElementById(id)?.addEventListener("click", () => { navToTop = activeScreenName === name; }, true);
+  document.getElementById(id)?.addEventListener("click", () => {
+    navToTop = activeScreenName === name;
+    // Already at the top: a re-tap refreshes and says so, so it never
+    // feels dead (Nissan tapped PICKS over and over, Oct 24).
+    if (navToTop && appScroll.scrollTop < 4) navRefresh();
+  }, true);
 });
+let navRefreshAt = 0;
+function navRefresh() {
+  if (Date.now() - navRefreshAt < 1500) return;
+  navRefreshAt = Date.now();
+  let t = document.getElementById("nav-toast");
+  if (!t) { t = document.createElement("div"); t.id = "nav-toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+  t.textContent = "↻ Refreshing…"; t.classList.add("show");
+  Promise.resolve(typeof fetchLiveScoresNow === "function" ? fetchLiveScoresNow() : null).catch(() => {}).finally(() => {
+    t.textContent = `✓ Up to date · ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+    clearTimeout(t.__h); t.__h = setTimeout(() => t.classList.remove("show"), 1400);
+  });
+}
 function enterScreen(name) {
   if (navToTop) { savedScroll[name] = 0; navToTop = false; }
   activeScreenName = name;
@@ -1639,6 +1894,14 @@ function enterScreen(name) {
 // roster and land where the action is — your picks before the first
 // kickoff, the live board once games are underway. First-timers get the
 // rules once, then "Who are you?".
+// NFL Sunday: from 11 AM Eastern on Sunday through Monday night, the app
+// opens on Fantasy (where the week's games are).
+function fantasyDay(now = new Date()) {
+  if (window.LEAGUE?.sport === "nfl") return false;
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", hour12: false }).formatToParts(now).map((x) => [x.type, x.value]));
+  const h = Number(p.hour) % 24;
+  return (p.weekday === "Sun" && h >= 11) || p.weekday === "Mon";
+}
 function goToPlayerSelect() {
   rememberScroll();
   logoScreen.classList.add("hidden");
@@ -1649,8 +1912,8 @@ function goToPlayerSelect() {
   const me = loadMe();
   if (me) {
     currentManager = me;
-    // Family NFL pick'em: members land on their picks.
-    if (window.LEAGUE?.sport === "nfl" ? false : firstKickoffPassed()) {
+    if (window.LEAGUE?.sport !== "nfl" && fantasyDay()) { loginScreen.classList.add("hidden"); showHistory(); return; }
+    if (window.LEAGUE?.sport === "nfl" ? false : !picksStillOpen()) {
       loginScreen.classList.add("hidden");
       showScoreboard();
     } else {
@@ -1663,8 +1926,8 @@ function goToPlayerSelect() {
   setActiveNav("home");
   renderManagerPicker();
   enterScreen("home");
-  if (!localStorage.getItem(RULES_SEEN_KEY) && window.LEAGUE?.sport !== "nfl") openRules();
-  else openClaimPrompt();
+  // No introduction pop ups: How It Works stays a link on this screen.
+  openClaimPrompt();
 }
 
 // Analytics: one page view per screen, plus a few named events. Wrapped
@@ -1683,7 +1946,7 @@ function stampVisit() {
   try { localStorage.setItem(VISIT_KEY, String(Date.now())); } catch {}
   const d = deviceDetails();
   const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
-  const body = { manager: me, device: deviceId().slice(0, 12), screen: d.screen, tz: d.tz, standalone, v: typeof APP_VERSION === "string" ? APP_VERSION : "" };
+  const body = { manager: me, device: deviceId().slice(0, 12), screen: d.screen, tz: d.tz, standalone, v: typeof APP_VERSION === "string" ? APP_VERSION : "", st: window.APP_STYLE === "pro" ? "pro" : "classic" };
   if (navigator.onLine === false) { queueTele({ ...body, q: 1, at: Date.now() }); return; }
   fetch(`${WORKER_URL}/visit`, { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true, body: JSON.stringify(body) })
     .then((res) => { if (res.ok) flushTele(); })
@@ -1765,6 +2028,13 @@ addEventListener("pagehide", () => presenceSend(true));
 // touches load or scrolling.
 const sessionUse = new Set();
 let sessionStart = document.hidden ? null : Date.now();
+// Last real interaction: a session ends after 10 idle minutes and its time
+// stops at the last tap, so a phone left on the table (or put away without
+// iOS saying so) never logs a ten-hour visit.
+let lastAct = Date.now();
+const IDLE_MS = 10 * 60000;
+for (const ev of ["pointerdown", "keydown", "scroll", "touchstart"]) addEventListener(ev, () => { const now = Date.now(); if (sessionStart == null && !document.hidden) sessionStart = now; lastAct = now; }, { passive: true, capture: true });
+setInterval(() => { if (sessionStart != null && Date.now() - lastAct > IDLE_MS) endSession(); }, 60000);
 function noteUse(key, detail) { if (key) { sessionUse.add(String(key).replace(/^\//, "")); presenceNote(key, detail); } }
 // Minutes on each game's live view: started when a live game cast opens,
 // stopped when the sheet closes or the app is put away.
@@ -1773,11 +2043,93 @@ function gcStart(id) { gcStop(); gcOpen = { id, t: Date.now() }; }
 function gcStop() { if (!gcOpen) return; const k = `g${gcOpen.id}`; gcTime[k] = (gcTime[k] || 0) + (Date.now() - gcOpen.t); gcOpen = null; }
 (() => {
   const m = document.getElementById("insights-modal");
-  if (m && window.MutationObserver) new MutationObserver(() => { if (m.classList.contains("hidden")) gcStop(); }).observe(m, { attributes: true, attributeFilter: ["class"] });
+  // What people tap inside game info: the section and the control, for Live.
+  m?.addEventListener("click", (e) => {
+    const el = e.target.closest?.("button, a, summary, [role=button], [data-ins], label, select, input");
+    if (!el || !m.contains(el)) return;
+    const clean = (t) => String(t || "").replace(/\s+/g, " ").trim().slice(0, 32);
+    let sec = "";
+    for (let p = el; p && p !== m && !sec; p = p.parentElement) {
+      const h = [...p.children].find((c) => c !== el && !c.contains(el) && c.matches(".ins-h, .ins-sub-h, .ins-pv-h, summary, h2, h3"));
+      if (h) sec = clean(h.textContent);
+    }
+    const what = clean(el.getAttribute("aria-label") || el.getAttribute("title") || el.textContent) || el.className.split(" ")[0];
+    const d = sec && sec !== what ? `${sec} › ${what}` : what;
+    if (d && d !== insTap.last) { insTap.last = d; noteUse("ins-tap", d); }
+  }, true);
+ new MutationObserver(() => { if (m.classList.contains("hidden")) gcStop(); }).observe(m, { attributes: true, attributeFilter: ["class"] });
 })();
+const insTap = { last: "" };
+// Every tap on a control, for Live: what was tapped and on which screen.
+// Batched with the rest of the visit, so it costs no extra requests.
+(() => {
+  const clean = (t) => String(t || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  let last = "", lastAt = 0;
+  document.addEventListener("click", (e) => {
+    // Only a person's tap: the app opens and folds sections itself with
+    // .click() (between weeks, for one), and those are not taps.
+    if (!e.isTrusted) return;
+    const el = e.target.closest?.("button, a, summary, select, input, label, [role=button], [data-pot-row], [data-rc], [data-statrank], [data-wkstand], .pick-chip, .rx-season");
+    if (!el) return;
+    const what = el.id ? `#${el.id}` : clean(el.getAttribute("aria-label") || el.dataset.name || el.textContent) || `.${String(el.className || "").split(" ")[0]}`;
+    const where = el.closest("[role=dialog], .modal-overlay")?.id || (typeof activeScreenName === "string" ? activeScreenName : "") || "";
+    const d = where ? `${where} › ${what}` : what;
+    const now = Date.now();
+    if (d === last && now - lastAt < 1500) return;
+    last = d; lastAt = now;
+    presenceNote("tap", d);
+  }, { capture: true, passive: true });
+})();
+// A game row on a player's card opens that game (Gamecast once it has
+// kicked off). Ahead of the row's own tap, which folds the card.
+document.addEventListener("click", (e) => {
+  // Player sheet: a tap on an impact bar shows that game's hit / miss odds.
+  const bar = e.target.closest?.(".ps-row .rd-sway");
+  if (bar) { e.preventDefault(); e.stopPropagation(); const w = bar.closest(".ps-row").querySelector(".ps-what"); if (w) { w.hidden = !w.hidden; bar.closest(".ps-row").classList.toggle("what", !w.hidden); } return; }
+  const r = e.target.closest?.(".rd-row[data-rdgame], .ps-row[data-rdgame], .rd-tb[data-rdgame], .h2x-mid[data-rdgame]");
+  if (!r || e.target.closest("[data-locks]")) return;
+  e.preventDefault(); e.stopPropagation();
+  const g = GAMES.find((x) => String(x.id) === r.dataset.rdgame); if (!g) return;
+  // From the player sheet: close it first so the game opens on top.
+  if (r.closest("#rank-sheet")) closeRankSheet();
+  // From head to head: close it so the game opens on top.
+  r.closest(".modal-overlay")?.classList.add("hidden");
+  openInsights(g.id);
+}, true);
+// Everyone's lock of the week in one sheet, from any 🔒 tap. Only what the
+// Worker has shown: a lock on a game that hasn't kicked off stays hidden.
+function openLocksSheet() {
+  const lr = lockRule(); if (!lr) return;
+  const all = lastGoodCloudPicks || boardPicks.data || {};
+  const fins = computeLiveResults(latestLive);
+  const rows = MANAGERS.map((n) => {
+    const st = all[n]?.picks || {};
+    const id = Object.keys(st).find((k) => st[k]?.lock);
+    const g = id && GAMES.find((x) => String(x.id) === String(id));
+    const anyHidden = Object.values(st).some((x) => x?.hidden);
+    if (!g) return { n, rank: 3, html: `<span class="lks-none">${anyHidden && n !== currentManager ? "Hidden until kickoff" : "No lock"}</span>` };
+    const pk = st[id], fin = fins[g.id], l = latestLive[g.id];
+    const live = !fin && l?.found && l.state === "in" && l.awayScore != null ? scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) : null;
+    const pts = fin ? scorePick(g, pk, fin) : null;
+    const push = fin && pk.mode === "ATS" && resultOutcome(g, fin)?.push;
+    const ls = lockState(g, pk), say = { pend: isGameLocked(g) ? "LIVE" : escapeCd(g.kickoffLabel || ""), up: "COVERING", dn: "NOT COVERING", hit: `+${lr.hit}`, miss: lr.miss < 0 ? "−" + Math.abs(lr.miss) : "0" }[ls];
+    const tag = `<span class="lks-st ${ls}">${ls === "pend" ? "" : lkI(ls)}${push ? "PUSH" : say}</span>`;
+    const away = pk.team === g.away, tid = away ? g.awayId : g.homeId, oid = away ? g.homeId : g.awayId;
+    return { n, rank: pts != null ? (pts > 0 ? 0 : 2) : 1, html: `<img class="lks-logo" src="${logoUrl(tid)}" alt=""><span class="lks-pk"><b>${escapeCd(lockPickText(g, pk))}</b><small>${away ? "at" : "vs"} <img class="lks-opp" src="${logoUrl(oid)}" alt="">${escapeCd(away ? g.homeShort : g.awayShort)}</small></span>${tag}` };
+  }).sort((a, b) => a.rank - b.rank || MANAGERS.indexOf(a.n) - MANAGERS.indexOf(b.n));
+  document.getElementById("locks-sheet")?.remove();
+  const m = document.createElement("div");
+  m.id = "locks-sheet"; m.className = "lks"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Everyone's lock of the week");
+  m.innerHTML = `<div class="lks-card"><div class="lks-h"><b>🔒 LOCKS OF THE WEEK</b><button type="button" class="lks-x" aria-label="Close">✕</button></div><small class="lks-sub">${escapeCd(lockLabel(lr))} · shown from kickoff</small><ul>${rows.map((r) => `<li class="${r.n === currentManager ? "me" : ""}"><span class="pick-chip-av" style="--accent:${accentFor(r.n)}">${escapeCd(avatarOverrides[r.n] || shown(r.n)[0])}</span><span class="lks-nm">${escapeCd(shown(r.n))}</span>${r.html}</li>`).join("")}</ul></div>`;
+  m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".lks-x")) m.remove(); });
+  document.body.appendChild(m);
+  noteUse("locks-sheet");
+}
+// Any lock icon opens it, ahead of whatever the card under it would do.
+document.addEventListener("click", (e) => { const t = e.target.closest?.("[data-locks], .pick-cell .pick-lk"); if (!t || !lockRule()) return; e.preventDefault(); e.stopPropagation(); openLocksSheet(); }, true);
 function endSession() {
   if (sessionStart == null) return;
-  const start = sessionStart, dur = Date.now() - start;
+  const start = sessionStart, dur = Math.min(Date.now(), Math.max(lastAct, start) + 60000) - start;
   sessionStart = null;
   gcStop();
   const f = [...sessionUse]; sessionUse.clear();
@@ -1786,7 +2138,7 @@ function endSession() {
   appHealth.e = 0; appHealth.em = []; appHealth.ff = { espn: 0, worker: 0 }; appHealth.sl = { espn: 0, worker: 0 }; appHealth.ld = -1; // load time only once per page
   const me = loadMe();
   if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry || window.__liveView || dur < 3000) return;
-  const body = JSON.stringify({ manager: me, kind: "session", start, dur, f, gt, h: h.ld === -1 ? { ...h, ld: null } : h, v: typeof APP_VERSION === "string" ? APP_VERSION : "" });
+  const body = JSON.stringify({ manager: me, kind: "session", start, dur, f, gt, h: h.ld === -1 ? { ...h, ld: null } : h, v: typeof APP_VERSION === "string" ? APP_VERSION : "", st: window.APP_STYLE === "pro" ? "pro" : "classic" });
   try {
     // text/plain keeps the beacon a simple request (no CORS preflight).
     // With no signal a beacon is accepted and then lost; keep it instead.
@@ -1794,8 +2146,9 @@ function endSession() {
     if (!(navigator.sendBeacon && navigator.sendBeacon(`${WORKER_URL}/visit`, new Blob([body], { type: "text/plain" })))) fetch(`${WORKER_URL}/visit`, { method: "POST", body, keepalive: true }).catch(() => queueTele(JSON.parse(body)));
   } catch {}
 }
-document.addEventListener("visibilitychange", () => { if (document.hidden) endSession(); else if (sessionStart == null) sessionStart = Date.now(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) endSession(); else { lastAct = Date.now(); if (sessionStart == null) sessionStart = lastAct; } });
 addEventListener("pagehide", endSession);
+addEventListener("freeze", endSession);
 
 // Jake's friction (errors, rage taps, dead taps, sheets shut at once) goes
 // to its own log on the live page, never into league usage.
@@ -1886,7 +2239,11 @@ let adminKeyHeld = "";
 homeLogoBtn.addEventListener("click", () => {
   // A plain tap scrolls to the top, so a curious tap does something.
   // Three quick taps open the admin key prompt.
+  // Taps that scroll back up are not the shortcut: only taps made while
+  // already at the top count, so tapping home from far down never opens it.
+  const atTop = appScroll.scrollTop < 5;
   appScroll.scrollTo({ top: 0, behavior: "smooth" });
+  if (!atTop) { adminTaps = 0; return; }
   adminTaps += 1;
   clearTimeout(adminTapTimer);
   if (adminTaps >= 3) { adminTaps = 0; requestAdmin(); return; }
@@ -1895,9 +2252,18 @@ homeLogoBtn.addEventListener("click", () => {
 
 // brochiefs.com/admin lands here as /?admin=1: open the key prompt straight
 // away, then tidy the address bar so a refresh is just the app.
-if (window.__adminEntry) {
+if (window.__adminEntry && !window.__slateEmbed) {
   history.replaceState(null, "", location.pathname);
   window.addEventListener("load", () => setTimeout(() => requestAdmin(), 600));
+}
+// Inside Live: use the key Live already holds (same site), else ask once.
+if (window.__slateEmbed) {
+  document.documentElement.classList.add("slate-embed");
+  window.addEventListener("load", () => setTimeout(() => {
+    let k = "";
+    try { k = window.parent.__liveSlateKey?.() || ""; } catch {}
+    if (k) submitAdminKey(k); else requestAdmin();
+  }, 300));
 }
 
 // Already unlocked in this tab: straight back to that surface. Otherwise
@@ -1965,7 +2331,10 @@ async function submitAdminKey(remembered) {
     else if (!rememberedTry) localStorage.removeItem(ADMIN_REMEMBER_KEY);
   } catch {}
   // Hands the key to the browser's password manager (Face ID / Touch ID fill).
-  try { if (window.PasswordCredential) navigator.credentials.store(new PasswordCredential({ id: "brochiefs-admin", password: key, name: "Brochiefs admin" })); } catch {}
+  // Optional: the store is async and can fail (no credential service, a
+  // frame, a private window); the rejection is swallowed so it never logs
+  // as an app error, and the key is already accepted either way.
+  try { if (window.PasswordCredential && !window.__slateEmbed) navigator.credentials.store(new PasswordCredential({ id: "brochiefs-admin", password: key, name: "Brochiefs admin" }))?.catch?.(() => {}); } catch {}
   adminKeyHeld = key;
   setAdminGateStatus(role === "app" ? "App console…" : "Slate editor…", "ok");
   // admin.js reads the key from here rather than from a field on screen.
@@ -1976,12 +2345,13 @@ async function submitAdminKey(remembered) {
 }
 
 function openRole(role) {
+  if (window.__slateEmbed) return openAdmin();
   if (role === "app") openAppConsole();
   else openAdmin();
 }
 
 document.getElementById("admin-gate-ok")?.addEventListener("click", () => submitAdminKey());
-document.getElementById("admin-gate-cancel")?.addEventListener("click", closeAdminGate);
+document.getElementById("admin-gate-cancel")?.addEventListener("click", () => { closeAdminGate(); if (window.__slateEmbed) { try { window.parent.postMessage({ type: "slate-close" }, location.origin); } catch {} } });
 document.getElementById("admin-gate-key")?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") { e.preventDefault(); submitAdminKey(); }
 });
@@ -1996,12 +2366,13 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=022202894030";
+  tag.src = "admin.js?v=345220470698";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
 
 function closeAdmin() {
+  if (window.__slateEmbed) { try { window.parent.postMessage({ type: "slate-close" }, location.origin); } catch {} }
   adminOverlay?.classList.add("hidden");
   document.body.classList.remove("admin-open");
   lockAdmin();
@@ -2225,7 +2596,7 @@ function showPicksScreen() {
 }
 
 function showHistory() {
-  ensureExtras();
+  ensureExtras().then(() => window.paintFantasy?.());
   if (!currentManager) openClaimPrompt();
   rememberScroll();
   loginScreen.classList.add("hidden");
@@ -2318,14 +2689,18 @@ async function fetchAvatars() {
     return null;
   }
 }
-async function fetchAvatarsAll() {
+// Avatars are kept on the phone, so a dropped call ("Load failed") just
+// keeps the saved ones: it waits five seconds at most and tries once more
+// in the background.
+async function fetchAvatarsAll(retry = true) {
   if (!WORKER_URL) return null;
   try {
-    const res = await fetch(`${WORKER_URL}/avatars`);
+    const res = await fetch(`${WORKER_URL}/avatars`, { signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined });
     if (!res.ok) return null;
     const data = await res.json();
     return { avatars: data.avatars || {}, colors: data.colors || {} };
   } catch {
+    if (retry) setTimeout(() => { syncAvatars(false); }, 2500);
     return null;
   }
 }
@@ -2368,9 +2743,9 @@ async function queueAvatar(manager, patch) {
 // The Worker is the source of truth: what it holds wins, so a reset on one
 // phone clears it on every other. Unsent local changes ride on top until
 // they go through.
-async function syncAvatars() {
+async function syncAvatars(retry = true) {
   for (const m of Object.keys(loadPendingAvatars())) await flushAvatar(m);
-  const cloud = await fetchAvatarsAll();
+  const cloud = await fetchAvatarsAll(retry);
   if (!cloud) return false;
   const emojis = { ...cloud.avatars }, colors = { ...cloud.colors };
   for (const [m, p] of Object.entries(loadPendingAvatars())) {
@@ -2398,7 +2773,8 @@ async function renderManagerPicker() {
   const pickerResults = firstKickoffPassed() ? computeLiveResults(latestLive) : {};
   const scored = Object.keys(pickerResults).length > 0;
 
-  await syncAvatars();
+  // The roster never waits long on avatars: the saved ones show at once.
+  await Promise.race([syncAvatars(), new Promise((r) => setTimeout(r, 2000))]);
   updateMePill();
 
   managerPicker.innerHTML = "";
@@ -2626,6 +3002,8 @@ function openOwnerPicker() {
     if (!picksScreen.classList.contains("hidden")) { await syncManagerFromCloud(name); withScrollPreserved(renderPicksScreen); }
     if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
     if (!loginScreen.classList.contains("hidden")) renderManagerPicker();
+    // Fantasy follows the new owner too: your matchup, your row, your team news.
+    try { window.fantasyMeChanged?.(); } catch {}
   }));
   claimModal.classList.remove("hidden");
 }
@@ -2768,7 +3146,7 @@ function matchupCardsHtml(game, draft) {
   let live = raw && (!raw.awayTeamId || !game.awayId || raw.awayTeamId === Number(game.awayId)) ? raw : {};
   // Before the scores answer: last known records and ranks for this game.
   const rec0 = live.awayRecord || live.homeRecord ? null : savedRecords(game.id);
-  if (rec0) Object.assign(live = { ...live }, rec0);
+  if (rec0) live = { ...live, ...rec0 };
   const side = (team, teamId, isFavorite, short, rank, record) => {
     const sign = isFavorite ? "-" : "+";
     const line = `${sign}${game.spread}`;
@@ -2804,7 +3182,7 @@ gamesList?.addEventListener("click", (e) => {
   const chip = e.target.closest(".game-status");
   if (chip) { const id = Number(chip.closest(".game-card")?.dataset.gameId); if (id) { track("status-tap", { event: true }); openInsights(id); } return; }
   // A team's logo or name opens the game's info sheet too.
-  const tm = e.target.closest(".hz-tm, .tm-id");
+  const tm = e.target.closest(".hz-tm, .tm-id, .lr-foot, .locked-result"); // any part of a locked card, scores included
   if (!tm) return;
   const id = Number(tm.closest(".game-card")?.dataset.gameId);
   if (id) { track("team-tap", { event: true }); openInsights(id); }
@@ -2822,7 +3200,7 @@ let justSavedKind = "saved";
 // into a scorebug: both teams with live or final scores, the picked team
 // highlighted, and what the pick is worth or has earned.
 function lockedResultHtml(game, pick, finalRes, liveG) {
-  if (!liveG?.awayRecord && !liveG?.homeRecord) { const r0 = savedRecords(game.id) || (latestLive[game.id]?.awayRecord ? latestLive[game.id] : null); if (r0) liveG = { ...(liveG || {}), awayRecord: r0.awayRecord, homeRecord: r0.homeRecord, awayRank: liveG?.awayRank ?? r0.awayRank, homeRank: liveG?.homeRank ?? r0.homeRank }; }
+  if (!liveG?.awayRecord && !liveG?.homeRecord) { const r0 = savedRecords(game.id); if (r0) liveG = { ...(liveG || {}), awayRecord: r0.awayRecord, homeRecord: r0.homeRecord, awayRank: liveG?.awayRank ?? r0.awayRank, homeRank: liveG?.homeRank ?? r0.homeRank }; }
   const src = finalRes || liveG;
   const aS = src && Number.isFinite(src.awayScore) ? src.awayScore : null;
   const hS = src && Number.isFinite(src.homeScore) ? src.homeScore : null;
@@ -2939,7 +3317,7 @@ function renderPicksStanding() {
   const right = chasing
     ? `<span class="ps-label">${me.place === 1 ? "AHEAD OF" : "CHASING"}</span><span class="ps-who">${escapeCd(shown(chasing.name).toUpperCase())}</span><span class="ps-gap">${gap} ${me.place === 1 ? "UP" : "BACK"}</span>`
     : `<span class="ps-label">CLEAR</span>`;
-  el.innerHTML = `<span class="ps-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span><span class="ps-score">${String(me.score).padStart(2, "0")} PTS</span>${right}`;
+  el.innerHTML = `<span class="ps-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span><span class="ps-score">${pts2(me.score)} PTS</span>${right}`;
   el.classList.remove("hidden");
 }
 
@@ -3021,6 +3399,7 @@ function maybeLockIntro() {
   track("lock-intro", { event: true });
 }
 function maybeLockReminder(why) {
+  if (window.NO_POPUPS) return false;
   const lr = lockRule();
   if (!lr || !currentManager || window.__liveView) return false;
   const s = getManagerState(currentManager);
@@ -3052,18 +3431,32 @@ function renderLockRules() {
   el.classList.toggle("hidden", !lr);
   if (lr) el.innerHTML = `<span class="rules-heading">🔒 Lock of the week</span><ul class="rules-list"><li>Optional: mark one spread pick a week as your lock (tap 🔒 under it)</li><li>Lock hits: <strong>+${lr.hit}</strong> on top of the pick · lock misses: <strong>${lr.miss < 0 ? "−" + Math.abs(lr.miss) : "0"}</strong></li><li>A push or no lock: nothing either way. It locks with the game and stays hidden until kickoff.</li></ul>`;
 }
-// The leaderboard row's lock: a small 🔒 coloured by how it stands
-// (green cashed or covering, pink missed or not covering, plain before).
+// One lock, five looks, everywhere a lock shows:
+//   pend  plain white lock, game not started
+//   up    green dotted ring, live and covering
+//   dn    pink dotted ring, live and not covering
+//   hit   green check on its top right, final
+//   miss  red X over it, final
+// A push or no score yet reads as pend.
+function lockState(g, pk) {
+  if (!g || !pk) return "pend";
+  const fin = computeLiveResults(latestLive)[g.id], l = latestLive[g.id];
+  if (fin) { if (pk.mode === "ATS" && resultOutcome(g, fin)?.push) return "pend"; return scorePick(g, pk, fin) > 0 ? "hit" : "miss"; }
+  if (l && l.found && l.state === "in" && l.awayScore != null) return scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) > 0 ? "up" : "dn";
+  return "pend";
+}
+const LK_SAY = { pend: "not started", up: "covering now", dn: "not covering now", hit: "hit", miss: "missed" };
+const lkI = (st, cls = "", g = null, pk = null) => `<i class="lk lk-${st}${cls ? " " + cls : ""}" data-locks="1" role="button" title="Lock${g && pk ? `: ${escapeCd(lockPickText(g, pk))}` : ""} · ${LK_SAY[st]} · tap for everyone's">🔒</i>`;
+// The leaderboard row's lock.
 function rankLockHtml(row) {
   if (!lockRule()) return "";
   const id = Object.keys(row.state?.picks || {}).find((k) => row.state.picks[k]?.lock);
   const g = id && GAMES.find((x) => String(x.id) === String(id));
   if (!g) return "";
-  const pk = row.state.picks[id], fin = computeLiveResults(latestLive)[g.id], l = latestLive[g.id];
-  const p = fin ? scorePick(g, pk, fin) : l && l.found && l.state === "in" && l.awayScore != null ? scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) : null;
-  const st = p == null ? "" : p > 0 ? " up" : p < 0 || (fin && p === 0 && !(pk.mode === "ATS" && resultOutcome(g, fin)?.push)) ? " dn" : "";
-  return `<i class="rank-lk${st}${fin ? " fin" : ""}" title="Lock: ${escapeCd(lockPickText(g, pk))}">🔒</i>`;
+  const pk = row.state.picks[id];
+  return lkI(lockState(g, pk), "rank-lk", g, pk);
 }
+// The smashed padlock: shackle snapped off, body crushed and cracked.
 function lockPickText(g, pk) {
   const short = pk.team === g.home ? g.homeShort : pk.team === g.away ? g.awayShort : pk.team;
   return pk.mode === "SU" ? `${short} to win` : `${short} ${pk.team === g.favorite ? "−" : "+"}${g.spread}`;
@@ -3297,6 +3690,7 @@ function renderPicksScreen() {
   if (saveBtn) saveBtn.classList.toggle("hidden", tiebreakerLocked);
 
   updatePicksProgress(state);
+  if (sheetOn()) paintSheet();
 }
 
 function updatePicksProgress(state) {
@@ -3496,8 +3890,12 @@ async function renderScoreboard() {
   maybeLockIntro();
   if (bootBoard) {
     const b = bootBoard; bootBoard = null;
-    if (!Object.keys(latestLive).length && b.week === currentWeek) { latestLive = b.live; latestLiveWeek = b.week; }
-    try { paintScoreboard(b.picks, b.live, true); } catch (err) { console.warn("cached board", err); }
+    // A saved final only counts if it was saved after the game could have
+    // ended: a copy saved off a bad early read (VT 26-34 at halftime) must
+    // not come back on the next open. Judged by when it was saved, not now.
+    const savedLive = Object.fromEntries(Object.entries(b.live || {}).filter(([id, g]) => !(g?.completed && (finalTooSoon(id) || finalTooSoon(id, b.at)))));
+    if (!Object.keys(latestLive).length && b.week === currentWeek) { latestLive = savedLive; latestLiveWeek = b.week; }
+    try { paintScoreboard(b.picks, savedLive, true); } catch (err) { console.warn("cached board", err); }
   }
   // Picks and scores together, not picks and then scores.
   const [fetched, live] = await Promise.all([fetchBoardPicks(), fetchLiveScores()]);
@@ -3513,6 +3911,10 @@ function boardCloudPicks(rawPicks) {
 }
 function paintScoreboard(fetched, live, cached) {
   cloudPicksStale = fetched === null;
+  // A failed picks read with nothing saved would draw everyone on zero, a
+  // board that looks like the week just started. Keep what is on screen
+  // and let the next poll try again.
+  const noPicks = fetched === null && !lastGoodCloudPicks && !cached;
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
   const cloudPicks = boardCloudPicks(rawPicks);
   if (fetched !== null && !cached) lastGoodCloudPicks = rawPicks;
@@ -3523,11 +3925,13 @@ function paintScoreboard(fetched, live, cached) {
 
   if (!cached) archiveWeekIfFinal(results);
   renderLiveScores(live, cloudPicks);
+  if (noPicks) { console.warn("picks unavailable; keeping the leaderboard"); return; }
   // Ranked once and handed to both, so the table and the leaderboard
   // cannot end up in different orders.
   const ranked = rankManagers(cloudPicks, results);
   renderScoreboardTable(cloudPicks, results, live, ranked);
   renderRankings(cloudPicks, results, live, ranked);
+  if (!cached) renderSinceLine(ranked, cloudPicks, live);
   const firstRows = !liveWeekRows.length && ranked.length;
   liveWeekRows = ranked;
   if (firstRows && potOpen()) renderPayouts();
@@ -3829,7 +4233,7 @@ function renderSidePot() {
   if (sideOpen(pot)) {
     const cd = kickoffCountdown(new Date(pot.closesAt).toISOString());
     body = `<div class="sp-head"><span class="sp-kick">💰 LATE NIGHT SIDE POT</span><span class="sp-pot">${sideMoney(total)}</span></div>
-      <div class="sp-games">${games.map((g) => `<span>${escapeCd(g.awayShort)} @ ${escapeCd(g.homeShort)}</span>`).join("")}</div>
+      <div class="sp-games">${games.map((g) => `<span>${matchInline(g)}</span>`).join("")}</div>
       <div class="sp-in">${names.length ? `<b>${names.length} IN</b> ${names.map((n) => escapeCd(shown(n))).join(" · ")}` : "Nobody's in yet."}</div>
       <div class="sp-foot"><span class="sp-close">$${pot.buyIn} to get in · closes in <b data-sp-cd>${cd && !cd.past ? cd.text : "now"}</b></span>
         <button type="button" class="sp-btn${mine && !sideNeedsPicks(pot, me) ? " in" : ""}" data-sp="open">${sideNeedsPicks(pot, me) ? "NEW GAMES · FINISH PICKS" : mine ? "✓ YOU'RE IN · EDIT" : `I'M IN · $${pot.buyIn}`}</button></div>`;
@@ -3871,6 +4275,7 @@ setInterval(() => {
 // Asked once, on the board, when it opens. Not over another pop-up: if one
 // is up, the next refresh asks again.
 function maybeShowSidePrompt() {
+  if (window.NO_POPUPS) return;
   const pot = potNow();
   if (sidePromptShown || !sideOpen(pot) || !currentManager || window.__adminEntry || window.__adminOpen || window.__liveView) return;
   const owes = sideNeedsPicks(pot, currentManager);
@@ -4221,7 +4626,7 @@ function openSideSheet(asked) {
         <div class="sp-match">${matchupCardsHtml(g, draft[g.id]?.team ? { team: draft[g.id].team, mode: draft[g.id].mode || "ATS" } : null)}</div>
         ${g.total != null ? `<div class="sp-segs">${ou(g, "over")}${ou(g, "under")}</div>` : ""}
       </div>`).join("")}
-      ${tbG ? `<label class="sp-tbin"><span>TIEBREAKER · total points in ${escapeCd(sideMatch(tbG))}</span><input type="number" inputmode="numeric" min="0" max="200" step="1" placeholder="Your guess" value="${escapeCd(String(draftTb))}"></label>` : ""}
+      ${tbG ? `<label class="sp-tbin"><span>TIEBREAKER · total points in ${matchInline(tbG)}${tbG.half ? ` (${tbG.half === 2 ? "2nd" : "1st"} half)` : ""}</span><input type="number" inputmode="numeric" min="0" max="200" step="1" placeholder="Your guess" value="${escapeCd(String(draftTb))}"></label>` : ""}
       <div class="sp-sheet-note">Most points takes the pot${tbG ? "; a tie goes to the closest guess" : "; a tie splits it"}. Nobody sees your picks until ${closes}. Money is settled between you, not in the app.</div>
       </div>
       <div class="sp-sh-foot">
@@ -4391,11 +4796,13 @@ document.getElementById("side-screen-body")?.addEventListener("click", (e) => {
 // Results are derived straight from ESPN's live feed once a game goes
 // final — no manual score entry. A game only counts once ESPN marks it
 // completed, so scores never lock in early off a still-live number.
+// A final reported before the game could have been played is not a final.
+function finalTooSoon(id, at = Date.now()) { const g = GAMES.find((x) => String(x.id) === String(id)); const k = Date.parse(g?.kickoff); return Number.isFinite(k) && at < k + 135 * 60000; }
 function computeLiveResults(live) {
   const results = {};
   GAMES.forEach((game) => {
     const g = live[game.id];
-    if (g && g.completed && Number.isFinite(g.awayScore) && Number.isFinite(g.homeScore)) {
+    if (g && g.completed && !finalTooSoon(game.id) && Number.isFinite(g.awayScore) && Number.isFinite(g.homeScore)) {
       results[game.id] = { awayScore: g.awayScore, homeScore: g.homeScore };
     }
   });
@@ -4432,12 +4839,17 @@ function namesListHtml(names) {
 }
 
 // Name chips: avatar initial (or emoji) plus name, wrapping as a unit.
-function nameChips(names) {
+// A small 🔒 on the top left of a name that has this game as its lock.
+// Only picks the Worker has shown (from kickoff on) can carry it.
+function lockOn(n, gid, src = lastGoodCloudPicks) { return !!(lockRule() && gid != null && src?.[n]?.picks?.[gid]?.lock); }
+const nameLk = (on, g, pk) => (on ? lkI(lockState(g, pk), "nm-lk", g, pk) : "");
+function nameChips(names, gid = null, src) {
   return names.map((n) => {
     const idx = MANAGERS.indexOf(n);
     const accent = accentFor(n);
     const av = avatarOverrides[n] || shown(n)[0];
-    return `<span class="pick-chip${n === currentManager ? " me" : ""}" data-name="${escapeCd(n)}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span>${shown(n)}</span>`;
+    const lk = lockOn(n, gid, src);
+    return `<span class="pick-chip${n === currentManager ? " me" : ""}${lk ? " has-lk" : ""}" data-name="${escapeCd(n)}">${nameLk(lk, GAMES.find((x) => String(x.id) === String(gid)), src?.[n]?.picks?.[gid])}<span class="pick-chip-av" style="--accent:${accent}">${av}</span>${shown(n)}</span>`;
   }).join("");
 }
 
@@ -4459,8 +4871,8 @@ function bugSideDetail(cloudPicks, game, team, short, finalRes) {
     return pts > 0 ? `<span class="pick-pill ${ptsTier(pts)}">+${pts}</span>` : `<span class="pick-pill miss">✗</span>`;
   };
   const rows = [];
-  if (ats.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag ats">SPREAD ${spreadTxt}</span>${pill("ATS")}</span><div class="pick-chips">${nameChips(ats)}</div></div>`);
-  if (su.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag su">STRAIGHT UP</span>${pill("SU")}</span><div class="pick-chips">${nameChips(su)}</div></div>`);
+  if (ats.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag ats">SPREAD ${spreadTxt}</span>${pill("ATS")}</span><div class="pick-chips">${nameChips(ats, game.id, cloudPicks)}</div></div>`);
+  if (su.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag su">STRAIGHT UP</span>${pill("SU")}</span><div class="pick-chips">${nameChips(su, game.id, cloudPicks)}</div></div>`);
   return `
     <div class="bug-side">
       <div class="bug-side-head"><span>${short}</span></div>
@@ -4569,24 +4981,26 @@ function renderLiveScores(live, cloudPicks) {
       // Thursday or Friday game stands out from the Saturday slate.
       const kl = game.kickoffLabel.match(/^(Sat|Sun|Mon|Tue|Wed|Thu|Fri) (.+?)(?: ET)?$/);
       // AM/PM shrinks to a tiny suffix so the hour and the day carry it.
-      const timeOnly = (kl ? `${kl[2]} ${kl[1]}` : game.kickoffLabel.replace(/ ET$/, "")).replace(/\s?(AM|PM)\b/, '<small class="ampm">$1</small>');
-      const statusText = !locked
+      const timeOnly = (kl ? `${kl[2]} <span class="bug-day${kl[1] === "Sat" ? " sat" : ""}">${kl[1]}</span>` : game.kickoffLabel.replace(/ ET$/, "")).replace(/\s?(AM|PM)\b/, '<small class="ampm">$1</small>');
+      const statusText = movedKickoff(game, g) ? `<span class="bug-void" title="Moved from ${escapeCd(game.kickoffLabel)}">→ ${movedKickoff(game, g).short.replace(/:00/, "").replace(/ (AM|PM)$/, (m, x) => x[0].toLowerCase())}</span>` : !locked
         ? timeOnly
         : isFinal
           ? "FINAL"
           : isLive
             ? shortStatus(g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`)
-            : (found && g.state === "pre" ? timeOnly : found ? shortStatus(g.detail || "Scheduled") : "Waiting…");
+            : movedKickoff(game, g) ? `<span class="bug-void">MOVED · ${movedKickoff(game, g).short}</span>` : g?.voided ? `<span class="bug-void">${g.voided === "POSTPONED" ? "PPD" : g.voided === "CANCELED" ? "CNCL" : g.voided === "SUSPENDED" ? "SUSP" : g.voided}</span>` : (found && g.state === "pre" ? timeOnly : found ? shortStatus(g.detail || "Scheduled") : Date.now() - Date.parse(game.kickoff) > 45 * 60000 && Object.values(live || {}).some((x) => x?.found) ? `<span class="bug-void">NO SCORE</span>` : "Waiting…");
       // The channel matters right up to the final whistle, not just before
       // kickoff: on a ten game Saturday the question "which channel is
       // that one on" is asked most often about a game already in
       // progress. It only stops mattering once the game is over.
       const tvTag = !isFinal && game.tv
-        ? `<span class="bug-tv" title="${escapeCd(game.tv)}">${escapeCd(shortNetwork(game.tv))}</span>`
+        ? `<span class="bug-tv${shortNetwork(game.tv).length > 5 ? " long xlong" : shortNetwork(game.tv).length > 4 ? " long" : ""}" title="${escapeCd(game.tv)}">${escapeCd(shortNetwork(game.tv))}</span>`
         : "";
 
-      const awayScore = found ? g.awayScore ?? "–" : "–";
-      const homeScore = found ? g.homeScore ?? "–" : "–";
+      // Not kicked off: no score yet, a dash, never a 0 that reads as final.
+      const started = found && (isLive || isFinal || g.state === "in" || g.state === "post");
+      const awayScore = started ? g.awayScore ?? "–" : "–";
+      const homeScore = started ? g.homeScore ?? "–" : "–";
       const prev = lastScores[game.id] || {};
       const awayPop = found && prev.away !== undefined && prev.away !== awayScore;
       const homePop = found && prev.home !== undefined && prev.home !== homeScore;
@@ -4607,17 +5021,16 @@ function renderLiveScores(live, cloudPicks) {
       const inRz = !!possSide && !!(g.situation?.isRedZone ?? g.redZone);
       const ballHtml = (side) => possSide === side ? `<i class="bug-ball${inRz ? " rz" : ""}" title="${inRz ? "Has the ball in the red zone" : "Has the ball"}"></i>${inRz ? `<b class="bug-rz">RZ</b>` : ""}` : "";
       const row = (team, short, id, score, lead, fav, pop, rank, side) => `
-        <div class="bug-row ${lead ? "leading" : ""} ${myPick && myPick.team === team ? "mine" : ""}">
+        <div class="bug-row ${lead ? "leading" : ""} ${myPick && myPick.team === team ? `mine${isFinal && Number.isFinite(g?.awayScore) ? ((scorePick(game, myPick, { awayScore: g.awayScore, homeScore: g.homeScore }) || 0) > 0 ? " hit" : " miss") : ""}` : ""}">
           <span class="bug-mark">
-            <img class="bug-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
-            ${rankBadge(rank)}
+            <img class="bug-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />${rankBadge(rank)}
           </span>
-          <span class="bug-team"><span class="tm-nm">${short.length > 12 ? short.replace(/^(South|North|East|West|Central)\s/, (m, d) => d[0] + " ") : short}</span>${ballHtml(side)}</span>
+          <span class="bug-team"><span class="tm-nm" title="${escapeCd(short)}">${bugName(short)}</span>${ballHtml(side)}</span>
           ${fav ? `<span class="bug-fav">-${game.spread}</span>` : `<span class="bug-fav dog"></span>`}
           <span class="bug-score ${pop ? "pop" : ""}">${score}</span>
         </div>`;
 
-      const cls = ["scorebug", isLive ? "is-live" : "", isFinal ? "is-final" : "", !locked ? "upcoming" : ""].join(" ");
+      const cls = ["scorebug", isLive ? "is-live" : "", isFinal ? "is-final" : "", !locked ? "upcoming" : "", !isLive && !isFinal ? "pregame" : ""].join(" ");
       // What this game is worth to the viewer, top right. Before kickoff
       // it just states the stake; live it carries a dot, green while the
       // pick is covering and red while it is not; at the final a miss is
@@ -4652,17 +5065,21 @@ function renderLiveScores(live, cloudPicks) {
           tone = `lean ${lean > 0 ? ptsTier(worth) : "miss"}`;
           face = lean > 0 ? `+${worth}` : "0";
         }
-        myPill = `<span class="stake ${tone}" title="You took ${mine} ${terms} for ${worth} pt">${face}</span>`;
+        // Before a result the pill is coloured by the kind of pick: spread 2
+        // cyan, favourite to win 1 muted, underdog to win 3 purple.
+        const kind = tone === "pending" ? (myPick.mode === "ATS" ? " t2" : isFav ? " t1" : " t3") : "";
+        myPill = `<span class="stake ${tone}${kind}" title="You took ${mine} ${terms} for ${worth} pt">${face}</span>`;
       }
       return `
         <div class="${cls}${myPick?.lock && lockRule() ? " lk" : ""}" data-game="${game.id}" role="button" tabindex="0" aria-label="Open ${game.awayShort} at ${game.homeShort}">
+          ${myPick?.lock && lockRule() ? lkI(lockState(game, myPick), "bug-lk", game, myPick) : ""}
           <div class="bug-head">
             <span class="bug-gnum">G${gNum(game)}</span>${myPick?.lock && lockRule() ? `<i class="bug-lk" title="Your lock of the week">🔒</i>` : ""}
             <span class="bug-status">${statusText}</span>${tvTag}
             ${myPill}
           </div>
-          ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop, feed?.awayRank ?? null, "away")}
-          ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop, feed?.homeRank ?? null, "home")}
+          ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop, feed?.awayRank ?? savedRecords(game.id)?.awayRank ?? null, "away")}
+          ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop, feed?.homeRank ?? savedRecords(game.id)?.homeRank ?? null, "home")}
         </div>
       `;
     })
@@ -4737,7 +5154,9 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
       const pickId = pick.team === game.away ? game.awayId : game.homeId;
       const short = pick.team === game.away ? game.awayShort : game.homeShort;
       const spreadTag = pick.mode === "ATS"
-        ? `<span class="pick-cell-spread">${pick.team === game.favorite ? "-" : "+"}${game.spread}</span>`
+        // Halves as ½ (+16½), as books print them: one character narrower,
+        // so every line fits its column on a phone.
+        ? `<span class="pick-cell-spread">${pick.team === game.favorite ? "-" : "+"}${String(game.spread).replace(/\.5$/, "½")}</span>`
         : "";
       // Final games: points ride as a badge on the logo (+2 in green, ✗ in
       // pink with the logo dimmed) instead of a third stacked line.
@@ -4747,7 +5166,7 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
       const pill = pts === null ? "" : pushed ? `<span class="pick-pill push">P</span>` : pts > 0 ? `<span class="pick-pill ${ptsTier(pts)}">+${pts}</span>` : `<span class="pick-pill miss">✗</span>`;
       const under = pts === null ? spreadTag : pill;
       const lkCell = pick.lock && lockRule();
-      return `<td class="pick-cell ${cls}${lkCell ? " lk" : ""}" data-cellgame="${game.id}" title="${lkCell ? "LOCK · " : ""}${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}">${lkCell ? `<i class="pick-lk">🔒</i>` : ""}<span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
+      return `<td class="pick-cell ${cls}${lkCell ? " lk" : ""}" data-cellgame="${game.id}" title="${lkCell ? "LOCK · " : ""}${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}">${lkCell ? lkI(lockState(game, pick), "pick-lk", game, pick) : ""}<span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
     }).join("");
 
     // How far off, not what they said. A column of raw guesses is a column
@@ -4811,8 +5230,13 @@ function outReason(name, results, all = lastGoodCloudPicks || {}) {
   const others = MANAGERS.filter((n) => n !== name);
   let max = now[name];
   for (const g of open) { const p = pickOf(name, g); if (p) max += pickWorth(g, p); }
-  const banked = others.filter((n) => now[n] > max).sort((a, b) => now[b] - now[a])[0];
-  if (banked) return `Max ${max} can't reach ${shown(banked)}'s ${now[banked]} already banked.`;
+  // Guaranteed floor: banked points plus the worst result on every open
+  // game. Name the current leader when their floor already beats this
+  // max; otherwise the highest placed rival whose floor does.
+  const floor = Object.fromEntries(others.map((n) => [n, now[n] + open.reduce((t, g) => t + Math.min(...gameCats(g).map((c) => pts(n, g, c.res))), 0)]));
+  const byPlace = [...others].sort((a, b) => now[b] - now[a] || floor[b] - floor[a]);
+  const beats = byPlace.find((n) => floor[n] > max);
+  if (beats) return `${shown(name)} can finish with at most ${max} point${max === 1 ? "" : "s"}, below ${shown(beats)}'s guaranteed total.`;
   const best = { ...now };
   for (const g of open) {
     const cats = gameCats(g);
@@ -4876,6 +5300,9 @@ function swingMatchupHtml(name, sw, m) {
 const PATH_INTRO_KEY = "brochiefs_new_pathtowin_v1";
 let pathIntroShownThisLoad = false;
 function maybeShowPathIntro(force = false) {
+  // Retired: the BroChief Intelligence card (ask-ui.js) is the new-feature
+  // pop-up now. A forced call (the admin preview) still shows it.
+  if (!force) return;
   if (!force) {
     if (pathIntroShownThisLoad || !currentManager || window.__adminEntry || window.__adminOpen || window.__liveView) return;
     if (window.LEAGUE?.sport === "nfl") return; // college only for now
@@ -4920,20 +5347,7 @@ function showPathIntro() {
   m.addEventListener("click", (e) => { if (e.target === m) done(); });
   // Swipe the card down to close it.
   const card = m.querySelector(".pi-card");
-  let y0 = null, dy = 0;
-  card.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; dy = 0; card.style.transition = "none"; }, { passive: true });
-  card.addEventListener("touchmove", (e) => {
-    if (y0 == null) return;
-    dy = Math.max(0, e.touches[0].clientY - y0);
-    card.style.transform = `translateY(${dy}px)`;
-    card.style.opacity = String(Math.max(0.4, 1 - dy / 400));
-  }, { passive: true });
-  card.addEventListener("touchend", () => {
-    if (y0 == null) return;
-    y0 = null;
-    card.style.transition = "transform .2s ease-out, opacity .2s ease-out";
-    if (dy > 80) { card.style.transform = "translateY(100vh)"; done(); } else { card.style.transform = ""; card.style.opacity = ""; }
-  });
+  pullToClose(card, card, done, 80);
   track("path-intro", { event: true });
 }
 // For a preview from the console: previewPathIntro().
@@ -4967,7 +5381,7 @@ function pathChance(name, fixed, tbTotal = null, N = 1500) {
     ctx.models.forEach((m, k) => {
       let res = m.fixed || fixed.get(m.g.id);
       if (!res) {
-        let h = m.curH, a = m.curA;
+        let h = m.curH + (m.base || 0), a = m.curA + (m.base || 0);
         const n = poissonRand(m.lam, rnd);
         for (let q = 0; q < n; q++) { const v = rnd() < 0.6 ? 7 : 3; if (rnd() < m.pHome) h += v; else a += v; }
         if (h === a) { const v = rnd() < 0.6 ? 7 : 3; if (rnd() < m.pHome) h += v; else a += v; }
@@ -5079,6 +5493,16 @@ function stopsWho(g, res, name, standing, all = lastGoodCloudPicks || {}) {
 }
 // When the fresh read failed, the path says its scores may be behind.
 const pathStaleNote = () => (liveLastOk || window.__liveView ? "" : `<div class="pr-stale">Scores didn't refresh, so a game that just ended may still show.</div>`);
+// A game being played shows its score now, so the path reads against it:
+// green with a check while it is going the way the path needs, pink if not.
+const pathLiveTag = (g, st) => {
+  const l = latestLiveWeek === currentWeek ? latestLive[g.id] : null;
+  if (!(l?.found && l.state === "in" && !l.completed && Number.isFinite(l.awayScore))) return "";
+  const want = st?.res && resultOutcome(g, st.res), now = resultOutcome(g, { awayScore: l.awayScore, homeScore: l.homeScore });
+  const k = /cover/i.test(st?.txt || "") ? "atsWinner" : "suWinner";
+  const on = want && now ? (want[k] === now[k] ? " on" : " off") : "";
+  return `<small class="pr-now${on}">${on === " on" ? "✓ " : ""}LIVE ${teamInline(g.awayShort, g.awayId)} ${l.awayScore}-${l.homeScore} ${teamInline(g.homeShort, g.homeId)}</small>`;
+};
 // Once a path has been watched, the button opens this instead: a small
 // card with only the games that must go a certain way, the team's logo,
 // the result, and what it pays, then the win at the bottom.
@@ -5098,13 +5522,13 @@ function openPathCard(name) {
     const rowsHtml = sc.all.filter((st) => st.need).map((st) => {
       const p = scorePick(st.g, all[name]?.picks?.[st.g.id], st.res) || 0;
       const stop = p ? null : stopsWho(st.g, st.res, name, pts);
-      return `<li class="pc-row"><img class="pc-logo" src="${logoUrl(teamOf(st.g, st.txt))}" alt="" onerror="this.style.visibility='hidden'" /><span class="pc-txt">${escapeCd(st.txt)}${stop ? `<small class="pc-why">stops ${escapeCd(shown(stop))}</small>` : ""}</span><span class="pc-pts${p ? "" : " zero"}">${p ? `+${p}` : "0"}</span></li>`;
+      return `<li class="pc-row" data-pcg="${st.g.id}" role="button" tabindex="0"><img class="pc-logo" src="${logoUrl(teamOf(st.g, st.txt))}" alt="" onerror="this.style.visibility='hidden'" /><span class="pc-txt">${escapeCd(st.txt)}${pathLiveTag(st.g, st)}${stop ? `<small class="pc-why">stops ${escapeCd(shown(stop))}</small>` : ""}</span><span class="pc-pts${p ? "" : " zero"}">${p ? `+${p}` : "0"}</span></li>`;
     }).join("");
     const oneIn = sc.p > 0 ? Math.max(2, Math.round(1 / sc.p)) : null;
     const free = sc.all.length - sc.need.length;
     body = `<ul class="pc-list">${rowsHtml}</ul>
       ${pathStaleNote()}${free ? `<div class="pc-free">The other ${free} game${free === 1 ? "" : "s"} can go either way.</div>` : ""}
-      ${tied && sc.guess != null && sc.tbGame ? `<div class="pc-tie">Tied at ${top}: needs the tiebreaker, ${escapeCd(sc.tbGame.awayShort)} @ ${escapeCd(sc.tbGame.homeShort)} total near ${sc.guess}</div>` : ""}
+      ${tied && sc.guess != null && sc.tbGame ? `<div class="pc-tie">Tied at ${top}: needs the tiebreaker, ${matchInline(sc.tbGame)} total near ${sc.guess}</div>` : ""}
       <div class="pc-win">${escapeCd(me)} WINS THE WEEK</div>
       <div class="pc-foot"><span>${oneIn ? (oneIn > 10000 ? "Rarer than 1 in 10,000" : `About 1 in ${oneIn.toLocaleString()}`) : ""}</span><span class="pc-btns"><button type="button" class="pc-share">↗ Share</button><button type="button" class="pc-replay">▶ Replay</button></span></div>`;
   }
@@ -5118,10 +5542,7 @@ function openPathCard(name) {
   m.addEventListener("click", (e) => { if (e.target === m) close(); });
   m.querySelector(".pc-replay")?.addEventListener("click", () => openPathRun(name, true));
   m.querySelector(".pc-share")?.addEventListener("click", () => { track("path-share", { event: true }); sharePath(name, sc); });
-  let y0 = null, dy = 0;
-  card.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; dy = 0; card.style.transition = "none"; }, { passive: true });
-  card.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) card.style.transform = `translateY(${dy}px)`; }, { passive: true });
-  card.addEventListener("touchend", () => { if (y0 == null) return; y0 = null; card.style.transition = ""; if (dy > 90) { card.style.transform = "translateY(120%)"; close(); } else card.style.transform = ""; });
+  pullToClose(card, card, close);
   track("path-card", { event: true });
   // Whose path was opened, for the console's path to win tracker.
   noteUse(`path-of-${name}`);
@@ -5177,7 +5598,7 @@ function openPathRun(name, replay = false) {
     order.forEach((n) => {
       const li = rows[n], rank = 1 + order.findIndex((x) => pts[x] === pts[n]), tied = order.filter((x) => pts[x] === pts[n]).length > 1;
       li.querySelector(".pr-rk").textContent = `${tied ? "T" : ""}${rank}`;
-      li.querySelector(".pr-pt").textContent = String(pts[n]).padStart(2, "0");
+      li.querySelector(".pr-pt").textContent = pts2(pts[n]);
       li.querySelector(".pr-gain").textContent = gains[n] ? `+${gains[n]}` : "";
       // Restart the pop every game, even for a row that gained last game too.
       li.classList.remove("gained");
@@ -5226,10 +5647,7 @@ function openPathRun(name, replay = false) {
   m.querySelector(".pr-skip")?.addEventListener("click", (e) => { fast = true; markPathSeen(name); e.currentTarget.remove(); });
   // Drag down from the title bar or the standings, or from the top of the
   // terminal, to close; a short drag springs back.
-  let y0 = null, dy = 0;
-  win.addEventListener("touchstart", (e) => { const fromTop = !!e.target.closest(".pr-bar, .pr-stand"); y0 = fromTop || term.scrollTop <= 0 ? e.touches[0].clientY : null; dy = 0; win.style.transition = "none"; }, { passive: true });
-  win.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) win.style.transform = `translateY(${dy}px)`; }, { passive: true });
-  win.addEventListener("touchend", () => { if (y0 == null) return; y0 = null; win.style.transition = ""; if (dy > 110) { win.style.transform = "translateY(100%)"; close(); } else win.style.transform = ""; });
+  pullToClose(win, win, close, 110);
   const logo = (id) => `<img class="pr-logo" src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'" />`;
   (async () => {
     await type(`C:\\> PATH ${me}`, "cmd");
@@ -5250,7 +5668,7 @@ function openPathRun(name, replay = false) {
       const gains = {};
       for (const n of MANAGERS) { const p = scorePick(g, all[n]?.picks?.[g.id], st.res) || 0; if (p) gains[n] = p; }
       row.className = `pr-line g ${st.need ? "need" : "free"}${fast ? "" : " typing"}`;
-      row.innerHTML = `<span class="pr-gc"><span class="pr-gl">${logo(g.awayId)}${logo(g.homeId)}</span><span class="pr-gt">${escapeCd(st.txt)}${(() => { const w = st.need && !gains[name] ? stopsWho(g, st.res, name, pts) : null; return w ? `<small class="pr-why">stops ${escapeCd(shown(w))}</small>` : ""; })()}</span><span class="pr-gp${gains[name] ? "" : " zero"}">${gains[name] ? `+${gains[name]}` : st.need ? "0" : ""}</span></span>${fast ? "" : `<span class="pr-gcur" aria-hidden="true">█</span>`}`;
+      row.innerHTML = `<span class="pr-gc"><span class="pr-gl">${logo(g.awayId)}${logo(g.homeId)}</span><span class="pr-gt">${escapeCd(st.txt)}${pathLiveTag(g, st)}${(() => { const w = st.need && !gains[name] ? stopsWho(g, st.res, name, pts) : null; return w ? `<small class="pr-why">stops ${escapeCd(shown(w))}</small>` : ""; })()}</span><span class="pr-gp${gains[name] ? "" : " zero"}">${gains[name] ? `+${gains[name]}` : st.need ? "0" : ""}</span></span>${fast ? "" : `<span class="pr-gcur" aria-hidden="true">█</span>`}`;
       if (!fast) term.scrollTop = Math.max(0, row.offsetTop - term.clientHeight + row.offsetHeight + 60);
       // One cursor at a time: the terminal's resting cursor hides while a line types.
       if (!fast) { term.classList.add("typing"); await wait(200); row.classList.add("wipe"); await wait(390); row.classList.remove("typing", "wipe"); term.classList.remove("typing"); }
@@ -5275,7 +5693,7 @@ function openPathRun(name, replay = false) {
     const foot = document.createElement("div");
     foot.className = "pr-end";
     foot.innerHTML = `${free ? `<div class="pc-free">The other ${free} game${free === 1 ? "" : "s"} can go either way.</div>` : ""}
-      ${tied && sc.guess != null && sc.tbGame ? `<div class="pc-tie">Tied at ${top}: needs the tiebreaker, ${escapeCd(sc.tbGame.awayShort)} @ ${escapeCd(sc.tbGame.homeShort)} total near ${sc.guess}</div>` : ""}
+      ${tied && sc.guess != null && sc.tbGame ? `<div class="pc-tie">Tied at ${top}: needs the tiebreaker, ${matchInline(sc.tbGame)} total near ${sc.guess}</div>` : ""}
       <div class="pc-win">${escapeCd(me)} WINS THE WEEK</div>
       <div class="pc-foot"><span>${oneIn ? (oneIn > 10000 ? "Rarer than 1 in 10,000" : `About 1 in ${oneIn.toLocaleString()}`) : ""}</span><span class="pc-btns"><button type="button" class="pc-share">↗ Share</button><button type="button" class="pc-replay">▶ Replay</button></span></div>`;
     foot.querySelector(".pc-replay").addEventListener("click", () => openPathRun(name, true));
@@ -5361,10 +5779,11 @@ document.addEventListener("click", (e) => {
   e.stopPropagation();
   if (pathOpening) return;
   pathOpening = true; b.classList.add("busy");
-  pathFresh().finally(() => { pathOpening = false; b.classList.remove("busy"); openPathRun(b.dataset.path); });
+  const inSheet = !!b.closest("#rank-sheet");
+  pathFresh().finally(() => { pathOpening = false; b.classList.remove("busy"); if (inSheet) closeRankSheet(); openPathRun(b.dataset.path); });
 }, true);
 
-function playerBreakdownHtml(name, state, results, live) {
+function playerBreakdownHtml(name, state, results, live, opts = {}) {
   const ordered = gamesByKickoff();
   let banked = 0, liveCovering = 0, liveOpen = 0, wins = 0, losses = 0, liveFly = 0;
   // How much each open pick matters to this manager's week, from the same
@@ -5375,6 +5794,9 @@ function playerBreakdownHtml(name, state, results, live) {
   // Nothing moves an OUT manager's chance, so no impact is drawn for them.
   const sway = wd?.alive === false ? {} : Object.fromEntries((wd?.games || []).map((e) => [e.game.id, e]));
   const topLev = Math.max(0, ...Object.values(sway).map((e) => e.lev));
+  const longShot = !!wd && wd.alive !== false && (wd.pct ?? 0) < 0.03 && Object.values(sway).every((e) => e.ifHit - e.ifMiss < 0.03);
+  // Long shots still show every pick's hit / miss numbers (Jake's call).
+  const maxSpan = Math.max(0.03, ...Object.values(sway).map((e) => e.ifHit - e.ifMiss));
   const swayHtml = (e) => {
     const lit = topLev > 0 ? Math.max(e.gap >= 0.01 ? 1 : 0, Math.round(5 * e.lev / topLev)) : 0;
     const top = wd.swing && e.game.id === wd.swing.game.id;
@@ -5386,7 +5808,7 @@ function playerBreakdownHtml(name, state, results, live) {
     const g = live[game.id];
     const isFinal = !!results[game.id];
     const isLive = !isFinal && g && g.found && g.state === "in";
-    const statusTag = isFinal ? `<span class="rd-tag final">FINAL</span>` : isLive ? `<span class="rd-tag live">${g.detail || "LIVE"}</span>` : locked ? `<span class="rd-tag wait">WAITING</span>` : `<span class="rd-tag time">${game.kickoffLabel.replace(/^(Sat|Sun) /, "")}</span>`;
+    const statusTag = isFinal ? `<span class="rd-tag final">FINAL</span>` : isLive ? `<span class="rd-tag live"><i class="rd-dot"></i>LIVE${g.detail ? ` · ${g.detail.replace(/\s*-\s*/, " ")}` : ""}</span>` : g?.voided ? `<span class="rd-tag wait">${g.voided}</span>` : locked ? `<span class="rd-tag wait">WAITING</span>` : `<span class="rd-tag time">${game.kickoffLabel.replace(/^(Sat|Sun) /, "")}</span>`;
 
     let pickHtml, ptsHtml = `<span class="rd-pts none">–</span>`;
     let pickedSide = null;
@@ -5409,7 +5831,7 @@ function playerBreakdownHtml(name, state, results, live) {
       const terms = pick.mode === "ATS" ? `${pick.team === game.favorite ? "-" : "+"}${game.spread}` : "SU";
       const mode = `<span class="rd-mode ${pick.mode === "ATS" ? "ats" : "su"}">${terms}<span class="rd-mode-pt">${worth}PT</span></span>`;
       const lk = pick.lock && lockRule();
-      pickHtml = `<span class="rd-pickcard${lk ? " lk" : ""}">${lk ? `<span class="rd-lock">🔒 LOCK</span>` : ""}<span class="rd-pickteam"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-team">${short}</span></span><span class="rd-pickmeta">${mode}${pickTimeLabel(pick) ? `<span class="rd-when">${pickTimeLabel(pick)}</span>` : ""}</span></span>`;
+      pickHtml = `<span class="rd-pickcard${lk ? " lk" : ""}">${lk ? lkI(lockState(game, pick), "rd-lk", game, pick) : ""}<span class="rd-pickteam"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-team">${short}</span></span><span class="rd-pickmeta">${mode}${!opts.sheet && pickTimeLabel(pick) ? `<span class="rd-when">${pickTimeLabel(pick)}</span>` : ""}</span></span>`;
       const pts = scorePick(game, pick, results[game.id]);
       if (pts !== null) {
         banked += pts;
@@ -5420,7 +5842,7 @@ function playerBreakdownHtml(name, state, results, live) {
         const prov = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
         liveOpen += 1;
         if (prov > 0) { liveCovering += 1; liveFly += worth; ptsHtml = `<span class="rd-pts lean ${ptsValueTier(worth)}">+${worth}</span>`; }
-        else ptsHtml = `<span class="rd-pts lean miss">${prov < 0 ? "−" + Math.abs(prov) : "0"}</span>`;
+        else { liveFly += prov; ptsHtml = `<span class="rd-pts lean miss">${prov < 0 ? "−" + Math.abs(prov) : "0"}</span>`; }
       }
     }
     if (!isFinal && !isLive && sway[game.id] && ptsHtml.includes("rd-pts none")) ptsHtml = swayHtml(sway[game.id]);
@@ -5428,15 +5850,127 @@ function playerBreakdownHtml(name, state, results, live) {
     const aS = src && Number.isFinite(src.awayScore) ? src.awayScore : null;
     const hS = src && Number.isFinite(src.homeScore) ? src.homeScore : null;
     const scoreCell = (s, other) => `<span class="rd-sc ${isFinal && s !== null && s > other ? "win" : ""}">${s === null ? "" : s}</span>`;
-    return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}">
+    if (opts.sheet) {
+      // One line per game in the player sheet: the pick (logo, team, terms)
+      // over the opponent and the score, points or impact on the right. The
+      // kickoff time is the section heading, so rows don't repeat it.
+      const opp = pick ? (pick.team === game.away ? game.homeShort : game.awayShort) : null;
+      const mine = pickedSide === "away" ? aS : hS, theirs = pickedSide === "away" ? hS : aS;
+      const sc = pick && mine !== null && theirs !== null ? ` <b>${mine}–${theirs}</b>` : (!pick && aS !== null ? ` <b>${aS}–${hS}</b>` : "");
+      const when = isFinal ? ` · <span class="ps-when"><b class="ps-fin">FINAL</b> ${sc.trim()}</span>` : isLive ? ` · <span class="ps-when"><b class="ps-live">LIVE</b> ${sc.trim()}${g.detail ? ` · ${escapeCd((() => { const m = String(g.detail).match(/^(\d+:\d+)\s*-\s*(\d)/); return m ? `Q${m[2]} ${m[1]}` : g.detail; })())}` : ""}${/rd-pts[^"]*"[^>]*>([^<]+)/.test(ptsHtml) ? (() => { const v = ptsHtml.match(/rd-pts[^"]*"[^>]*>([^<]+)/)[1]; return ` <b class="ps-lp${v.startsWith("+") && v !== "+0" ? "" : " z"}" title="Points this pick is earning right now">${v === "0" ? "+0" : v}<small>NOW</small></b>`; })() : ""}</span>` : "";
+      // VS ME: the game head to head. Each side shows its pick and the
+      // points it has at stake (a lock shows what it wins and what it costs),
+      // or what it scored once final. Shared picks are dimmed, no logos twice.
+      let vs = "", cmp = null, vsRow = "", swing = 0, vsPts = null;
+      if (opts.vs && locked) {
+        const m = opts.vs[game.id] && !opts.vs[game.id].hidden && opts.vs[game.id].team ? opts.vs[game.id] : null;
+        cmp = pick && m ? (m.team !== pick.team ? "diff" : m.mode === pick.mode && !!m.lock === !!pick.lock ? "same" : "sdiff") : pick || m ? "diff" : null;
+        const fin = isFinal ? results[game.id] : null;
+        const stake = (p) => {
+          if (!p) return `<b class="pts none">0</b>`;
+          if (fin) { const v = scorePick(game, p, fin); return `<b class="pts ${v > 0 ? "up" : v < 0 ? "dn" : "zero"}">${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v)}</b>`; }
+          const lk = p.lock && lockRule();
+          return `<b class="pts">+${pickWorth(game, p)}</b>${lk ? `<small class="pts-lk">−${Math.abs(lockRule().miss)}</small>` : ""}`;
+        };
+        const side = (p, cls) => {
+          if (!p) return `<span class="h2-s ${cls} none"><span class="h2-stake">${stake(p)}</span><span class="h2-tm"><b>NO PICK</b></span></span>`;
+          const sh = p.team === game.away ? game.awayShort : game.homeShort;
+          const terms = p.mode === "ATS" ? `${p.team === game.favorite ? "−" : "+"}${game.spread}` : "TO WIN";
+          const logo = `<img src="${logoUrl(p.team === game.away ? game.awayId : game.homeId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`;
+          return `<span class="h2-s ${cls}"><span class="h2-stake">${stake(p)}</span><span class="h2-tm">${logo}<span><b>${escapeCd(sh)}</b><small>${terms}${p.lock && lockRule() ? " · 🔒" : ""}</small></span></span></span>`;
+        };
+        const src = isFinal ? results[game.id] : isLive ? g : null;
+        const score = src && Number.isFinite(src.awayScore) ? `${src.awayScore}–${src.homeScore}` : "";
+        const kl = game.kickoffLabel.replace(/ ET$/, "").replace(/^\w{3} /, "");
+        const mu = `<small class="h2-mu">${escapeCd(g?.awayAbbr || game.awayShort)} @ ${escapeCd(g?.homeAbbr || game.homeShort)}</small>`;
+        const mid = `<span class="h2-g">${isLive ? `<b class="live">LIVE ${score}</b>` : isFinal ? `<b>FINAL ${score}</b>` : `<b>${escapeCd(kl)}</b>`}${mu}</span>`;
+        if (fin) { vsPts = [pick ? scorePick(game, pick, fin) || 0 : 0, m ? scorePick(game, m, fin) || 0 : 0]; if (pick && m && m.team === pick.team) cmp = vsPts[0] !== vsPts[1] ? "sdiff" : "same"; }
+        if (pick && m && cmp === "diff") swing = (m.team === pick.team ? Math.abs(pickWorth(game, pick) - pickWorth(game, m)) : pickWorth(game, pick) + pickWorth(game, m));
+        vsRow = `<div class="h2-row ${cmp}${isLive ? " live" : ""}${isFinal ? " final" : ""}" data-rdgame="${game.id}" role="button" tabindex="0">${side(pick, "them")}${mid}${side(m, "you")}</div>`;
+      }
+      const sub = `${pick ? `vs ${escapeCd(opp)}` : `${escapeCd(game.awayShort)} @ ${escapeCd(game.homeShort)}`}${when}`;
+      // Who this pick moves them against: the members on the same side and
+      // the contenders (by chance to win) who are not, so a hit gains on them.
+      let why = "";
+      if (opts.all && pick && locked) {
+        const key = (p) => (p && !p.hidden && p.team ? `${p.team}|${p.mode}` : null), k = key(pick);
+        const others = Object.keys(opts.all).filter((n) => n !== name);
+        const same = others.filter((n) => key(opts.all[n]?.picks?.[game.id]) === k);
+        const off = others.filter((n) => !same.includes(n) && !opts.all[n]?.picks?.[game.id]?.hidden).sort((a, b) => (opts.rank?.[a] ?? 99) - (opts.rank?.[b] ?? 99));
+        const nm = (list) => `<b>${escapeCd(shown(list[0]))}</b>${list.length > 1 ? ` and ${list.length - 1} more` : ""}`;
+        const fp = isFinal ? scorePick(game, pick, results[game.id]) : null;
+        if (isFinal) { const cashed = others.filter((n) => { const q = opts.all[n]?.picks?.[game.id]; return q?.team && !q.hidden && scorePick(game, q, results[game.id]) > 0; }).length; why = fp > 0 ? `Cashed with ${same.length} other${same.length === 1 ? "" : "s"}` : `Missed · ${cashed} cashed`; }
+        else why = same.length ? `With ${same.length}${off.length ? ` · gains on ${nm(off)}` : " · gains on nobody"}` : `Alone on this · gains on ${off.length ? `all ${off.length}` : "nobody"}`;
+      }
+      const main = !locked ? `<span class="ps-hid">HIDDEN</span>` : !pick ? `<span class="ps-hid">NO PICK</span>` : pickHtml;
+      const sw = sway[game.id];
+      const lev = sw?.lev || 0;
+      // The game impact line: their chance to win the week if this pick
+      // misses (left end) and if it hits (right end), on a 0 to 100 track,
+      // with a tick where they stand now. Finals and live games show points.
+      let imp = ptsHtml;
+      if (isLive && !sw && pick && wd && wd.alive !== false) {
+        const prov = Number.isFinite(g?.awayScore) ? scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore }) : 0;
+        const pcs = (v) => winChanceLabel(v, { alive: true });
+        imp = `<span class="ps-hm t4" title="All but settled">${prov > 0 ? `<b class="up">${pcs(wd.pct ?? 0)}</b><b class="dn">—</b>` : `<b class="up">—</b><b class="dn">${pcs(wd.pct ?? 0)}</b>`}</span>`;
+      }
+      if (sw && !isFinal && wd?.alive !== false) {
+        // How far this pick moves their chance from where it is now: up if
+        // it hits, down if it misses, in percentage points.
+        const now = wd.pct ?? 0, up = Math.round((sw.ifHit - now) * 100), dn = Math.round((now - sw.ifMiss) * 100);
+        const top = wd.swing && game.id === wd.swing.game.id;
+        // Impact on winning the week: the change in their chance first (+hit
+        // / −miss when uneven, ± when even), then a plain label. Only their
+        // most consequential game is gold.
+        const span = sw.ifHit - sw.ifMiss, avg = Math.round(span * 50);
+        const tier = top ? "t1" : avg >= 8 ? "t2" : avg >= 4 ? "t3" : "t4";
+        const pcs = (v) => winChanceLabel(v, { alive: true });
+        imp = avg < 2 && !longShot ? `<span class="ps-heat t5" title="Barely moves it">—</span>`
+          : `<span class="ps-hm ${tier}"><b class="up">${pcs(sw.ifHit)}</b><b class="dn">${pcs(sw.ifMiss)}</b></span>`;
+      }
+      const kl = game.kickoffLabel.replace(/ ET$/, "").match(/^(\w{3}) (.+?) ?(AM|PM)?$/);
+      const tcell = isLive ? `<b class="live">LIVE</b>` : isFinal ? `<b>FINAL</b>` : kl ? `<b>${kl[2]}</b><small>${kl[1] === "Sat" ? "" : kl[1].toUpperCase() + " "}${kl[3] || ""}</small>` : "";
+      const order = isLive ? 0 : isFinal ? 2 : 1;
+      const slot = isLive ? "LIVE" : isFinal ? "FINAL" : game.kickoffLabel;
+      return { order, lev, cmp, vsRow, swing, vsPts, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${imp.includes("ps-heat t5") ? " low" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}${isFinal || isLive || !pick ? `<span class="ps-sub">${imp === ptsHtml ? sub.replace(/ · <b class="ps-lp[^"]*">[^<]*<\/b>/, "") : sub}</span>` : `<span class="ps-opp">vs ${escapeCd(opp)} · ${movedKickoff(game, g) ? `<b class="ps-void">MOVED · ${escapeCd(movedKickoff(game, g).short)}</b>` : g?.voided ? `<b class="ps-void">${g.voided}</b>` : `<b>${escapeCd(game.kickoffLabel.replace(/ ET$/, "").replace(/^Sat /, ""))}</b>`}</span>`}${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
+    }
+    return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(game.awayShort)} at ${escapeCd(game.homeShort)}"` : ""}>
       <div class="rd-game">
         <span class="rd-gline">G${gNum(game)} ${statusTag}</span>
-        <span class="rd-matchup"><span class="rd-tm away ${pickedSide === "away" ? "picked" : ""}">${game.awayShort}</span>${scoreCell(aS, hS)}<span class="rd-tm home ${pickedSide === "home" ? "picked" : ""}">${game.homeShort}</span>${scoreCell(hS, aS)}</span>
+        <span class="rd-matchup"><img class="rd-mlogo" src="${logoUrl(game.awayId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-tm away ${pickedSide === "away" ? "picked" : ""}">${game.awayShort}</span>${scoreCell(aS, hS)}<img class="rd-mlogo" src="${logoUrl(game.homeId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-tm home ${pickedSide === "home" ? "picked" : ""}">${game.homeShort}</span>${scoreCell(hS, aS)}</span>
       </div>
       <div class="rd-pick">${pickHtml}</div>
       <div class="rd-result">${ptsHtml}</div>
     </div>`;
-  }).join("");
+  });
+  // Sheet sections: live, then each kickoff slot in time order (biggest
+  // impact first inside a slot), then finals. With VS ME on: where the
+  // viewer differs first, then the picks they share.
+  // Each row shows its kickoff time only when it starts a new time slot.
+  const isFin = (r) => r.html.startsWith('<div class="ps-row final');
+  const fill = (list) => list.map((r, i) => { const first = i === 0 || list[i - 1].slot !== r.slot; return "" + r.html.replace("%%FIRST%%", first && i ? " first" : "").replace("%%T%%", first ? r.tcell : ""); }).join("");
+  const section = (title, list) => list.length ? `<div class="ps-sec">${title}</div>${fill(list)}` : "";
+  let rowsHtml;
+  if (!opts.sheet) rowsHtml = rows.join("");
+  else if (opts.vs) {
+    const byImp = (a, b) => a.order - b.order || b.lev - a.lev || a.t - b.t;
+    const list = rows.filter((r) => r.vsRow).sort((a, b) => a.order - b.order || a.t - b.t);
+    const nDiff = list.filter((r) => r.cmp === "diff").length, nScore = list.filter((r) => r.cmp === "sdiff").length;
+    const themName = escapeCd(shown(name).toUpperCase());
+    const tot = list.reduce((t, r) => r.vsPts ? [t[0] + r.vsPts[0], t[1] + r.vsPts[1]] : t, [0, 0]);
+    rowsHtml = `<div class="h2-sum"><span class="h2-sum-n"><small>${themName}</small><b class="${tot[0] > tot[1] ? "ahead" : ""}">${tot[0]}</b></span><span class="h2-sum-k">POINTS SO FAR</span><span class="h2-sum-n you"><small>YOU</small><b class="${tot[1] > tot[0] ? "ahead" : ""}">${tot[1]}</b></span><span class="h2-sum-d">${nDiff} different pick${nDiff === 1 ? "" : "s"} · ${nScore + nDiff} scoring difference${nScore + nDiff === 1 ? "" : "s"}</span></div>${list.map((r) => r.vsRow).join("")}`;
+  } else {
+    const slots = [];
+    for (const r of [...rows].sort((a, b) => a.order - b.order || a.t - b.t)) { const k = r.slot; let sl = slots.find((x) => x.k === k); if (!sl) slots.push((sl = { k, list: [] })); sl.list.push(r); }
+    const all = slots.flatMap((sl) => sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t));
+    const cols = Object.keys(sway).length && rows.some((r) => !isFin(r));
+    // Live, then upcoming, then final, each under a small count label.
+    const grp = (o) => all.filter((r) => r.order === o), lv = grp(0), up = grp(1), fn = grp(2);
+    // The first open section's label line carries the HIT / MISS heads.
+    let headed = false;
+    const sec = (k, list) => { if (!list.length) return ""; const hd = cols && k !== "FINAL" && !headed ? (headed = true) : false; return `<div class="ps-grp ${k.toLowerCase()}"${hd ? ' title="Their chance to win the week if this pick hits or misses"' : ""}><span>${k} · ${list.length}</span>${hd ? '<em class="up">HIT</em><em class="dn">MISS</em>' : ""}</div>${fill(list)}`; };
+    rowsHtml = sec("LIVE", lv) + sec("UPCOMING", up) + sec("FINAL", fn);
+  }
   // Tiebreaker row: the game, the guess, the real total once final, and
   // the miss, so the tiebreak ordering on the board is explained here.
   const tbGame = tiebreakerGameOf();
@@ -5455,13 +5989,14 @@ function playerBreakdownHtml(name, state, results, live) {
   else if (tbRes) tbLine = `Guessed <b>${tbGuess}</b> · Final <b>${actual}</b> · Off by <b class="${Math.abs(tbGuess - actual) === 0 ? "exact" : ""}">${Math.abs(tbGuess - actual)}</b>`;
   else if (tbLive) tbLine = `Guessed <b>${tbGuess}</b> · Now <b>${actual}</b> · Off by <b>${Math.abs(tbGuess - actual)}</b>`;
   else tbLine = `Guessed <b>${tbGuess}</b> · Waiting on kickoff`;
-  const tbRow = `<div class="rd-tb">
-    <span class="rd-tb-label">TIEBREAKER · ${tbGame.awayShort} @ ${tbGame.homeShort} total</span>
-    <span class="rd-tb-line">${tbLine}</span>
+  // Tapping it opens the tiebreaker game (Gamecast once it has kicked off).
+  const tbRow = `<div class="rd-tb${tbSealed ? "" : " go"}"${tbSealed ? "" : ` data-rdgame="${tbGame.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(tbGame.awayShort)} at ${escapeCd(tbGame.homeShort)}"`}>
+    <span class="rd-tb-label">TIEBREAKER · ${matchInline(tbGame)} total</span>
+    <span class="rd-tb-line">${tbLine}${tbSealed ? "" : `<i class="rd-tb-go" aria-hidden="true">›</i>`}</span>
   </div>`;
   // One line on the week: settled points and record, plus what is in
   // flight while games are on.
-  const summary = `<div class="rd-summary"><span><b>${banked}</b> PTS</span><span>${wins}-${losses}</span>${liveOpen ? `<span class="live"><b>+${liveFly}</b> LIVE · ${liveCovering} OF ${liveOpen} COVERING</span>` : ""}</div>`;
+  const summary = `<div class="rd-summary"><span><b>${banked}</b> PTS</span><span>${wins}-${losses}</span>${liveOpen ? `<span class="live${liveFly < 0 ? " neg" : ""}"><b>${signedPts(liveFly)}</b> LIVE · ${liveCovering} OF ${liveOpen} COVERING</span>` : ""}</div>`;
   // The arithmetic behind the leaderboard percentage, for this manager.
   let wpRow = "";
   if (wd) {
@@ -5469,12 +6004,25 @@ function playerBreakdownHtml(name, state, results, live) {
     const sw = wd.swing;
     const why = wd.alive === false ? outReason(name, results) : "";
     const canPath = wd.alive !== false && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((row) => row.some((p) => p?.hidden));
-    wpRow = `<div class="rd-wp"><span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week</span>` : ""}</div>`;
+    if (opts.sheet && !opts.vs && longShot && !why) {
+      const open = GAMES.filter((x) => !results[x.id] && state.picks[x.id]?.team).length;
+      const self = name === currentManager;
+      wpRow = `<div class="bs long"><span class="bs-k">LONG SHOT · ${winChanceLabel(wd.pct, wd)}</span><span class="bs-r">${self ? "You need" : `${escapeCd(shown(name))} needs`} nearly all ${open} open pick${open === 1 ? "" : "s"} to hit and the leaders to miss. No single game moves ${self ? "you" : "them"} much on its own.${canPath ? ` Tap <b>Path to Win</b> for the one route that works.` : ""}</span></div>`;
+    } else if (opts.sheet && !opts.vs && !sw && !why && wd.pct >= 0.9) {
+      wpRow = `<div class="bs long ctl"><span class="bs-k">${clinchedWeek(name) ? "CLINCHED" : "IN CONTROL"}</span><span class="bs-r">No remaining game changes ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} projected finish.</span></div>`;
+    } else if (opts.sheet && !opts.vs && sw && !why) {
+      const m = mirrorOf(name, sw, results), g = sw.game, pk = sw.pick;
+      const terms = pk.mode === "SU" ? "to win" : `${pk.team === g.favorite ? "−" : "+"}${g.spread}`;
+      const tShort = pk.team === g.away ? g.awayShort : g.homeShort, oShort = pk.team === g.away ? g.homeShort : g.awayShort;
+      const rival = m ? `<b>${escapeCd(shown(m.n))}</b> picked ${escapeCd(m.tp.team === g.away ? g.awayShort : g.homeShort)}. ${m.k} of ${m.total} remaining picks match.` : "";
+      wpRow = `<div class="bs${sw.ifMiss < 0.01 ? " must" : ""}" data-rdgame="${g.id}" role="button" tabindex="0"><span class="bs-k">BIGGEST SWING${sw.ifMiss < 0.01 ? " · <em>MUST HIT</em>" : ""}</span><div class="bs-main"><img src="${logoUrl(pk.team === g.away ? g.awayId : g.homeId)}" alt="" onerror="this.style.visibility='hidden'"><span class="bs-t"><b>${escapeCd(tShort)} ${terms}${pk.lock && lockRule() ? " 🔒" : ""}</b><small>vs ${escapeCd(oShort)} · ${pickWorth(g, pk)} PT</small></span><span class="bs-o"><small>IF HIT</small><b class="up">${pc(sw.ifHit)}</b></span><span class="bs-o"><small>IF MISS</small><b class="dn">${pc(sw.ifMiss)}</b></span></div>${rival ? `<span class="bs-r">${rival}</span>` : ""}</div>`;
+    } else wpRow = `<div class="rd-wp">${opts.sheet ? "" : `<span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</span>`}${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length && !opts.sheet ? `<span class="rd-wp-key">${opts.sheet ? `Impact on ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance to win the week (now ${winChanceLabel(wd.pct, wd)}): + if the pick hits, − if it misses` : `Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week`}</span>` : ""}</div>`;
   }
   // A Scouting Report published from the Creative Studio, under the week.
   const scout = creativeArt?.art?.[`owner-card:owner:${name}`]?.text;
   const scoutRow = scout ? `<div class="rd-scout"><em>📋 SCOUTING REPORT</em><b>${escapeCd(scout.headline)}</b>${String(scout.body).split(/\n\s*\n/).map((p) => `<p>${escapeCd(p)}</p>`).join("")}</div>` : "";
-  return `<div class="rank-detail">${wpRow}${scoutRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>${Object.keys(sway).length ? "PTS<br>IMPACT" : "PTS"}</span></div>${rows}${tbRow}${summary}</div>`;
+  if (opts.sheet) return `<div class="rank-detail ps-detail">${opts.vs ? "" : wpRow}${rowsHtml}${tbRow}${scoutRow}</div>`;
+  return `<div class="rank-detail">${wpRow}${scoutRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>${Object.keys(sway).length ? "PTS<br>IMPACT" : "PTS"}</span></div>${rowsHtml}${tbRow}${summary}</div>`;
 }
 
 // Second line under a leaderboard name. How many picks are in is fair
@@ -5513,7 +6061,8 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
       else if (pick) max += pickWorth(g, pick);
     }
     const lead = row.submittedCount < GAMES.length ? `${picked} · ` : "";
-    return `${lead}${w}-${l} · <span class="rank-max"${unseen ? ` title="Some picks are hidden until their games kick off"` : ""}>MAX <b>${unseen ? "?" : max}</b></span>${inFlight ? ` · <span class="rank-inflight">+${inFlight} LIVE</span>` : ""}`;
+    const tail = row.tbSplit ? `<span class="rank-tb ${row.tbSplit}">${row.tbSplit === "win" ? "WON TB" : "TB"} · OFF <b>${row.tbDiff}</b></span>` : `<span class="rank-max">MAX <b>${max}</b></span>`;
+    return `${lead}${w}-${l} · ${tail}${inFlight ? ` · <span class="rank-inflight${inFlight < 0 ? " neg" : ""}">${signedPts(inFlight)} LIVE</span>` : ""}`;
   }
   const off = row.tbGuess === null || actualTotal === null ? "OFF –" : `OFF ${row.tbDiff}`;
   return `${picked} · ${guess} · ${off}`;
@@ -5596,21 +6145,36 @@ function payoutLedger() {
     r.tied = (prev && prev.points === r.points) || (list[i + 1] && list[i + 1].points === r.points);
     r.seasonPrize = POT.season[place - 1] || 0;
   });
+  // Movement: place now against place before the latest week counted (the
+  // live week while it plays, else the last sealed week), ranked the same
+  // way. Shown as a small up / down beside the place.
+  const lastSealed = sealed.reduce((a, w) => (!a || w.week > a.week ? w : a), null);
+  const latestPts = (r) => (liveWeek ? r.livePoints || 0 : (lastSealed?.rows || []).find((x) => x.name === r.name)?.score || 0);
+  if (liveWeek || sealed.length > 1) {
+    const before = list.map((r) => ({ r, p: r.points - latestPts(r) })).sort((a, b) => b.p - a.p);
+    let bp = 0;
+    before.forEach((x, i) => { if (!i || before[i - 1].p !== x.p) bp = i + 1; x.r.move = bp - x.r.seasonPlace; });
+  }
   const contested = POT.season.length > 0 && list.some((r) => r.tied && r.seasonPrize);
   return { list, sealed: sealed.length, done, contested, liveWeek, liveWeekFinal };
 }
 
-// One row of the season standings; the NFL build leaves the money out.
-function potRowHtml(r, rec, withMoney, done) {
-  return `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}${r.seasonPlace === 1 && r.points > 0 ? " leader" : ""}" data-pot-row="${escapeCd(r.name)}" role="button" tabindex="0">
-        <span class="pot-place">${r.tied ? "T" : ""}${r.seasonPlace}</span>
-        <span class="pot-name"><span class="pot-av" style="--accent:${accentFor(r.name)}">${avatarOverrides[r.name] || shown(r.name)[0]}</span>${r.seasonPlace === 1 && r.points > 0 ? `<i class="pot-crown">♛</i>` : ""}${shown(r.name).toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
-        <span class="pot-pts"><b>${r.points}</b><i class="pot-livemark">${r.livePoints ? "•" : ""}</i></span>
-        <span class="pot-rec">${rec[r.name] ? `${rec[r.name].w}-${rec[r.name].l}` : "–"}</span>
-        <span class="pot-won">${(() => { const wk = Object.values(weekSummaries).filter((w) => w?.complete && (w.winners || []).includes(r.name)).sort((x, y) => x.week - y.week); return wk.length ? wk.map((w) => `<button type="button" class="pot-tro${w.exhibition ? " exh" : ""}" data-week="${w.week}" data-name="${r.name}" title="Week ${w.week} win">🏆</button>`).join("") : "–"; })()}</span>
-        ${withMoney ? `<span class="pot-earned">${r.earned ? money(r.earned) : "–"}</span>` : ""}
-      </div>`;
+// Pot table sort: tap a header to sort by it, tap again to flip. Place is the default.
+const potSort = { k: "place", dir: 1 };
+// Every trophy the WON column shows, exhibition weeks included, so the sort
+// matches what you see.
+const potWins = (n) => Object.values(weekSummaries).filter((w) => w?.complete && (w.winners || []).includes(n)).length;
+function potSorted(list, rec) {
+  const val = { place: (r) => r.seasonPlace, name: (r) => shown(r.name).toLowerCase(), pts: (r) => r.points, rec: (r) => rec[r.name]?.w || 0, pct: (r) => { const x = rec[r.name]; return x && x.w + x.l ? x.w / (x.w + x.l) : -1; }, won: (r) => potWins(r.name), earned: (r) => r.earned || 0 }[potSort.k];
+  return list.map((r, i) => [r, i]).sort(([a, ia], [b, ib]) => { const x = val(a), y = val(b); const c = x < y ? -1 : x > y ? 1 : 0; return c * potSort.dir || a.seasonPlace - b.seasonPlace || ia - ib; }).map(([r]) => r);
 }
+document.addEventListener("click", (e) => {
+  const b = e.target.closest?.("[data-psort]"); if (!b) return;
+  const k = b.dataset.psort;
+  if (potSort.k === k) potSort.dir = -potSort.dir; else { potSort.k = k; potSort.dir = k === "place" || k === "name" ? 1 : -1; }
+  if (typeof noteUse === "function") noteUse("pot-sort", `${k}${potSort.dir > 0 ? "↑" : "↓"}`);
+  renderPayouts();
+});
 function renderPayouts() {
   const panel = document.getElementById("payouts-panel");
   if (!panel || panel.classList.contains("hidden")) return;
@@ -5639,22 +6203,9 @@ function renderPayouts() {
     if (i === settled.length && liveWeek) return `<span class="ps-seg live"></span>`;
     return `<span class="ps-seg"></span>`;
   }).join("");
-  panel.innerHTML = NO_MONEY ? `
-    <div class="pot-season">
-      <div class="ps-head"><span>SEASON</span><b>${sealed} / ${POT.weeks}</b></div>
-      <div class="ps-bar" style="grid-template-columns: repeat(${POT.weeks + exh.length}, 1fr)">${seasonSegs}</div>
-    </div>
-    ${liveWeek ? `<div class="pot-live">${liveWeekFinal ? `WEEK ${liveWeek} UNSEALED` : `WEEK ${liveWeek} ACTIVE`}</div>` : ""}
-    <div class="pot-table nomoney">
-      <div class="pot-row head"><span>#</span><span>MANAGER</span><span>PTS</span><span>REC</span><span>WON</span></div>
-      ${list.map((r) => potRowHtml(r, rec, false, done)).join("")}
-    </div>
-    ${sealed ? "" : `<div class="pot-empty">No weeks settled yet. Standings fill in once a week's last game is final.</div>`}` : `
-    <div class="pot-jackpot">
-      <div class="pj-label">★ JACKPOT · STILL IN PLAY ★</div>
-      <div class="pj-amount">${money(Math.max(0, left + (POT.seasonTotal || 0)))}</div>
-      <div class="pj-sub">${money(POT.total)} pot · ${POT.members} × ${money(POT.buyIn)} · ${money(POT.weekly)} a week${POT.season.length ? ` · season ${POT.season.map(money).join(" / ")}` : " · 1st only"}</div>
-    </div>
+  panel.innerHTML = `
+    <!-- One line all season: the jackpot, what is left in play. -->
+    <div class="pot-jackpot mini"><span class="pj-label">JACKPOT</span><span class="pj-amount">${money(Math.max(0, left + (POT.seasonTotal || 0)))}</span><span class="pj-sub">still in play<br>${money(POT.weekly)} a week${POT.season.length ? "" : " · 1st only"}</span></div>
     <div class="pot-season">
       <div class="ps-head"><span>SEASON</span><b>${sealed} / ${POT.weeks}</b></div>
       <div class="ps-bar" style="grid-template-columns: repeat(${POT.weeks + exh.length}, 1fr)">${seasonSegs}</div>
@@ -5663,8 +6214,16 @@ function renderPayouts() {
     ${liveWeek ? `<div class="pot-live">${liveWeekFinal ? `WEEK ${liveWeek} UNSEALED` : `WEEK ${liveWeek} ACTIVE`}</div>` : ""}
     ${contested ? `<div class="pot-warn">⚠ Season places are tied on points where the money sits. The weekly tiebreaker does not settle the season, so the league needs a rule for this before the last week.</div>` : ""}
     <div class="pot-table">
-      <div class="pot-row head"><span>#</span><span>MANAGER</span><span>PTS</span><span>REC</span><span>WON</span><span>EARNED</span></div>
-      ${list.map((r) => potRowHtml(r, rec, true, done)).join("")}
+      <div class="pot-row head">${[["place","#"],["name","MANAGER"],["pts","PTS"],["rec","REC"],["pct","WIN%"],["won","WON"],["earned","EARNED"]].map(([k, t]) => `<button type="button" class="pot-sort${potSort.k === k ? " on" : ""}" data-psort="${k}" aria-label="Sort by ${t}">${t}${potSort.k === k && k !== "place" ? `<i>${potSort.dir > 0 ? "▲" : "▼"}</i>` : ""}</button>`).join("")}</div>
+      ${potSorted(list, rec).map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}${r.seasonPlace === 1 && r.points > 0 ? " leader" : ""}" data-pot-row="${escapeCd(r.name)}" role="button" tabindex="0">
+        <span class="pot-place">${r.tied ? "T" : ""}${r.seasonPlace}${r.move ? `<i class="pot-mv ${r.move > 0 ? "up" : "dn"}" aria-label="${r.move > 0 ? "up" : "down"} ${Math.abs(r.move)}">${Math.abs(r.move)}</i>` : ""}</span>
+        <span class="pot-name"><span class="pot-av" style="--accent:${accentFor(r.name)}">${avatarOverrides[r.name] || shown(r.name)[0]}</span>${r.seasonPlace === 1 && r.points > 0 ? `<i class="pot-crown">♛</i>` : ""}${shown(r.name).toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
+        <span class="pot-pts"><b>${r.points}</b><i class="pot-livemark">${r.livePoints ? "•" : ""}</i></span>
+        <span class="pot-rec">${rec[r.name] ? `${rec[r.name].w}-${rec[r.name].l}` : "–"}</span>
+        <span class="pot-pct">${rec[r.name] && rec[r.name].w + rec[r.name].l ? `${Math.round((100 * rec[r.name].w) / (rec[r.name].w + rec[r.name].l))}%` : "–"}</span>
+        <span class="pot-won">${(() => { const wk = Object.values(weekSummaries).filter((w) => w?.complete && (w.winners || []).includes(r.name)).sort((x, y) => x.week - y.week); return wk.length ? wk.map((w) => `<button type="button" class="pot-tro${w.exhibition ? " exh" : ""}" data-week="${w.week}" data-name="${r.name}" title="Week ${w.week} ${w.exhibition ? "exhibition win, trophy only" : "win"}">🏆</button>`).join("") : "–"; })()}</span>
+        <span class="pot-earned">${r.earned ? money(r.earned) : "–"}</span>
+      </div>`).join("")}
     </div>
     ${sealed ? "" : `<div class="pot-empty">No weeks settled yet. Earnings appear once a week's last game is final.</div>`}`;
 }
@@ -5756,8 +6315,8 @@ function renderSeasonH2H() {
     card.style.setProperty("--accent", accentFor(name));
     card.querySelector(".h2h-f-av").textContent = avatarOverrides[name] || shown(name)[0];
     card.querySelector(".h2h-f-name").textContent = shown(name).toUpperCase();
-    card.querySelector(".h2h-f-meta").innerHTML = `<span>${pr.tied ? "T" : "#"}${pr.seasonPlace || "–"}</span><span>${NO_MONEY ? `${pr.weeksWon ?? (pr.wins || 0)} won` : pr.earned ? money(pr.earned) : "$0"}</span>`;
-    card.querySelector(".h2h-f-score").textContent = String(pr.points || 0).padStart(2, "0");
+    card.querySelector(".h2h-f-meta").innerHTML = `<span>${pr.tied ? "T" : "#"}${pr.seasonPlace || "–"}</span><span>${pr.earned ? money(pr.earned) : "$0"}</span>`;
+    card.querySelector(".h2h-f-score").textContent = pts2(pr.points || 0);
     card.classList.toggle("ahead", (pr.points || 0) > ((side === "a" ? d.potB : d.potA).points || 0));
   };
   fill("a", a, d.potA); fill("b", b, d.potB);
@@ -5847,10 +6406,23 @@ try {
 } catch { /* private mode or a bad copy */ }
 const potOpen = () => !document.getElementById("payouts-panel")?.classList.contains("hidden");
 
+// A Worker read that a dropped signal ("Load failed") should not lose: six
+// seconds at most per try, and one more try after a short wait on a network
+// error or a 5xx. Callers keep their own saved copy for when both miss.
+async function workerFetch(url, opt = {}) {
+  for (let i = 0; ; i++) {
+    try {
+      const res = await fetch(url, { ...opt, signal: AbortSignal.timeout ? AbortSignal.timeout(6000) : undefined });
+      if (res.status < 500 || i) return res;
+    } catch (e) { if (i) throw e; }
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+}
+
 async function loadWeekSummaries() {
   if (!WORKER_URL) return;
   try {
-    const res = await fetch(`${WORKER_URL}/weeks?t=${Date.now()}`, { cache: "no-store" });
+    const res = await workerFetch(`${WORKER_URL}/weeks?t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return;
     const data = await res.json();
     weekTrophies = data.trophies || {};
@@ -5868,15 +6440,27 @@ async function loadWeekSummaries() {
 // week on this device so ten phones do not each post it ten times.
 async function archiveWeekIfFinal(results) {
   if (!WORKER_URL || !GAMES.length) return;
-  if (!GAMES.every((g) => results[g.id])) return;
+  // Only this week's own scores, and only once every game could be over:
+  // a phone holding last week's slate once sealed the next week early.
+  if (latestLiveWeek !== currentWeek) return;
+  if (!GAMES.every((g) => results[g.id] && Date.now() >= Date.parse(g.kickoff) + 2.5 * 3600000)) return;
   let done = [];
   try { done = JSON.parse(localStorage.getItem(SEALED_KEY) || "[]"); } catch {}
   if (done.includes(currentWeek)) return;
+  // Sending the finals is background work: a dropped call ("Load failed",
+  // Nov 20) tries once more after a pause, is logged only if that misses
+  // while the page is on screen, and otherwise waits for the next refresh.
+  // Safe to repeat: the Worker stores the same finals again.
+  const send = () => fetch(`${WORKER_URL}/season`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", soft: true,
+    body: JSON.stringify({ week: currentWeek, results }),
+  });
   try {
-    const res = await fetch(`${WORKER_URL}/season`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
-      body: JSON.stringify({ week: currentWeek, results }),
-    });
+    let res;
+    try { res = await send(); } catch {
+      await new Promise((r) => setTimeout(r, 2500));
+      try { res = await send(); } catch (e2) { if (!document.hidden && navigator.onLine !== false) { try { opsEvent("worker-fail", `/season ${String(e2?.message || "network").slice(0, 40)} (after retry)`); } catch {} } return; }
+    }
     if (!res.ok) return;
     try { localStorage.setItem(SEALED_KEY, JSON.stringify([...done, currentWeek])); } catch {}
     await loadWeekSummaries();
@@ -5918,6 +6502,9 @@ function rankManagers(cloudPicks, results) {
   rows.forEach((row, i) => {
     const next = rows[i + 1];
     row.tied = (rows[i - 1] && rows[i - 1].place === row.place) || (next && next.place === row.place);
+    // Level on points for first and split by the tiebreaker: both cards say so.
+    const level = rows.filter((r) => r.score === row.score);
+    row.tbSplit = actualTotal !== null && row.score > 0 && row.score === rows[0].score && level.length > 1 && Number.isFinite(row.tbDiff) ? (row.tbDiff === Math.min(...level.map((r) => r.tbDiff)) ? "win" : "lose") : null;
     row.subline = rankingSubline(row, actualTotal, tiebreakerGame, null, results);
   });
   return rows;
@@ -6044,6 +6631,13 @@ function gameCats(g) {
 // The week's win chance as shown. Never "0%": a manager the simulation
 // never saw win is either out (no way left to finish first, checked
 // exactly) or a long shot the 5,000 runs were too few to catch.
+// Clinched: the exact walk proved every other manager has no way left.
+function clinchedWeek(name) {
+  const d = winChanceMemo.detail; if (!d || !d[name] || d[name].alive === false) return false;
+  const others = Object.keys(d).filter((n) => n !== name);
+  return others.length > 0 && others.every((n) => d[n].alive === false);
+}
+
 function winChanceLabel(x, d) {
   if (x > 0) return x >= 0.995 ? "99%+" : x < 0.01 ? "<1%" : `${Math.round(x * 100)}%`;
   return d?.alive === false ? "OUT" : "<1%";
@@ -6181,19 +6775,11 @@ function exactPaths(targets, models, picks, guesses, tbGame, catN, N) {
 }
 
 let winChanceMemo = { key: "", out: null };
-function weekWinChances(cloudPicks, results, live) {
-  const key = JSON.stringify([GAMES.map((g) => { const l = live[g.id]; return [g.id, results[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : l ? `${l.state}${l.awayScore}-${l.homeScore}@${l.period}${l.clock}~${l.winProb ? Math.round(l.winProb.home * 10) : ""}` : ""]; }), MANAGERS.map((n) => JSON.stringify(cloudPicks[n]?.picks || {}) + (cloudPicks[n]?.tiebreaker ?? ""))]);
-  if (winChanceMemo.key === key) return winChanceMemo.out;
-  const N = 5000;
-  const rnd = seededRandom(key);
-  const tbGame = tiebreakerGameOf();
-  const guesses = MANAGERS.map((n) => { const raw = String(cloudPicks[n]?.tiebreaker ?? "").trim(); const v = Number(raw); return raw !== "" && Number.isFinite(v) ? v : null; });
-  // A tiebreaker still sealed ("hidden" until its game kicks off) is a
-  // guess we cannot see, not a missing one: each run draws it near the
-  // expected total. Read as no guess, it gave the viewer every tie.
-  const sealedTb = MANAGERS.map((n) => String(cloudPicks[n]?.tiebreaker ?? "").trim() === "hidden");
-  const tbExpected = (() => { const g = tiebreakerGameOf(), l = g && live[g.id]; return Number(l?.odds?.overUnder) || window.LEAGUE?.ouDefault || 52; })();
-  const models = GAMES.map((g) => {
+// One game model per game for the week simulation: finals fixed, open
+// games as scoring drives (see weekWinChances). Shared with the engine
+// terminal so what it prints is what WIN% is built from.
+function simModels(results, live) {
+  return GAMES.map((g) => {
     if (results[g.id]) return { g, fixed: results[g.id] };
     const l = live[g.id];
     const odds = l?.odds && l.odds.spread != null ? l.odds : null;
@@ -6209,14 +6795,41 @@ function weekWinChances(cloudPicks, results, live) {
     // what the remaining time is worth. A full game comes out about 16 to
     // 18 points either side of the line, matching college results; late
     // in a game it correctly makes "needs one more score" unlikely.
+    // Each side also banks a steady 6 points a game outside the drawn
+    // scores (scaled to the time left), so the total keeps its over/under
+    // while the margin spreads about 16 points either side of the line,
+    // what this season's 100 games did (it was about 18 before).
     const ou = odds?.overUnder ?? (window.LEAGUE?.ouDefault || 52);
-    const lam = Math.max(0, (ou * rem) / 5.4);
-    const pHome = Math.min(0.95, Math.max(0.05, 0.5 + homeEdge / (2 * Math.max(30, ou))));
+    const base = Math.round(6 * rem);
+    const drawn = Math.max(0, ou * rem - 2 * base);
+    const lam = drawn / 5.4;
+    const pHome = Math.min(0.95, Math.max(0.05, 0.5 + homeEdge / (2 * Math.max(18, ou - 12))));
     const curA = inGame ? (l.awayScore || 0) : 0, curH = inGame ? (l.homeScore || 0) : 0;
     const espnWp = inGame && l.winProb && Number.isFinite(l.winProb.home) ? l.winProb.home / 100 : null;
-    if (espnWp != null) { const c = calibrateLive(lam, curH - curA, espnWp); return { g, rem, lam: c.lam, pHome: c.p, curA, curH, espn: espnWp }; }
-    return { g, rem, lam, pHome, curA, curH };
+    if (espnWp != null) { const c = calibrateLive(lam, curH - curA, espnWp); return { g, rem, lam: c.lam, pHome: c.p, curA, curH, base, espn: espnWp }; }
+    // Before kickoff, straight-up chances come from the moneyline (the
+    // market's own price, vig removed) when the book has one.
+    const ml = (x) => (x < 0 ? -x / (-x + 100) : 100 / (x + 100));
+    if (!inGame && odds && odds.mlHome != null && odds.mlAway != null) {
+      const h = ml(odds.mlHome), a = ml(odds.mlAway), t = h / (h + a);
+      if (t > 0.02 && t < 0.98) { const c = calibrateLive(lam, 0, t); return { g, rem, lam: c.lam, pHome: c.p, curA, curH, base, ml: t }; }
+    }
+    return { g, rem, lam, pHome, curA, curH, base };
   });
+}
+function weekWinChances(cloudPicks, results, live) {
+  const key = JSON.stringify([GAMES.map((g) => { const l = live[g.id]; return [g.id, results[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : l ? `${l.state}${l.awayScore}-${l.homeScore}@${l.period}${l.clock}~${l.winProb ? Math.round(l.winProb.home * 10) : ""}` : ""]; }), MANAGERS.map((n) => JSON.stringify(cloudPicks[n]?.picks || {}) + (cloudPicks[n]?.tiebreaker ?? ""))]);
+  if (winChanceMemo.key === key) return winChanceMemo.out;
+  const N = 5000;
+  const rnd = seededRandom(key);
+  const tbGame = tiebreakerGameOf();
+  const guesses = MANAGERS.map((n) => { const raw = String(cloudPicks[n]?.tiebreaker ?? "").trim(); const v = Number(raw); return raw !== "" && Number.isFinite(v) ? v : null; });
+  const tbExpected = (() => { const g = tiebreakerGameOf(), l = g && live[g.id]; return Number(l?.odds?.overUnder) || window.LEAGUE?.ouDefault || 52; })();
+  // A tiebreaker still sealed ("hidden" until its game kicks off) is a
+  // guess we cannot see, not a missing one: each run draws it near the
+  // expected total. Read as no guess, it gave the viewer every tie.
+  const sealedTb = MANAGERS.map((n) => String(cloudPicks[n]?.tiebreaker ?? "").trim() === "hidden");
+  const models = simModels(results, live);
   // Each manager's pick on each game, with what it pays.
   // A pick still hidden from this phone (its game has not kicked off; the
   // NFL locks game by game) is unknown, not a miss: each run it backs a
@@ -6241,6 +6854,9 @@ function weekWinChances(cloudPicks, results, live) {
   // How often each open game ended each of its ways, for the exact check.
   const catIx = models.map((m) => m.fixed ? null : new Map(gameCats(m.g).map((c, ci) => [c.sig, ci])));
   const catN = models.map((m, k) => m.fixed ? null : new Array(catIx[k].size).fill(0));
+  // Head to head: in how many runs each player finishes ahead of each
+  // other one (points, then the closer tiebreaker; a dead heat is half).
+  const ahead = MANAGERS.map(() => new Array(MANAGERS.length).fill(0));
   for (let s = 0; s < N; s++) {
     score.fill(0);
     let tbTotal = null;
@@ -6248,7 +6864,7 @@ function weekWinChances(cloudPicks, results, live) {
       const m = models[k];
       let res = m.fixed;
       if (!res) {
-        let h = m.curH, a = m.curA;
+        let h = m.curH + (m.base || 0), a = m.curA + (m.base || 0);
         const n = poissonRand(m.lam, rnd);
         for (let q = 0; q < n; q++) { const pts = rnd() < 0.6 ? 7 : 3; if (rnd() < m.pHome) h += pts; else a += pts; }
         // Level at the end: overtime, decided by a score for one side.
@@ -6264,6 +6880,8 @@ function weekWinChances(cloudPicks, results, live) {
         const winner = p.mode === "SU" ? o.suWinner : o.atsWinner;
         const hit = !!(winner && winner === (p.hidden ? (rnd() < 0.5 ? m.g.home : m.g.away) : p.team));
         if (hit) score[i] += p.pts;
+        // A lock that misses costs its penalty (a push costs nothing).
+        else if (p.lock && winner && lockRule()?.miss < 0) score[i] += lockRule().miss;
         hitThis[i][k] = hit;
       }
     }
@@ -6275,6 +6893,15 @@ function weekWinChances(cloudPicks, results, live) {
       else if (score[i] === best && diff === bestDiff) lead.push(i);
     }
     for (const i of lead) wins[i] += 1 / lead.length;
+    for (let i = 0; i < MANAGERS.length; i++) {
+      const di = guesses[i] === null || tbTotal === null ? Infinity : Math.abs(guesses[i] - tbTotal);
+      for (let j = i + 1; j < MANAGERS.length; j++) {
+        const dj = guesses[j] === null || tbTotal === null ? Infinity : Math.abs(guesses[j] - tbTotal);
+        if (score[i] > score[j] || (score[i] === score[j] && di < dj)) ahead[i][j]++;
+        else if (score[j] > score[i] || (score[i] === score[j] && dj < di)) ahead[j][i]++;
+        else { ahead[i][j] += 0.5; ahead[j][i] += 0.5; }
+      }
+    }
     const share = new Array(MANAGERS.length).fill(0);
     for (const i of lead) share[i] = 1 / lead.length;
     const atTop = score.filter((x) => x === best).length;
@@ -6301,16 +6928,17 @@ function weekWinChances(cloudPicks, results, live) {
     for (let k = 0; k < models.length; k++) {
       if (!open[k] || !picks[i][k] || picks[i][k].hidden) continue; // a hidden pick has no team to show
       const hN = hitN[i][k], mN = N - hN;
-      if (hN < 100 || mN < 100) continue;
+      if (hN < 20 || mN < 20) continue;
+      const thin = hN < 100 || mN < 100;
       const ifHit = hitW[i][k] / hN, ifMiss = (wins[i] - hitW[i][k]) / mN;
       const gap = Math.abs(ifHit - ifMiss), p = hN / N;
       // Leverage: how far the result moves you, times how open it still is.
       // A pick that is 97% in barely matters however big the gap, so
       // p(1-p) weighs it down; a coin flip with the same gap ranks first.
       const lev = gap * p * (1 - p);
-      const entry = { gap, lev, ifHit, ifMiss, pHit: p, game: models[k].g, pick: picks[i][k] };
+      const entry = { gap, lev: thin ? 0 : lev, ifHit, ifMiss, pHit: p, game: models[k].g, pick: picks[i][k], thin };
       all.push(entry);
-      if (!best || lev > best.lev) best = entry;
+      if (!thin && gap >= 0.02 && (!best || lev > best.lev)) best = entry;
     }
     all.sort((x, y) => y.lev - x.lev);
     // Final points they could finish on, how often, and how often that wins.
@@ -6320,7 +6948,7 @@ function weekWinChances(cloudPicks, results, live) {
     detail[n] = { pct, swing: best, games: all, finals, top: topN[i] / N, tb: tbW[i] / N, threats, moe: 1.96 * Math.sqrt(pct * (1 - pct) / N), runs: N, alive: wins[i] > 0 ? true : exact[i]?.alive, path: exact[i]?.path || null };
   });
   const out = Object.fromEntries(MANAGERS.map((n, i) => [n, wins[i] / N]));
-  winChanceMemo = { key, out, detail, ctx: { models, picks, guesses, tbGame, catN, N } };
+  winChanceMemo = { key, out, detail, h2h: ahead.map((r) => r.map((x) => x / N)), ctx: { models, picks, guesses, tbGame, catN, N } };
   return out;
 }
 
@@ -6430,7 +7058,7 @@ function openPlayerChance(name) {
     const gameLines = splits.map((x) => {
       const you = x.best.net > 0 ? `<span class="up">${esc(x.best.txt)} → ${isMe ? "you" : esc(shown(name))} +${x.best.net}</span>` : "";
       const them = x.worst.net < 0 ? `<span class="dn">${esc(x.worst.txt)} → ${R} +${-x.worst.net}</span>` : "";
-      return `<li><b>${esc(x.g.awayShort)} at ${esc(x.g.homeShort)}</b>${you}${them}</li>`;
+      return `<li><b>${matchInline(x.g, "at")}</b>${you}${them}</li>`;
     }).join("");
     let bottom;
     const you = isMe ? "you" : N, You = isMe ? "You" : N;
@@ -6513,15 +7141,202 @@ function openWinChanceExplainer() {
       <div class="wpx-h">WHAT MOVES YOUR %</div>
       <div class="wpx-chips"><span>YOUR MAX POINTS</span><span>LIVE SCORES</span><span>TIME LEFT</span><span>THE LINE</span><span>ESPN WIN %</span><span>EVERYONE ELSE'S PICKS</span></div>
       <div class="wpx-ex"><b>EXAMPLE</b> Favourite up 7 on a 7.5 line. With 8:00 left they cover about <em>39%</em> of the time. With 1:00 left, about <em>8%</em>: they'd need one more score.</div>
-      <div class="wpx-foot">No way left to finish first? You read OUT. Still a way, but too rare to show up in 5,000 runs? You read &lt;1%. Tap your row to see the pick that matters most for you.</div>
+      <button type="button" class="wpx-run">▶ WATCH THE ENGINE</button>
+      <div class="wpx-foot"><b>OUT</b> means no result left gets you 1st. <b>&lt;1%</b> means it can still happen, just in fewer than 50 of 5,000 runs. Tap your row on the board to see the game that matters most to you.</div>
     </div>`;
     document.body.appendChild(m);
-    const close = () => m.classList.add("hidden");
-    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".wpx-x")) close(); });
+    const close = () => { m.classList.add("hidden"); stopEngineTerm(); };
+    m.addEventListener("click", (e) => { if (e.target.closest(".wpx-run")) { if (engineTimer) { stopEngineTerm(); noteUse("wp-engine-stop"); } else { openEngineTerm(); track("wp-engine", { event: true }); } return; } if (e.target === m || e.target.closest(".wpx-x")) close(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
   }
   m.classList.remove("hidden");
   track("wp-explain", { event: true });
+}
+
+// The engine, watched: a small terminal that prints runs as they are
+// drawn, from the same game models WIN% uses. It is a window onto a loop
+// that is always going: the run number follows the clock, so opening it
+// lands mid-stream with a few lines already up, never a fresh start.
+let engineTimer = null;
+function openEngineTerm() {
+  let w = document.getElementById("eng-term");
+  if (!w) {
+    w = document.createElement("div");
+    w.id = "eng-term";
+    w.className = "eng-term pro-keep";
+    w.setAttribute("role", "dialog");
+    w.setAttribute("aria-label", "The engine running");
+    w.innerHTML = `<div class="eng-bar"><span>C:\\BROCHIEFS\\ENGINE.EXE</span><em class="eng-left"></em><button type="button" class="eng-x" aria-label="Close">✕</button></div><div class="eng-body" aria-live="off"></div><div class="eng-foot"></div>`;
+    w.querySelector(".eng-x").addEventListener("click", () => stopEngineTerm());
+  }
+  // Docked in the explainer, where the button is, at the card's width.
+  const card = document.querySelector("#wp-explain .wpx-card"), btn = card?.querySelector(".wpx-run");
+  if (btn && w.previousElementSibling !== btn) btn.after(w); else if (!card && !w.isConnected) document.body.appendChild(w);
+  w.classList.toggle("inline", !!card);
+  if (btn) { btn.textContent = "■ STOP THE ENGINE"; btn.classList.add("stop"); }
+  const ctx = window.__wpCtx || {};
+  const results = ctx.results || {}, cloud = ctx.cloudPicks || lastGoodCloudPicks || {};
+  const body = w.querySelector(".eng-body"), foot = w.querySelector(".eng-foot");
+  const leftEl = w.querySelector(".eng-left");
+  const models = simModels(results, latestLive || {});
+  const open = models.filter((m) => !m.fixed);
+  if (leftEl) leftEl.textContent = open.length ? `${open.length} ${open.length === 1 ? "GAME" : "GAMES"} LEFT` : "ALL FINAL";
+  const anyHidden = MANAGERS.some((n) => Object.values(cloud[n]?.picks || {}).some((p) => p?.hidden));
+  const RUN_MS = 40, N = 5000;
+  const runNo = () => Math.floor(Date.now() / RUN_MS) % N + 1;
+  const ts = (t) => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+  const ab = (g, side) => { const c = teamCode(g, side === "home" ? g.home : g.away), n = side === "home" ? g.homeShort : g.awayShort; return escapeCd(c.length <= 2 ? n.replace(/[^A-Za-z]/g, "").slice(0, 4).toUpperCase() : c.toUpperCase()); };
+  const draw = (m) => {
+    let h = (m.curH || 0) + (m.base || 0), a = (m.curA || 0) + (m.base || 0);
+    const n = poissonRand(m.lam, Math.random);
+    for (let q = 0; q < n; q++) { const pts = Math.random() < 0.6 ? 7 : 3; if (Math.random() < m.pHome) h += pts; else a += pts; }
+    if (h === a) { const pts = Math.random() < 0.6 ? 7 : 3; if (Math.random() < m.pHome) h += pts; else a += pts; }
+    return { awayScore: a, homeScore: h };
+  };
+  const gameLine = (m, res) => {
+    const g = m.g, o = resultOutcome(g, res);
+    const fav = g.favorite === g.home ? "home" : "away", dog = fav === "home" ? "away" : "home";
+    const cov = o.push ? `<span class="eng-c">push</span>` : o.atsWinner === g.favorite ? `<span class="eng-c">${ab(g, fav)} covers -${g.spread}</span>` : `<span class="eng-c">${ab(g, dog)} covers +${g.spread}</span>`;
+    const l = latestLive?.[g.id], live = l?.state === "in";
+    return `<span class="eng-g">G${g.id}</span> ${ab(g, "away")} <b>${res.awayScore}</b>–<b>${res.homeScore}</b> ${ab(g, "home")}${live ? ` <i>(was ${l.awayScore ?? 0}–${l.homeScore ?? 0})</i>` : ""} · ${cov}`;
+  };
+  // One run at a time, in order: every open game's final, then who wins
+  // the week on exactly those finals. The run number starts where the
+  // clock says the loop is, and counts up from there.
+  const winnerOf = (out) => {
+    if (anyHidden) return null;
+    let best = -Infinity, who = [];
+    for (const n of MANAGERS) {
+      let pts = 0;
+      models.forEach((m, k) => { const p = cloud[n]?.picks?.[m.g.id]; if (!p?.team) return; const o = resultOutcome(m.g, out[k]); const w = p.mode === "SU" ? o.suWinner : o.atsWinner; if (w && w === p.team) pts += pickWorth(m.g, p); else if (p.lock && w && lockRule()?.miss < 0) pts += lockRule().miss; });
+      if (pts > best) { best = pts; who = [n]; } else if (pts === best) who.push(n);
+    }
+    return who.length > 1
+      ? `<b>TIE ${best} PTS</b> ${escapeCd(who.map((x) => shown(x).toUpperCase()).join(", "))} <span class="eng-c">→ tiebreaker</span>`
+      : `<b>${escapeCd(shown(who[0]).toUpperCase())}</b> wins the week, ${best} pts`;
+  };
+  let run = runNo(), queue = [], lastWin = "";
+  const nextRun = () => {
+    const out = models.map((m) => m.fixed || draw(m));
+    const lines = models.map((m, k) => m.fixed ? null : gameLine(m, out[k])).filter(Boolean);
+    const wnr = winnerOf(out);
+    queue = [`<span class="eng-r">RUN ${run.toLocaleString()}</span>`, ...lines, ...(wnr ? [`→ ${wnr}`] : [])];
+    run = run % N + 1;
+  };
+  const line = (t, html) => `<div class="eng-l"><span class="eng-t">${ts(t)}</span> ${html}</div>`;
+  const step = (t = Date.now()) => {
+    if (!open.length) return line(t, `<span class="eng-c">ALL GAMES FINAL · NOTHING LEFT TO RUN</span>`);
+    if (!queue.length) nextRun();
+    const html = queue.shift();
+    // The footer leads with the latest run's winner as it prints.
+    if (html.startsWith("→ ")) { const t = html.slice(2).replace(/<[^>]+>/g, "").replace(/\s*→ tiebreaker/, "").trim(); const m = t.match(/^TIE (\d+) PTS (.+)$/); lastWin = m ? (m[2].split(", ").length > 2 ? `TIE ${m[1]} PTS · ${m[2].split(", ").length} players` : `TIE ${m[1]} PTS · ${m[2].replace(", ", " & ")}`) : t; }
+    return line(t, html);
+  };
+  // Mid-stream: a screen's worth already printed, timestamps just behind.
+  const now = Date.now();
+  nextRun(); queue.splice(0, Math.floor(Math.random() * queue.length));
+  // Opens mid-session: 200 lines already printed (the scroll-back limit),
+  // timestamps running back from now, so it reads as long under way.
+  const PRE = 200;
+  body.innerHTML = Array.from({ length: PRE }, (_, i) => step(now - (PRE - i) * 350)).join("");
+  requestAnimationFrame(() => { body.scrollTop = body.scrollHeight; });
+  const paint = () => {
+    // Keeps the last 200 lines to scroll back through; follows the newest
+    // line only while you are at the bottom.
+    body.insertAdjacentHTML("beforeend", step());
+    while (body.children.length > 200) body.firstElementChild.remove();
+    // Running means following: it only stays scrolled back while held.
+    body.scrollTop = body.scrollHeight;
+    foot.textContent = open.length ? `${lastWin ? `🏆 ${lastWin} · ` : ""}Run ${run.toLocaleString()} of ${N.toLocaleString()}` : "Every game is final";
+  };
+  w.__paint = paint;
+  paint();
+  clearInterval(engineTimer);
+  // Press and hold anywhere on the box to pause it; let go to resume.
+  if (!w.dataset.hold) {
+    w.dataset.hold = "1";
+    // Letting go resumes from the newest line, scrolled back to the bottom.
+    // Letting go snaps to the newest line and the next run lands at once.
+    const hold = (on) => { w.classList.toggle("held", on); if (!on) { const b = w.querySelector(".eng-body"); if (b) b.scrollTop = b.scrollHeight; w.__paint?.(); } };
+    // Touch: a scroll fires pointercancel the moment it starts, which ended
+    // the pause mid-swipe, so phones use touchstart/touchend (fires only on
+    // lift, scroll or not). A mouse uses pointer events.
+    w.addEventListener("touchstart", (e) => { if (!e.target.closest(".eng-x")) hold(true); }, { passive: true });
+    w.addEventListener("touchend", (e) => { if (!e.touches.length) setTimeout(() => hold(false), 250); }, { passive: true });
+    w.addEventListener("pointerdown", (e) => { if (e.pointerType === "mouse" && !e.target.closest(".eng-x")) hold(true); });
+    for (const ev of ["pointerup", "pointerleave"]) w.addEventListener(ev, (e) => { if (e.pointerType === "mouse") hold(false); });
+    w.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+  engineTimer = setInterval(() => { if (!document.hidden && !w.classList.contains("held")) paint(); }, 350);
+  w.classList.add("on");
+  requestAnimationFrame(() => w.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+}
+function stopEngineTerm() {
+  document.getElementById("eng-bd")?.classList.remove("on"); document.getElementById("eng-term")?.classList.remove("pop");
+  const w = document.getElementById("eng-term");
+  w?.classList.remove("on");
+  clearInterval(engineTimer); engineTimer = null;
+  const btn = document.querySelector("#wp-explain .wpx-run"); if (btn) { btn.textContent = "▶ WATCH THE ENGINE"; btn.classList.remove("stop"); }
+}
+
+// Win% snapshots for the Live calibration chart: one at lock, one at each
+// final and one per 15 minutes while a game is live. The Worker keeps the
+// first copy of each key, so every phone can send; this one remembers what
+// it sent. Skipped while any pick is still hidden (chances would be partial).
+// Leverage: revealed picks (side and mode) that no one else made, plus the
+// player whose card matches yours most ("you and X match on N of M").
+function soloOf(name, cloudPicks) {
+  const mine = cloudPicks?.[name]?.picks || {};
+  const key = (p) => (p && !p.hidden && p.team ? `${p.team}|${p.mode}` : null);
+  let solo = 0, seen = 0; const same = {};
+  for (const g of GAMES) {
+    const k = key(mine[g.id]); if (!k) continue;
+    seen++; let alone = true;
+    for (const [n, c] of Object.entries(cloudPicks || {})) {
+      if (n === name) continue;
+      if (key(c?.picks?.[g.id]) === k) { alone = false; same[n] = (same[n] || 0) + 1; }
+    }
+    if (alone) solo++;
+  }
+  const twin = Object.entries(same).sort((a, b) => b[1] - a[1])[0];
+  return { solo, seen, twin: twin ? { name: twin[0], n: twin[1] } : null };
+}
+
+function sendWpSnap(ch, cloudPicks, results, live) {
+  try {
+    if (PREVIEW || !WORKER_URL) return;
+    if (Object.values(cloudPicks || {}).some((c) => Object.values(c?.picks || {}).some((p) => p?.hidden))) return;
+    const finals = GAMES.filter((g) => results?.[g.id]).length;
+    const liveN = GAMES.filter((g) => live?.[g.id]?.state === "in").length;
+    const keys = [finals ? `f${finals}` : "lock"];
+    if (liveN) keys.push(`t${Math.floor(Date.now() / 9e5)}`);
+    const sk = `wpsnap-sent-${currentWeek}`;
+    let sent = []; try { sent = JSON.parse(localStorage.getItem(sk) || "[]"); } catch {}
+    const pct = {}; for (const [n, v] of Object.entries(ch || {})) if (Number.isFinite(v)) pct[n] = v;
+    for (const key of keys) {
+      if (sent.includes(key)) continue;
+      sent.push(key);
+      fetch(`${WORKER_URL}/wp-snaps`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ week: currentWeek, key, finals, live: liveN, pct }) }).catch(() => {});
+    }
+    try { localStorage.setItem(sk, JSON.stringify(sent.slice(-200))); } catch {}
+  } catch {}
+}
+
+// Before the first kickoff every score is 0, so the leaderboard becomes the
+// pick board: who has picked how many games and set a tiebreaker. Others'
+// picks are still hidden ({ hidden: true }), so only the counts show.
+function renderPickBoard(cloudPicks) {
+  const total = GAMES.length, me = typeof currentManager !== "undefined" ? currentManager : null;
+  const rows = MANAGERS.map((n) => {
+    const st = cloudPicks?.[n] || {}, made = GAMES.filter((g) => { const p = st.picks?.[g.id]; return p && (p.hidden || p.team); }).length;
+    const tb = String(st.tiebreaker ?? "").trim() !== "";
+    return { n, made, tb, done: made >= total && tb };
+  }).sort((a, b) => b.done - a.done || b.made - a.made || b.tb - a.tb || shown(a.n).localeCompare(shown(b.n)));
+  const allIn = rows.filter((r) => r.done).length;
+  rankingsList.innerHTML = `<div class="pbd-sum"><b>${allIn}</b> of ${rows.length} all in · picks stay hidden until each kickoff</div><div class="pbd">${rows.map((r) => {
+    const stat = r.done ? `<span class="pbd-st ok">ALL IN</span>` : r.made === 0 ? `<span class="pbd-st no">NONE</span>` : `<span class="pbd-st">${r.made < total ? `${total - r.made} LEFT` : "NO TB"}</span>`;
+    return `<div class="pbd-c${r.n === me ? " me" : ""}${r.done ? " done" : ""}"><span class="pbd-av" style="--accent:${accentFor(r.n)}">${escapeCd(avatarOverrides[r.n] || shown(r.n)[0])}</span><div class="pbd-m"><div class="pbd-top"><b>${escapeCd(shown(r.n))}</b>${stat}</div><div class="pbd-pips" aria-label="${r.made} of ${total} picks">${GAMES.map((_, i) => `<i class="${i < r.made ? "on" : ""}"></i>`).join("")}</div><div class="pbd-meta"><span>${r.made}/${total} picks</span><span class="${r.tb ? "ok" : ""}">TB ${r.tb ? "✓" : "—"}</span></div></div></div>`;
+  }).join("")}</div>`;
 }
 
 function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
@@ -6538,7 +7353,14 @@ function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
   if (weekIsLive(results)) {
     const ch = weekWinChances(cloudPicks, results, live);
     for (const row of rows) row.winPct = ch[row.name] ?? 0;
+    // Points first, then each player's chance of winning the week, so the
+    // order moves with every score update. Places (T-3RD) are unchanged.
+    rows.sort((a, b) => b.score - a.score || (b.winPct ?? 0) - (a.winPct ?? 0) || a.tbDiff - b.tbDiff);
     window.__wpCtx = { rows, cloudPicks, results };
+    sendWpSnap(ch, cloudPicks, results, live);
+    // Leverage under each name until the first final: picks nobody else made.
+    if (!GAMES.some((g) => results?.[g.id])) for (const row of rows) row.solo = soloOf(row.name, cloudPicks);
+    else for (const row of rows) delete row.solo;
   } else for (const row of rows) delete row.winPct;
   renderRankingRows(rows, cloudPicks, results, live);
   drawChalkLine(rows, results);
@@ -6551,7 +7373,11 @@ function renderWeekChamp(rows, results) {
   const el = document.getElementById("week-champ");
   if (!el) return;
   const allFinal = GAMES.every((g) => results[g.id]);
-  if (!allFinal || !rows.length) { el.classList.add("hidden"); return; }
+  // The replay's hero card already crowns this week's winner.
+  const rp = document.getElementById("recap-panel");
+  // It bridges the last final to the seal only: once the week seals, the
+  // replay and then the season strip own the top of the board.
+  if (!allFinal || !rows.length || weekSummaries[currentWeek]?.complete || (rp && !rp.classList.contains("hidden") && window.__recapWeek === currentWeek)) { el.classList.add("hidden"); return; }
   const top = rows.filter((r) => r.place === rows[0].place);
   const names = top.map((r) => shown(r.name).toUpperCase()).join(" & ");
   const trophy = `<img class="wc-trophy" src="${awardArt("recap/trophy")}" alt="" aria-hidden="true" decoding="async">`;
@@ -6570,11 +7396,13 @@ function inFlightPoints(picks, live) {
     if (!Number.isFinite(g.awayScore) || !Number.isFinite(g.homeScore)) continue;
     const pick = picks[game.id];
     if (!pick) continue;
-    const p = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
-    if (p > 0) pts += p;
+    // Net, not just what is covering: a lock that is losing counts its
+    // penalty, so a row can read −3 LIVE.
+    pts += scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
   }
   return pts;
 }
+const signedPts = (n) => (n < 0 ? `−${Math.abs(n)}` : `+${n}`);
 function anyGameLive(live) {
   return GAMES.some((game) => { const g = live[game.id]; return g && g.found && g.state === "in" && !g.completed; });
 }
@@ -6605,8 +7433,8 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   // No name here. The header's own pill says who you are eight pixels
   // above, and the room it gives back pays for LIVE on the pill, which
   // reads better than a bare +6.
-  const banked = `<span class="ms-score">${String(me.score).padStart(2, "0")} PTS</span>`;
-  const livePill = inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight} LIVE</span>` : "";
+  const banked = `<span class="ms-score">${pts2(me.score)} PTS</span>`;
+  const livePill = inFlight ? `<span class="ms-live${inFlight < 0 ? " neg" : ""}"><span class="stake-dot"></span>${signedPts(inFlight)} LIVE</span>` : "";
   el.innerHTML = `<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span>${banked}${livePill}${state}${clock}`;
   // The strip stays built (its refresh and countdown hooks still run) but
   // is not shown: the header carries the same thing now.
@@ -6618,7 +7446,7 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   // screen has the countdown); from kickoff on, your place and points.
   headScoreHtml = pre
     ? ""
-    : `${cloudPicksStale ? `<span class="ms-warn" title="Picks did not reload">⚠</span>` : ""}<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span>${banked}${inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight}</span>` : ""}${boardAllFinal ? `<span class="ms-state final">FINAL</span>` : ""}`;
+    : `${cloudPicksStale ? `<span class="ms-warn" title="Picks did not reload">⚠</span>` : ""}<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span>${banked}${inFlight ? `<span class="ms-live${inFlight < 0 ? " neg" : ""}"><span class="stake-dot"></span>${signedPts(inFlight)}</span>` : ""}${boardAllFinal ? `<span class="ms-state final">FINAL</span>` : ""}`;
   renderHeadScore();
 }
 // Ticks the strip's countdown without redrawing the strip.
@@ -6663,7 +7491,7 @@ function drawChalkLine(rows, results) {
   const line = document.createElement("div");
   line.className = "chalk-line";
   line.title = "Score of a card with every favorite against the spread";
-  line.innerHTML = `<span>CHALK LINE <b>${String(chalk).padStart(2, "0")}</b></span><em>${beat} of ${rows.length} above</em>`;
+  line.innerHTML = `<span>CHALK LINE · <b>${pts2(chalk)}</b></span><em>${beat} of ${rows.length} above</em>`;
   if (i === -1 || !els[i]) rankingsList.appendChild(line);
   else rankingsList.insertBefore(line, els[i]);
   const note = document.createElement("p");
@@ -6683,12 +7511,17 @@ function setWeekOverLayout(on) {
   // The week-over overview: the replay, the pot and season stats, in that
   // order, all open the first time the finished week is drawn. Each still
   // folds by hand.
-  if (on && weekOverSeen !== currentWeek) {
-    weekOverSeen = currentWeek;
-    for (const id of ["payouts-toggle", "season-toggle"]) {
-      const t = document.getElementById(id);
-      if (t && !t.classList.contains("open")) t.click();
-    }
+  // Between weeks (replay gone, next slate not up) only Next Slate, the
+  // season strip and the Pot are open; High Scores and last week's board
+  // start folded. Each phase sets the folds once; taps after that stick.
+  const between = on && typeof betweenWeeks === "function" && betweenWeeks();
+  const phase = `${currentWeek}:${between ? "between" : "over"}`;
+  if (on && weekOverSeen !== phase) {
+    weekOverSeen = phase;
+    const set = (id, want) => { const t = document.getElementById(id); if (t && t.classList.contains("open") !== want) t.click(); };
+    set("payouts-toggle", true);
+    set("season-toggle", !between);
+    if (between) { set("leaderboard-toggle", false); set("scores-toggle", false); }
     const recap = document.getElementById("recap-panel");
     if (recap?.classList.contains("folded")) {
       recap.classList.remove("folded");
@@ -6719,7 +7552,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
     const hd = document.createElement("div");
     hd.className = "ranking-row rank-hd";
     hd.setAttribute("aria-hidden", "true");
-    hd.innerHTML = `<div class="ranking-main"><span class="ranking-place">#</span><span class="ranking-name">PLAYER</span>${weekDone ? `<span class="rank-hits hd">CORRECT PICKS</span>` : `<i class="rank-live mid">LIVE</i>`}${weekDone ? "" : anyWp ? `<span class="rank-wp"><span class="rank-wp-bar"></span><b class="rank-hd-wp" role="button" tabindex="0" title="How chance to win is worked out">WIN% ?</b></span>` : `<span class="ranking-dots"></span>`}<span class="ranking-score">PTS</span></div>`;
+    hd.innerHTML = `<div class="ranking-main"><span class="ranking-place">#</span><span class="ranking-name">PLAYER</span>${weekDone ? `<span class="rank-hits hd">CORRECT PICKS</span>` : `<i class="rank-live mid">LIVE</i>`}${weekDone ? "" : anyWp ? `<span class="rank-wp"><span class="rank-wp-bar"></span><b class="rank-hd-wp" role="button" tabindex="0" title="How chance to win is worked out">WIN%</b></span>` : `<span class="ranking-dots"></span>`}<span class="ranking-score">PTS</span></div>`;
     hd.querySelector(".rank-hd-wp")?.addEventListener("click", openWinChanceExplainer);
     rankingsList.appendChild(hd);
   }
@@ -6733,8 +7566,8 @@ function renderRankingRows(rows, cloudPicks, results, live) {
     div.innerHTML = `
       <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
         <span class="ranking-place${row.score > 0 && row.place <= 3 ? ` medal m${row.place}` : ""}">${row.tied ? "T" : ""}${row.place}</span>
-        <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${shown(row.name).toUpperCase()}</span>${rankLockHtml(row)}</span><span class="ranking-lock">${row.subline}</span></span>
-        <i class="rank-live mid${row.inFlight > 0 ? " on" : row.inFlight === 0 ? " zero" : ""}" title="${row.inFlight != null ? "Points from live games if they ended now" : "No games live"}">${row.inFlight != null ? `+${row.inFlight}` : "–"}</i>
+        <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${shown(row.name).toUpperCase()}</span>${weekDone ? "" : rankLockHtml(row)}</span><span class="ranking-lock">${row.subline}${weekDone ? rankLockHtml(row) : ""}</span></span>
+        <i class="rank-live mid${row.inFlight > 0 ? " on" : row.inFlight < 0 ? " neg" : row.inFlight === 0 ? " zero" : ""}" title="${row.inFlight != null ? "Points from live games if they ended now (a losing lock counts its penalty)" : "No games live"}">${row.inFlight != null ? signedPts(row.inFlight) : "–"}</i>
         ${(() => {
           // The week at a glance: one square per game in kickoff order.
           // Green cashed, pink missed, yellow push, pulsing while live
@@ -6760,8 +7593,9 @@ function renderRankingRows(rows, cloudPicks, results, live) {
           }
           return pct != null ? `<span class="rank-wp${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}" title="Chance to win the week"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>` : `<span class="ranking-dots" aria-hidden="true"></span>`;
         })()}
-        <span class="ranking-score">${String(row.score).padStart(2, "0")}</span>
+        <span class="ranking-score">${pts2(row.score)}</span>
       </div>
+      ${open && row.solo ? `<div class="rank-solo-line"><b>${row.solo.solo}</b> pick${row.solo.solo === 1 ? "" : "s"} nobody else made${row.solo.twin ? ` · matches <b>${escapeCd(shown(row.solo.twin.name))}</b> on ${row.solo.twin.n} of ${row.solo.seen}` : ""}</div>` : ""}
       ${open ? playerBreakdownHtml(row.name, row.state, results, live) : ""}
     `;
     // Double tap the chance bar: that player's scenario. A single tap still
@@ -6777,12 +7611,127 @@ function renderRankingRows(rows, cloudPicks, results, live) {
       }
       toggleRow();
     });
-    const toggleRow = () => {
-      if (expandedRankings.has(row.name)) expandedRankings.delete(row.name); else { expandedRankings.add(row.name); track("ranking-expand", { event: true, d: row.name }); }
-      withScrollPreserved(() => renderRankings(cloudPicks, results, live));
-    };
+    const toggleRow = () => { track("ranking-expand", { event: true, d: row.name }); openRankSheet(row.name); };
     rankingsList.appendChild(div);
   });
+  rankSheet.ctx = { rows, cloudPicks, results, live, weekDone };
+  if (rankSheet.name) drawRankSheet(true);
+}
+
+// --- Player sheet -----------------------------------------------------
+// Tapping a leaderboard row opens that player's week in a sheet over the
+// board: a pinned header (place, name, points, chance to win, path to
+// win), then one line per pick, live first, then the open games by how
+// much they matter, then the finals. Swipe sideways (or the arrows) for
+// the next player on the board; the board stays where it was underneath.
+const rankSheet = { name: null, ctx: null, vs: false };
+function openRankSheet(name) {
+  rankSheet.name = name;
+  let el = document.getElementById("rank-sheet");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "rank-sheet"; el.className = "rank-sheet"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Player card");
+    el.innerHTML = `<div class="rs-scrim"></div><div class="rs-card"><div class="rs-grab"></div><div class="rs-head"></div><div class="rs-body"></div></div>`;
+    document.body.appendChild(el);
+    el.querySelector(".rs-scrim").addEventListener("click", closeRankSheet);
+    el.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-rs]"); if (!b) return;
+      if (b.dataset.rs === "x") return closeRankSheet();
+      if (b.dataset.rs === "vs") { rankSheet.vs = !rankSheet.vs; return drawRankSheet(false); }
+      stepRankSheet(b.dataset.rs === "next" ? 1 : -1);
+    });
+    // Drag: sideways steps to the next player; down from the top of the
+    // list (or from the header) pulls the sheet with the finger, and a long
+    // or quick pull lets it slide away, a short one springs back.
+    let x0 = null, y0 = 0, t0 = 0, mode = null, fromHead = false;
+    const card = el.querySelector(".rs-card");
+    const body = () => card.querySelector(".rs-body");
+    card.addEventListener("touchstart", (e) => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); mode = null; fromHead = !e.target.closest(".rs-body"); }, { passive: true });
+    card.addEventListener("touchmove", (e) => {
+      if (x0 == null) return; const t = e.touches[0]; const dx = t.clientX - x0, dy = t.clientY - y0;
+      if (!mode) { if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; mode = Math.abs(dy) > Math.abs(dx) && dy > 0 && (fromHead || body().scrollTop <= 0) ? "down" : "other"; if (mode === "down") card.classList.add("dragging"); }
+      if (mode !== "down") return;
+      e.preventDefault();
+      const d = Math.max(0, dy); card.style.transform = `translateY(${d}px)`; el.querySelector(".rs-scrim").style.opacity = String(Math.max(0, 1 - d / 400));
+    }, { passive: false });
+    card.addEventListener("touchend", (e) => {
+      if (x0 == null) return; const t = e.changedTouches[0]; const dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+      if (mode === "down") {
+        card.classList.remove("dragging");
+        const fast = dy / Math.max(1, Date.now() - t0) > 0.6;
+        if (dy > 110 || (fast && dy > 40)) closeRankSheet(true);
+        else { card.style.transform = ""; el.querySelector(".rs-scrim").style.opacity = ""; }
+        return;
+      }
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) stepRankSheet(dx < 0 ? 1 : -1);
+    }, { passive: true });
+    document.addEventListener("keydown", (e) => { if (!rankSheet.name) return; if (e.key === "Escape") closeRankSheet(); else if (e.key === "ArrowRight") stepRankSheet(1); else if (e.key === "ArrowLeft") stepRankSheet(-1); });
+    document.getElementById("bottom-nav")?.addEventListener("click", closeRankSheet, true);
+  }
+  drawRankSheet(false);
+  // Once per phone: nudge the card sideways and say it swipes.
+  try {
+    if (IS_PHONE && !localStorage.getItem("brochiefs_sheet_swipe_v1")) {
+      localStorage.setItem("brochiefs_sheet_swipe_v1", "1");
+      setTimeout(() => {
+        const c = el.querySelector(".rs-card"); if (!c || !rankSheet.name) return;
+        c.querySelector(".rs-dots")?.classList.add("pulse"); setTimeout(() => c.querySelector(".rs-dots")?.classList.remove("pulse"), 2600);
+        const h = document.createElement("div"); h.className = "rs-hint"; h.textContent = "‹  SWIPE FOR NEXT PLAYER  ›";
+        c.appendChild(h); setTimeout(() => h.remove(), 2600);
+      }, 450);
+    }
+  } catch {}
+  el.classList.remove("closing"); el.querySelector(".rs-card").style.transform = ""; el.querySelector(".rs-scrim").style.opacity = "";
+  el.classList.add("open"); document.body.classList.add("rs-open");
+}
+// Every close slides the sheet down and fades the board back in.
+function closeRankSheet() {
+  const el = document.getElementById("rank-sheet");
+  rankSheet.name = null;
+  if (!el?.classList.contains("open")) return;
+  el.classList.add("closing"); document.body.classList.remove("rs-open");
+  const card = el.querySelector(".rs-card"), scrim = el.querySelector(".rs-scrim");
+  card.style.transform = "translateY(100%)"; scrim.style.opacity = "0";
+  setTimeout(() => { el.classList.remove("open", "closing"); card.style.transform = ""; scrim.style.opacity = ""; }, 240);
+}
+function stepRankSheet(d) {
+  const rows = rankSheet.ctx?.rows || []; const i = rows.findIndex((r) => r.name === rankSheet.name);
+  if (i < 0 || rows.length < 2) return;
+  rankSheet.name = rows[(i + d + rows.length) % rows.length].name;
+  const card = document.querySelector("#rank-sheet .rs-card");
+  card?.classList.remove("slide-l", "slide-r"); void card?.offsetWidth; card?.classList.add(d > 0 ? "slide-l" : "slide-r");
+  drawRankSheet(false);
+}
+function drawRankSheet(keepScroll) {
+  const el = document.getElementById("rank-sheet"); const c = rankSheet.ctx; if (!el || !c) return;
+  const rows = c.rows, i = rows.findIndex((r) => r.name === rankSheet.name);
+  if (i < 0) return closeRankSheet();
+  const row = rows[i], name = row.name;
+  const pct = row.winPct != null ? row.winPct * 100 : null;
+  const txt = pct == null ? "" : clinchedWeek(name) ? "CLINCHED" : winChanceLabel(row.winPct, winChanceMemo.detail?.[name]);
+  const wd = winChanceMemo.detail?.[name];
+  const canPath = pct != null && wd?.alive !== false && !clinchedWeek(name) && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((r) => r.some((p) => p?.hidden));
+  const myPicks = rankSheet.ctx?.cloudPicks?.[currentManager]?.picks;
+  const canVs = name !== currentManager && myPicks && Object.values(myPicks).some((p) => p?.team);
+  const vsOn = canVs && rankSheet.vs;
+  const vsBtn = canVs ? `<button type="button" class="rs-vs${vsOn ? " on" : ""}" data-rs="vs" aria-pressed="${vsOn}">VS ME</button>` : "";
+  const solo = row.solo ? `<div class="rs-solo"><b>${row.solo.solo}</b> pick${row.solo.solo === 1 ? "" : "s"} nobody else made${row.solo.twin ? ` · matches <b>${escapeCd(shown(row.solo.twin.name))}</b> on ${row.solo.twin.n} of ${row.solo.seen}` : ""}</div>` : "";
+  el.querySelector(".rs-head").innerHTML = `
+    <button type="button" class="rs-x" data-rs="x" aria-label="Close">✕</button>
+    <div class="rs-top rs-one">
+      <button type="button" class="rs-nav" data-rs="prev" aria-label="Previous player">‹</button>
+      <span class="ranking-place${row.score > 0 && row.place <= 3 ? ` medal m${row.place}` : ""}">${row.tied ? "T" : ""}${row.place}</span>
+      <span class="rs-name"><b>${escapeCd(shown(name).toUpperCase())}</b>${rankLockHtml(row)}<small>${row.subline || ""} · <span class="rs-pts">${row.score} PTS</span></small></span>
+      ${pct != null ? `<span class="rs-win"><b class="rs-pct${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}${txt === "CLINCHED" ? " clin" : ""}">${txt}</b><small>WIN</small></span>` : ""}
+      ${vsBtn}${canPath ? `<button type="button" class="rd-path-btn rs-path" data-path="${escapeCd(name)}">PATH</button>` : ""}
+      <button type="button" class="rs-nav" data-rs="next" aria-label="Next player">›</button>
+    </div>
+    ${solo}
+    <span class="rs-count">${i + 1} / ${rows.length}</span><div class="rs-dots" aria-hidden="true">${rows.map((_, k) => `<i class="${k === i ? "on" : ""}"></i>`).join("")}</div>`;
+  const body = el.querySelector(".rs-body"); const top = body.scrollTop;
+  body.innerHTML = playerBreakdownHtml(name, row.state, c.results, c.live, { sheet: true, vs: vsOn ? myPicks : null, all: Object.fromEntries(rows.map((r) => [r.name, r.state])), rank: Object.fromEntries([...rows].sort((a, b) => (b.winPct ?? 0) - (a.winPct ?? 0) || b.score - a.score).map((r, i) => [r.name, i])) });
+  body.scrollTop = keepScroll ? top : 0;
+  el.classList.toggle("is-me", name === currentManager);
 }
 
 // --- Kickoff countdown ------------------------------------------------
@@ -6867,7 +7816,7 @@ function renderPicksCountdown() {
   const parts = [["DAYS", Math.floor(tot / 86400)], ["HRS", Math.floor((tot % 86400) / 3600)], ["MIN", Math.floor((tot % 3600) / 60)], ["SEC", tot % 60]].filter(([k, v], i) => i > 0 || v > 0);
   const cells = parts.map(([k, v]) => `<span class="cd-cell"><b>${String(v).padStart(2, "0")}</b><em>${k}</em></span>`).join('<i class="cd-colon">:</i>');
   const logoImg = (id) => id ? `<img class="cd-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : "";
-  const match = `<em class="cd-first">${lockAll || next.id === first.id ? "FIRST UP" : "NEXT UP"}</em><span class="cd-match">${logoImg(next.awayId)}<span>${escapeCd(next.awayShort)} <i>at</i> ${escapeCd(next.homeShort)}</span>${logoImg(next.homeId)}</span><span class="cd-when"><i>KICK</i>${escapeCd(next.kickoffLabel.replace(/\s*ET$/, ""))}</span>`;
+  const match = `<em class="cd-first">${lockAll || next.id === first.id ? "FIRST UP" : "NEXT UP"}</em><span class="cd-match">${logoImg(next.awayId)}<span>${escapeCd(next.awayShort)} <i>at</i> ${escapeCd(next.homeShort)}</span>${logoImg(next.homeId)}</span><span class="cd-when"><i>KICK</i>${escapeCd(String(next.kickoffLabel || "").replace(/\s*ET$/, ""))}</span>`;
   // Fuse: burns from when the slate opened (Monday's seal, 10:00 UTC) to lock.
   const lockAt = new Date(next.kickoff).getTime();
   const opened = (() => { const d = new Date(lockAt); const back = (d.getUTCDay() + 6) % 7; const m = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - back, 10); return m < lockAt ? m : lockAt - 5 * 86400000; })();
@@ -7085,7 +8034,7 @@ const GRID_NAG_MS = 24 * 3600 * 1000;
 let gridTimer = null;
 function gridKey() { return `brochiefs_grid_v1_w${currentWeek}`; }
 function maybeShowGridCheck(force = false) {
-  if (!force && window.LEAGUE?.sport === "nfl") return; // NFL: no pop-ups
+  if (window.NO_POPUPS && !force) return;
   const el = document.getElementById("grid-modal");
   if (!el || !currentManager || !GAMES.length) return;
   const lockAt = weekLockTime() ?? Math.min(...GAMES.map((g) => new Date(g.kickoff).getTime()));
@@ -7207,7 +8156,7 @@ document.addEventListener("click", (e) => {
 const BONER_UNTIL = Date.parse("2026-09-29T03:59:00Z"); // Mon 11:59 PM ET
 let bonerShownThisLoad = false;
 function maybeShowBoner() {
-  if (window.LEAGUE?.sport === "nfl") return; // NFL: scores first, no pop-ups
+  if (window.NO_POPUPS) return;
   const el = document.getElementById("boner-modal");
   if (!el || bonerShownThisLoad || !currentManager || window.__liveView) return;
   if (window.LEAGUE?.features?.boner === false || currentWeek !== 4 || Date.now() >= BONER_UNTIL || !GAMES.length || !GAMES.every(isGameLocked)) return;
@@ -7272,11 +8221,13 @@ function showNowPlaying(then) {
 // --- Question of the week ------------------------------------------------
 // Pops up on every open until this manager answers or cops out. Change
 // QOTW to ask a new one; the id keeps answers apart.
-const QOTW = window.LEAGUE?.features?.qotw === false ? null : { id: "gooey-belly", q: "What actually is a “gooey belly”?", qHtml: `What actually is a<span class="qotw-pop">“gooey belly”?</span>` };
+// Off for now (null): set it to { id, q, qHtml } to ask one again.
+// Last asked: { id: "gooey-belly", q: "What actually is a “gooey belly”?" }.
+const QOTW = null;
 window.QOTW = QOTW;
 let qotwShownThisLoad = false;
 async function maybeShowQotw() {
-  if (window.LEAGUE?.sport === "nfl") return; // NFL: scores first, no pop-ups
+  if (window.NO_POPUPS) return;
   // Not on the way into the admin panel: the prompt would sit on top of the key gate.
   if (qotwShownThisLoad || !currentManager || !WORKER_URL || !QOTW || window.__adminEntry || window.__adminOpen || window.__liveView) return;
   const doneKey = `brochiefs_qotw_${QOTW.id}_${currentManager}`;
@@ -7443,7 +8394,7 @@ function parseSummaryClient(data, game) {
     return (block?.events || []).slice(0, 5).map((e) => ({
       result: e.gameResult || null, score: e.score || null,
       opp: e.opponent?.abbreviation || e.opponent?.displayName || null, oppName: e.opponent?.displayName || e.opponent?.location || null, oppId: e.opponent?.id || null, oppLogo: e.opponent?.logo || e.opponent?.logos?.[0]?.href || null,
-      at: e.atVs || null, date: e.gameDate || null,
+      at: e.atVs || null, date: e.gameDate || null, id: e.id || null,
     })).filter((e) => e.result || e.score);
   };
   // Team stats: whatever ESPN lists for both sides, matched by name.
@@ -7489,9 +8440,11 @@ function isVideoArticle(a) {
 async function fetchWiderNews(gameId) {
   if (!WORKER_URL) return [];
   try {
-    const res = await fetch(`${WORKER_URL}/insights/news?week=${currentWeek}&game=${gameId}&t=${Math.floor(Date.now() / 600000)}`);
-    if (!res.ok) return [];
-    const j = await res.json();
+    const get = (t) => fetch(`${WORKER_URL}/insights/news?week=${currentWeek}&game=${gameId}&t=${t}`).then((r) => (r.ok ? r.json() : { items: [] }));
+    // The Worker answers a cold fetch in about three seconds and finishes it
+    // behind the scenes; one quiet retry picks up the stored result.
+    let j = await get(Math.floor(Date.now() / 600000));
+    if (j.pending) { await new Promise((r) => setTimeout(r, 4000)); j = await get(Date.now()).catch(() => j); }
     const items = j.items || [];
     items.errors = j.errors || [];
     return items;
@@ -7508,7 +8461,9 @@ async function fetchNewsInjuries(gameId, items) {
       ? await fetch(`${WORKER_URL}/insights/injuries?week=${currentWeek}&game=${gameId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) })
       : await fetch(`${WORKER_URL}/insights/injuries?week=${currentWeek}&game=${gameId}`);
     if (!res.ok) return null;
-    return await res.json();
+    const j = await res.json();
+    if (j?.pending) { await new Promise((r) => setTimeout(r, 4000)); return await fetch(`${WORKER_URL}/insights/injuries?week=${currentWeek}&game=${gameId}&t=${Date.now()}`).then((r) => (r.ok ? r.json() : j)).catch(() => j); }
+    return j;
   } catch { return null; }
 }
 // GDELT straight from the phone: a free news index whose API allows
@@ -7707,7 +8662,23 @@ document.getElementById("insights-body")?.addEventListener("click", (e) => {
 // The gamecast also opens for a side bet game off the pool's slate: the
 // game comes from the side bet, its live data from the side bet's own
 // ESPN read. A half bet shows its whole game.
-const sideGuestGame = (id) => (GAMES.some((g) => g.id === id) ? null : potNow()?.slate?.find((g) => String(g.id) === String(id)) || null);
+// Past games opened from the desktop sheet's last five, as gamecast guests.
+const pastGuests = {};
+const sideGuestGame = (id) => (GAMES.some((g) => g.id === id) ? null : pastGuests[id] || potNow()?.slate?.find((g) => String(g.id) === String(id)) || null);
+function openPastGame(g, side, e) {
+  if (!e?.id) return;
+  const id = `past${e.id}`;
+  const tId = side === "away" ? g.awayId : g.homeId, tName = side === "away" ? g.away : g.home, tShort = side === "away" ? g.awayShort : g.homeShort;
+  const teamAway = /@|at/i.test(e.at || "");
+  const [ts, os] = String(e.score || "").match(/\d+/g)?.map(Number) || [];
+  const oName = e.oppName || e.opp || "Opponent", oShort = e.opp || oName, oId = Number(e.oppId) || 0;
+  const away = teamAway ? { n: tName, s: tShort, id: tId, pts: ts } : { n: oName, s: oShort, id: oId, pts: os };
+  const home = teamAway ? { n: oName, s: oShort, id: oId, pts: os } : { n: tName, s: tShort, id: tId, pts: ts };
+  noteUse("past-gamecast", `${e.oppName || e.opp || ""}`.slice(0, 40));
+  pastGuests[id] = { id, eventId: String(e.id), away: away.n, home: home.n, awayShort: away.s, homeShort: home.s, awayId: away.id, homeId: home.id, favorite: home.n, spread: 0, kickoff: e.date || new Date(0).toISOString(), kickoffLabel: "Final", tv: "", past: true };
+  sideLive[id] = { found: true, completed: true, state: "post", eventId: String(e.id), awayScore: away.pts ?? null, homeScore: home.pts ?? null, detail: "Final" };
+  openInsights(id);
+}
 const insLive = (id) => latestLive[id] ?? sideLive[id];
 // Taps inside the game info sheet and the All Picks table: a last five
 // chip opens that game's gamecast, the preview expands, a pick's logo
@@ -7728,6 +8699,7 @@ document.addEventListener("click", (e) => {
   if (cell) { const id = Number(cell.dataset.cellgame); if (id) openInsights(id); }
 });
 async function openInsights(gameId) {
+  insTap.last = "";
   const modal = document.getElementById("insights-modal");
   const game = GAMES.find((g) => g.id === gameId) || sideGuestGame(gameId);
   if (!modal || !game) return;
@@ -7750,9 +8722,9 @@ async function openInsights(gameId) {
     while (t && t.scrollWidth > t.clientWidth + 1 && px > 7) { px -= 0.5; titleEl.style.fontSize = `${px}px`; }
   });
   const guest = !GAMES.includes(game);
-  modal.querySelector("#insights-sub").textContent = [game.kickoffLabel, game.tv].filter(Boolean).join(" · ");
+  modal.querySelector("#insights-sub").textContent = [movedKickoff(game) ? `Moved to ${movedKickoff(game).label} (was ${game.kickoffLabel.replace(/ ET$/, "")})` : game.kickoffLabel, game.tv].filter(Boolean).join(" · ");
   const links = () => `<div class="ins-h">ELSEWHERE ↗</div><div class="ins-chips">${insightsLinks(game).map((l) => `<a class="ins-chip" href="${l.href}" target="_blank" rel="noopener">${esc(l.label)} ›</a>`).join("")}</div>`;
-  body.innerHTML = `<div class="ins-loading">Pulling injuries, the line and the numbers…</div>${links()}`;
+  body.innerHTML = `${gameChangeNote(game)}<div class="ins-loading">Pulling injuries, the line and the numbers…</div>${links()}`;
   modal.classList.remove("hidden");
   // Paint as each source lands instead of waiting for the slowest. The
   // ESPN game page (from the phone) fills most of the sheet; news and the
@@ -7816,7 +8788,7 @@ async function openInsights(gameId) {
     const winAb = aS > hS ? A : H, by = Math.abs(aS - hS);
     const cover = out?.push ? `PUSH ON ${favAb} -${game.spread} · ${winAb} WON BY ${by}` : favMargin > Number(game.spread) ? `${favAb} -${game.spread} COVERED · ${winAb} WON BY ${by}` : `${dogAb} +${game.spread} COVERED · ${winAb} WON BY ${by}`;
     const upset = favMargin < 0 ? `<em>UPSET</em>` : "";
-    const lineHtml = `<div class="gc-settle"><b>${esc(cover)}</b>${upset}</div>`;
+    const lineHtml = game.past ? `<div class="gc-settle"><b>${esc(`${winAb} WON BY ${by}`)}</b></div>` : `<div class="gc-settle"><b>${esc(cover)}</b>${upset}</div>`;
     // Your pick and the room.
     const cloudAll = lastGoodCloudPicks || {};
     const pickOf = (name) => sanitizePicks(cloudAll[name]?.picks || {})[game.id] || (name === currentManager ? getManagerState(name).picks?.[game.id] : null) || null;
@@ -7828,13 +8800,13 @@ async function openInsights(gameId) {
       const pts = scorePick(game, mine, res), pushed = mine.mode === "ATS" && out?.push;
       const st = pushed ? "push" : pts > 0 ? "up" : "down";
       const lkm = mine.lock && lockRule();
-      mineHtml = `<div class="gc-mine ${st}${lkm ? " lk" : ""}"><span class="gc-mtag">${lkm ? "🔒 YOUR LOCK" : "YOUR PICK"}</span>${lg(mine.team === game.away ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(abOf(mine))} ${esc(termsOf(mine))}</b><span class="gc-msay"><i></i>${pushed ? "PUSH · 0 PT" : pts > 0 ? `CASHED · +${pts} PT${pts === 1 ? "" : "S"}${lkm ? " WITH THE LOCK" : ""}` : `MISSED · ${pts < 0 ? "−" + Math.abs(pts) : 0} PT${lkm && pts < 0 ? " (LOCK)" : ""}`}</span></div>`;
+      mineHtml = `<div class="gc-mine ${st}${lkm ? " lk" : ""}"><span class="gc-mtag">${lkm ? "🔒 LOCK" : "YOUR PICK"}</span>${lg(mine.team === game.away ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(abOf(mine))} ${esc(termsOf(mine))}</b><span class="gc-msay"><i></i>${pushed ? "PUSH · 0 PT" : pts > 0 ? `CASHED · +${pts} PT${pts === 1 ? "" : "S"}${lkm ? " WITH THE LOCK" : ""}` : `MISSED · ${pts < 0 ? "−" + Math.abs(pts) : 0} PT${lkm && pts < 0 ? " (LOCK)" : ""}`}</span></div>`;
     }
     const room = MANAGERS.map((name) => ({ name, pick: pickOf(name) })).filter((r) => r.pick).map((r) => { const pts = scorePick(game, r.pick, res); const pushed = r.pick.mode === "ATS" && out?.push; return { ...r, pts, state: pushed ? "push" : pts > 0 ? "up" : "down" }; });
     let roomHtml = "";
     if (room.length) {
       const idx = (n) => MANAGERS.indexOf(n);
-      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}${r.pick.lock && lockRule() ? `<i class="gc-rlk">🔒</i>` : ""}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : r.pts < 0 ? "−" + Math.abs(r.pts) : "0"}</i></li>`; };
+      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li data-pl="${esc(r.name)}" class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}${r.pick.lock && lockRule() ? " has-lk" : ""}">${nameLk(r.pick.lock && lockRule(), game, r.pick)}<span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : r.pts < 0 ? "−" + Math.abs(r.pts) : "0"}</i></li>`; };
       const up = room.filter((r) => r.state === "up").sort((x, y) => y.pts - x.pts), down = room.filter((r) => r.state === "down"), push = room.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
       if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · FINAL</div><div class="gc-rcols">${col("up", "CASHED", up)}${col("down", "MISSED", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
@@ -7884,7 +8856,12 @@ async function openInsights(gameId) {
     // text says "at VT 34" (34 yards from VT's goal); its yardLine number
     // is the same spot counted from the home goal on most feeds, so the
     // text wins when both are present.
-    const dd = String(sit.downDistance || "");
+    // Between plays ESPN drops the live down; the last play carries the
+    // down it left ("2nd & 10 at UNC 25"), so that stands in.
+    const ordN = (n) => ["", "1st", "2nd", "3rd", "4th"][n] || `${n}th`;
+    const endOf = (pl) => { const e = pl?.end; if (!e) return ""; const t = e.downDistanceText || e.shortDownDistanceText; if (t) return t; return e.down > 0 && e.distance != null ? `${ordN(e.down)} & ${e.distance}${e.possessionText ? ` at ${e.possessionText}` : ""}` : ""; };
+    const lastScoring = /touchdown|field goal|extra point|two.?point|safety|kickoff|end (of )?(period|half|game|quarter)/i.test(String(lastP?.type?.text || ""));
+    const dd = String(sit.downDistance || (lastScoring ? "" : endOf(lastP)) || "");
     let x = null;
     const m = dd.match(/\bat\s+([A-Za-z&.' -]+?)\s+(\d{1,2})\s*$/);
     if (m) { const who = m[1].trim().toUpperCase(), yd = Number(m[2]); x = who === String(H).toUpperCase() ? 100 - yd : who === String(A).toUpperCase() ? yd : null; }
@@ -7920,10 +8897,34 @@ async function openInsights(gameId) {
     const st0 = shortStatus(lv.detail || "");
     const brk = /^(HALF|END \d|END \dH)/i.test(st0) || /halftime|end of/i.test(String(lv.detail || ""));
     const brkLabel = /half/i.test(st0) || /halftime/i.test(String(lv.detail || "")) ? "HALFTIME" : (st0 || "BREAK");
-    const field = `<div class="gc-stage">${brk ? `<div class="gc-brk"><span>${esc(brkLabel)}</span></div>` : ""}<div class="gc-field crt${brk ? " brk" : ""}">${mid}
-      <div class="gc-ez l" style="--tc:${aCol}"><i class="gc-gp" aria-hidden="true"><i class="gp-bar"></i></i><span>${esc(A)}</span></div>
-      <div class="gc-ez r" style="--tc:${hCol}"><i class="gc-gp" aria-hidden="true"><i class="gp-bar"></i></i><span>${esc(H)}</span></div>
-      ${ticks}${brk ? "" : drive + gain + ball}
+    // A score just happened and the kickoff is not in yet: the ball's spot
+    // is stale (ESPN parks it for the kickoff), so the field shows the
+    // score instead, looping in the end zone it happened in, until the
+    // kickoff (or any non-scoring play) arrives.
+    const allPlays = []; const seenSc = new Set();
+    for (const d of [...(summaryRaw?.drives?.previous || []), summaryRaw?.drives?.current].filter(Boolean)) for (const pl of d.plays || []) { const k = pl.id || `${pl.sequenceNumber}|${pl.text}`; if (seenSc.has(k)) continue; seenSc.add(k); allPlays.push({ pl, team: d.team?.id }); }
+    const newest = allPlays.length ? allPlays[allPlays.length - 1] : null;
+    const nType = String(newest?.pl?.type?.text || ""), nText = String(newest?.pl?.text || "");
+    let scoreShow = null;
+    if (newest && !brk && !/kickoff|end period|end of/i.test(nType)) {
+      const fg = /field goal/i.test(nType) || /field goal/i.test(nText) && /good|no good|missed|blocked/i.test(nText);
+      const td = /touchdown/i.test(nType) || (newest.pl.scoringPlay && /touchdown/i.test(nText));
+      if (fg || td) {
+        const scorer = Number(newest.pl.start?.team?.id ?? newest.team);
+        const awayScored = scorer === Number(game.awayId);
+        // Away attacks the right goal (home defends it), home the left.
+        const side = awayScored ? "r" : "l";
+        const good = td || (/good/i.test(nType + " " + nText) && !/no good|missed|blocked/i.test(nType + " " + nText));
+        scoreShow = { kind: td ? "td" : "fg", good, side, id: awayScored ? game.awayId : game.homeId, abbr: awayScored ? A : H };
+      }
+    }
+    const ezShow = (side) => !scoreShow || scoreShow.side !== side ? "" : scoreShow.kind === "td"
+      ? `<div class="gc-ezshow td"><img src="${logoUrl(scoreShow.id)}" alt=""><i class="gc-ball"></i><b class="pro-keep">TOUCHDOWN</b></div>`
+      : `<div class="gc-ezshow fg${scoreShow.good ? "" : " miss"}"><b class="pro-keep">${scoreShow.good ? "FIELD GOAL" : "NO GOOD"}</b></div>`;
+    const field = `<div class="gc-stage">${brk ? `<div class="gc-brk"><span>${esc(brkLabel)}</span></div>` : ""}<div class="gc-field crt${brk ? " brk" : ""}${scoreShow ? " scored" : ""}">${mid}
+      <div class="gc-ez l${scoreShow?.side === "l" ? ` show ${scoreShow.kind}${scoreShow.good ? "" : " miss"}` : ""}" style="--tc:${aCol}"><i class="gc-gp" aria-hidden="true"><i class="gp-bar"></i></i><span>${esc(A)}</span>${ezShow("l")}</div>
+      <div class="gc-ez r${scoreShow?.side === "r" ? ` show ${scoreShow.kind}${scoreShow.good ? "" : " miss"}` : ""}" style="--tc:${hCol}"><i class="gc-gp" aria-hidden="true"><i class="gp-bar"></i></i><span>${esc(H)}</span>${ezShow("r")}</div>
+      ${ticks}${brk || scoreShow ? "" : drive + gain + ball}
     </div></div>`;
     const status = shortStatus(lv.detail || `Q${lv.period ?? "?"} ${lv.clock ?? ""}`);
     const aS = lv.awayScore ?? 0, hS = lv.homeScore ?? 0;
@@ -7940,14 +8941,22 @@ async function openInsights(gameId) {
     // of the flow, so the names stay centred under their logos and nothing
     // moves when the ball changes hands.
     const pb = (poss) => poss ? `<i class="gc-pball gc-pfloat" title="Has the ball"></i>` : "";
-    const tm = (id, ab, poss, side) => `<div class="gc-t ${side}${poss ? " poss" : ""}" style="--tc:${side === "a" ? aCol : hCol}">${lg(id, "gc-tlogo")}<span class="gc-tn">${side === "h" ? pb(poss) : ""}<b>${esc(ab)}</b>${side === "a" ? pb(poss) : ""}</span></div>`;
+    // Timeouts left: three pips under the name, lit for each one still in
+    // hand (college teams get three a half).
+    // The game page (summary) is fresher than the scoreboard, so it leads;
+    // the scoreboard fills in. Hidden at halftime, between quarters' breaks
+    // the feed leaves stale, and once the game is over.
+    const toLive = lv?.state === "in" && !/half|end of|final/i.test(String(lv?.detail || ""));
+    const toOf = (side) => { if (!toLive) return null; const s = summaryRaw?.situation, v = side === "a" ? (s?.awayTimeouts ?? sit.awayTimeouts) : (s?.homeTimeouts ?? sit.homeTimeouts); return Number.isFinite(v) ? Math.max(0, Math.min(3, v)) : null; };
+    const toPips = (side) => { const n = toOf(side); return n == null ? "" : `<span class="gc-to" title="${n} timeout${n === 1 ? "" : "s"} left" aria-label="${n} timeouts left">${[0, 1, 2].map((i) => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</span>`; };
+    const tm = (id, ab, poss, side) => `<div class="gc-t ${side}${poss ? " poss" : ""}" style="--tc:${side === "a" ? aCol : hCol}">${lg(id, "gc-tlogo")}<span class="gc-tn">${side === "h" ? pb(poss) : ""}<b>${esc(ab)}</b>${side === "a" ? pb(poss) : ""}</span>${toPips(side)}</div>`;
     const wp = lv.winProb;
     // Win probability: amber LED numbers with each logo at the ends, a
     // thin neon bar in the app's cyan and pink, and a bright notch where
     // the two meet. Nothing printed inside the bar.
     const wA = Math.round(wp?.away ?? 0), wH = 100 - wA;
     const hp = wp ? `<div class="gc-wp4"><span class="gc-led wpn a" data-ghost="88%">${wA}%</span><div class="gc-seg2" style="--wa:${wA}%"></div><span class="gc-led wpn h" data-ghost="88%">${wH}%</span></div><div class="gc-wpcap">WIN PROBABILITY</div>` : "";
-    const strip = `<div class="gc-cab vs" style="--ac:${aCol};--hc:${hCol}"><i class="gc-sweep"></i><div class="gc-row">${tm(game.awayId, A, possA, "a")}${led(aS, "sc")}<div class="gc-clock"><span class="gc-live"><i class="lv-dot"></i>LIVE</span>${clockOnly ? `<i class="gc-per">${esc(per)}</i>${led(clockOnly, "clk")}` : `<b class="gc-stat">${esc(status)}</b>`}</div>${led(hS, "sc")}${tm(game.homeId, H, possH, "h")}</div></div>`;
+    const strip = `<div class="gc-cab vs" style="--ac:${aCol};--hc:${hCol}"><i class="gc-sweep"></i><div class="gc-row">${tm(game.awayId, A, possA && !scoreShow, "a")}${led(aS, "sc")}<div class="gc-clock"><span class="gc-live"><i class="lv-dot"></i>LIVE</span>${clockOnly ? `<i class="gc-per">${esc(per)}</i>${led(clockOnly, "clk")}` : `<b class="gc-stat">${esc(status)}</b>`}</div>${led(hS, "sc")}${tm(game.homeId, H, possH && !scoreShow, "h")}</div></div>`;
     // Your pick, called out under the HUD: the side and terms, what it is
     // worth, and whether it is cashing on this score and by how much.
     const cloudAll = lastGoodCloudPicks || {};
@@ -7965,16 +8974,16 @@ async function openInsights(gameId) {
       const pushed = mine.mode === "ATS" && resultOutcome(game, res)?.push;
       const cash = pushed ? "push" : scorePick(game, mine, res) > 0 ? "up" : "down";
       const by = Math.abs(margin) % 1 ? Math.abs(margin).toFixed(1) : String(Math.abs(margin));
-      const say = cash === "push" ? "PUSH RIGHT NOW" : cash === "up" ? (mine.mode === "SU" ? `WINNING BY ${by}` : `COVERING BY ${by}`) : (mine.mode === "SU" ? (margin === 0 ? "TIED" : `DOWN ${by}`) : `NEEDS ${by} MORE`);
+      const say = cash === "push" ? "PUSH RIGHT NOW" : cash === "up" ? (mine.mode === "SU" ? `WINNING BY ${by}` : `COVERING BY ${by}`) : (mine.mode === "SU" ? (margin === 0 ? "TIED" : `DOWN ${by}`) : (mine.lock && lockRule() ? `NEEDS ${by}` : `NEEDS ${by} MORE`));
       const lkm = mine.lock && lockRule();
-      mineHtml = `<div class="gc-mine ${cash}${lkm ? " lk" : ""}"><span class="gc-mtag">${lkm ? "🔒 YOUR LOCK" : "YOUR PICK"}</span>${lg(mySide === "away" ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(mySide === "away" ? A : H)} ${esc(terms)}</b><span class="gc-mpts">${lkm ? `${pointValue(game, mine.team, mine.mode)}+${lockRule().hit}` : worth} PT</span><span class="gc-msay"><i></i>${esc(say)}${lkm && cash === "down" && lockRule().miss < 0 ? ` · LOCK ${lockRule().miss}` : ""}</span></div>`;
+      mineHtml = `<div class="gc-mine ${cash}${lkm ? " lk" : ""}"><span class="gc-mtag">${lkm ? "🔒 YOUR LOCK" : "YOUR PICK"}</span>${lg(mySide === "away" ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(mySide === "away" ? A : H)} ${esc(terms)}</b><span class="gc-mpts">${lkm ? `${pointValue(game, mine.team, mine.mode)}+${lockRule().hit}` : worth} PT</span><span class="gc-msay"><i></i>${esc(say)}${lkm && cash === "down" && lockRule().miss < 0 ? ` · ${String(lockRule().miss).replace("-", "−")}` : ""}</span></div>`;
     }
     // At a break, a mini box score replaces down and distance.
     const bsTeams = summaryRaw?.boxscore?.teams || [];
     const stat = (id, ...names) => { const t = bsTeams.find((x) => Number(x.team?.id) === Number(id)); const st = (t?.statistics || []).find((x) => names.includes(x.name)); return st?.displayValue ?? null; };
     const bsRow = (label, ...names) => { const a = stat(game.awayId, ...names), h = stat(game.homeId, ...names); return a == null && h == null ? "" : `<div class="gc-bs-r"><b>${esc(a ?? "-")}</b><span>${label}</span><b>${esc(h ?? "-")}</b></div>`; };
     const boxHtml = brk ? (() => { const rows = bsRow("TOTAL YARDS", "totalYards") + bsRow("PASSING", "netPassingYards", "passingYards") + bsRow("RUSHING", "rushingYards") + bsRow("TURNOVERS", "turnovers") + bsRow("POSSESSION", "possessionTime"); return rows ? `<div class="gc-bs"><div class="gc-bs-h"><span>${esc(A)}</span><span>${esc(brkLabel === "HALFTIME" ? "FIRST HALF" : "SO FAR")}</span><span>${esc(H)}</span></div>${rows}</div>` : ""; })() : "";
-    const ddLine = brk ? boxHtml : dd ? `<div class="gc-dd${sit.isRedZone ? " rz" : ""}"><b>${esc(dd.replace(/\s+at\s+.*$/i, ""))}</b>${/\bat\s+/.test(dd) ? `<span>${esc(dd.replace(/^.*?\bat\s+/i, "at "))}</span>` : ""}${sit.isRedZone ? `<em>RED ZONE</em>` : ""}</div>` : `<div class="gc-dd"><b>${esc(sit.possessionText || (possA ? `${A} ball · between plays` : possH ? `${H} ball · between plays` : "Between plays"))}</b></div>`;
+    const ddLine = brk ? boxHtml : scoreShow ? `<div class="gc-dd"><b>${esc(scoreShow.kind === "td" ? `${scoreShow.abbr} touchdown` : scoreShow.good ? `${scoreShow.abbr} field goal` : `${scoreShow.abbr} field goal no good`)} · kickoff next</b></div>` : dd ? `<div class="gc-dd${sit.isRedZone ? " rz" : ""}"><b>${esc(dd.replace(/\s+at\s+.*$/i, ""))}</b>${/\bat\s+/.test(dd) ? `<span>${esc(dd.replace(/^.*?\bat\s+/i, "at "))}</span>` : ""}${sit.isRedZone ? `<em>RED ZONE</em>` : ""}</div>` : `<div class="gc-dd"><b>${esc(sit.possessionText || (possA ? `${A} ball · between plays` : possH ? `${H} ball · between plays` : "Between plays"))}</b></div>`;
     // Last three plays: the current drive first, the previous drive if the
     // current one is too short, else the scoreboard's last play.
     const drives = summaryRaw?.drives || {};
@@ -8126,7 +9135,7 @@ async function openInsights(gameId) {
     // The current and previous drive can share a play (a kickoff, a score),
     // so drop repeats before taking three.
     const seenP = new Set();
-    let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, LOGN).map((p) => ({ key: p.id || p.text, drv: p.id != null ? driveOfPlay.get(String(p.id)) || null : null, per: Number(p.period?.number) || null, secs: secsOf(p.clock?.displayValue), text: shortScore(tidy(p.text)), sc: p.scoringPlay && p.awayScore != null && p.homeScore != null ? `${A} ${p.awayScore} · ${H} ${p.homeScore}` : "", when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
+    let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, LOGN).map((p) => ({ key: p.id || p.text, drv: p.id != null ? driveOfPlay.get(String(p.id)) || null : null, per: Number(p.period?.number) || null, secs: secsOf(p.clock?.displayValue), text: shortScore(tidy(p.text)), sc: p.scoringPlay && p.awayScore != null && p.homeScore != null ? `${A} ${p.awayScore} · ${H} ${p.homeScore}` : "", as: Number.isFinite(Number(p.awayScore)) ? Number(p.awayScore) : null, hs: Number.isFinite(Number(p.homeScore)) ? Number(p.homeScore) : null, when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || (p.start?.down > 0 && p.start?.distance != null ? `${["", "1st", "2nd", "3rd", "4th"][p.start.down] || p.start.down + "th"} & ${p.start.distance}` : ""), tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
     // The scoreboard feed updates faster than the game page. If its last
     // play is not the log's newest, put it on top.
     // Two feeds word the same play differently ("J.Turner rush right for
@@ -8211,7 +9220,16 @@ async function openInsights(gameId) {
       ? `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 1v5H1M10 15v-5h5"/></svg>`
       : `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 6V1h5M15 10v5h-5"/></svg>`;
     const more = totalPlays > 5 ? `<button type="button" class="gc-more" data-gcfull="1" aria-expanded="${full}" aria-label="${full ? "Close the full game log" : `Open the full game log, ${totalPlays} plays`}" title="${full ? "Close full log" : "Full game log"}">${corners}</button>` : "";
-    const playsHtml = plays.length ? `<div class="gc-log${full ? " full" : ""}"><div class="gc-logh"><span>PLAY LOG${full ? ` · ALL ${totalPlays}` : ""}</span>${more}</div><ol class="gc-plays${full ? " full" : ""}">${plays.map((p) => [p, real.indexOf(p)]).map(([p, i]) => p.drive ? `<li class="gc-drv${p.now ? " now" : ""}">${lg(p.tid, "gc-dlogo")}<span>${esc(p.text.toUpperCase())}</span></li>` : p.marker ? `<li class="gc-mark${p.ms || /end|half|two.?minute/i.test(p.text) ? " ms" : ""}"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.sc ? `<em class="gc-psc">${esc(p.sc)}</em>` : ""}${p.badge ? `<span class="gc-pills">${p.badge.map(([bt, bc]) => `<b class="gc-badge ${bc}">${esc(bt)}</b>`).join("")}</span>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
+    // Who scored: the side whose score went up since the play before it
+    // (a pick six or a safety scores for the defence), else the offence.
+    const scorerOf = (p) => {
+      if (p.scorer !== undefined) return p.scorer;
+      const i = real.indexOf(p), prev = real.slice(i + 1).find((x) => x.as != null && x.hs != null);
+      p.scorer = p.as != null && prev ? (p.as > prev.as ? game.awayId : p.hs > prev.hs ? game.homeId : null) : null;
+      if (!p.scorer && p.tid != null) p.scorer = p.tid;
+      return p.scorer;
+    };
+    const playsHtml = plays.length ? `<div class="gc-log${full ? " full" : ""}"><div class="gc-logh"><span>PLAY LOG${full ? ` · ALL ${totalPlays}` : ""}</span>${more}</div><ol class="gc-plays${full ? " full" : ""}">${plays.map((p) => [p, real.indexOf(p)]).map(([p, i]) => p.drive ? `<li class="gc-drv${p.now ? " now" : ""}">${lg(p.tid, "gc-dlogo")}<span>${esc(p.text.toUpperCase())}</span></li>` : p.marker ? `<li class="gc-mark${p.ms || /end|half|two.?minute/i.test(p.text) ? " ms" : ""}"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.sc ? `<em class="gc-psc">${esc(p.sc)}</em>` : ""}${p.badge ? `<span class="gc-pills">${p.badge.map(([bt, bc]) => `<b class="gc-badge ${bc}">${bc === "td" && scorerOf(p) ? lg(scorerOf(p), "gc-blogo") : ""}${esc(bt)}</b>`).join("")}</span>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
     void pool;
     const wpHtml = "";
     const sp = Array.isArray(summaryRaw?.scoringPlays) ? summaryRaw.scoringPlays : [];
@@ -8232,7 +9250,7 @@ async function openInsights(gameId) {
         return { ...r, side, terms, state, worth: pickWorth(game, r.pick) };
       });
       const idx = (n) => MANAGERS.indexOf(n);
-      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}${r.pick.lock && lockRule() ? `<i class="gc-rlk">🔒</i>` : ""}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
+      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li data-pl="${esc(r.name)}" class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}${r.pick.lock && lockRule() ? " has-lk" : ""}">${nameLk(r.pick.lock && lockRule(), game, r.pick)}<span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
       const up = rows.filter((r) => r.state === "up"), down = rows.filter((r) => r.state === "down"), push = rows.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
       if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · ON THIS SCORE</div><div class="gc-rcols">${col("up", "CASHING", up)}${col("down", "SWEATING", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
@@ -8282,7 +9300,7 @@ async function openInsights(gameId) {
   const roomPre = (() => {
     const all = lastGoodCloudPicks || {};
     const locked = isGameLocked(game);
-    const chip = (n) => `<span class="rp-chip${n === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accentFor(n)}">${esc(avatarOverrides[n] || shown(n)[0])}</span>${esc(shown(n))}</span>`;
+    const chip = (n) => `<span class="rp-chip${n === currentManager ? " me" : ""}${lockOn(n, game.id, all) ? " has-lk" : ""}">${nameLk(lockOn(n, game.id, all), game, all[n]?.picks?.[game.id])}<span class="pick-chip-av" style="--accent:${accentFor(n)}">${esc(avatarOverrides[n] || shown(n)[0])}</span><span class="rp-nm">${esc(shown(n))}</span></span>`;
     if (!locked) {
       const mine = all[currentManager]?.picks?.[game.id];
       const inN = MANAGERS.filter((n) => all[n]?.picks?.[game.id]).length;
@@ -8298,13 +9316,17 @@ async function openInsights(gameId) {
       // your own pick on one slim line under the header.
       return mine
         ? `<div class="ins-mypick"><span class="k">YOUR PICK</span>${lg(mineId, "sm")}<b>${esc(mineAb)} ${esc(mineTerms)}</b><i>${mine.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${minePts} PT${minePts === 1 ? "" : "S"}</i></div>`
-        : `<button type="button" class="ins-mypick none" id="ins-mypick-go"><span class="k">YOUR PICK</span><b>NO PICK YET</b><i>TAP TO PICK ›</i></button>`;
+        : `<button type="button" class="ins-mypick none" id="ins-mypick-go"><span class="k">YOUR PICK</span><b>No pick yet</b><i>PICK ›</i></button>`;
     }
     const side = (team, short, id) => {
       const bets = [["ATS", `${team === game.favorite ? "-" : "+"}${game.spread}`], ["SU", "WIN"]].map(([mode, label]) => {
-        const who = MANAGERS.filter((n) => { const pk = all[n]?.picks?.[game.id]; return pk && pk.team === team && pk.mode === mode; });
+        // Locks first, then the usual order.
+        const who = MANAGERS.filter((n) => { const pk = all[n]?.picks?.[game.id]; return pk && pk.team === team && pk.mode === mode; }).sort((a, b) => lockOn(b, game.id, all) - lockOn(a, game.id, all));
         if (!who.length) return "";
-        return `<div class="rp-bet"><div class="rp-bh"><b>${esc(label)}</b><em>${pointValue(game, team, mode)} PT</em><i>${who.length}</i></div><div class="rp-chips">${who.map(chip).join("")}</div></div>`;
+        // The count only when the side splits across two bets; otherwise
+        // the team row above already says it.
+        const split = MANAGERS.filter((m) => all[m]?.picks?.[game.id]?.team === team).length !== who.length;
+        return `<div class="rp-bet"><div class="rp-bh"><b>${esc(label)}</b><em>${pointValue(game, team, mode)} PT</em>${split ? `<i>${who.length}</i>` : ""}</div><div class="rp-chips">${who.map(chip).join("")}</div></div>`;
       }).join("");
       const n = MANAGERS.filter((m) => all[m]?.picks?.[game.id]?.team === team).length;
       return `<div class="rp-col"><div class="rp-team">${lg(id, "rp-logo")}<span>${esc(short)}</span><b>${n}</b></div>${bets || `<div class="rp-none">Nobody</div>`}</div>`;
@@ -8490,7 +9512,7 @@ async function openInsights(gameId) {
       + `</div>`
       + (moreStats ? `<details class="ins-more-news ins-more-stats"><summary><span>▶</span> MORE STATS</summary><div class="ins-glance ins-stats">${moreStats}</div></details>` : "")
       + (w ? `<div class="ins-wx"><span>${esc(w)}</span></div>` : "");
-    if (glance.venue?.name) modal.querySelector("#insights-sub").textContent = [game.kickoffLabel, game.tv, `${glance.venue.name}${glance.venue.indoor ? " (indoors)" : ""}`].filter(Boolean).join(" · ");
+    if (glance.venue?.name) modal.querySelector("#insights-sub").textContent = [movedKickoff(game) ? `${movedKickoff(game).label} ET` : game.kickoffLabel, game.tv, `${glance.venue.name}${glance.venue.indoor ? " (indoors)" : ""}`].filter(Boolean).join(" · ");
     // Leaders: two columns in the same away/home order, logo only.
     const catShort = (c) => /pass/i.test(c) ? "PASS" : /rush/i.test(c) ? "RUSH" : /receiv/i.test(c) ? "REC" : /tackle/i.test(c) ? "TKL" : /sack/i.test(c) ? "SACK" : String(c).toUpperCase().slice(0, 5);
     const lead = (list, teamId) => `<div class="ins-lead"><b>${lg(teamId)}</b>${(list || []).map((l) => `<span><em class="ins-cat">${esc(catShort(l.cat))}</em>${esc(l.name)}<i>${esc(l.line)}</i></span>`).join("")}</div>`;
@@ -8692,6 +9714,9 @@ async function openInsights(gameId) {
     const out = head.filter((el) => el !== sim);
     for (const k of [...ORDER.filter((k) => secs[k]), ...Object.keys(secs).filter((k) => !ORDER.includes(k))]) out.push(...secs[k]);
     body.replaceChildren(...out, ...tail);
+    // A moved or postponed game says so first, with what it means for picks.
+    const note = gameChangeNote(game);
+    if (note) body.insertAdjacentHTML("afterbegin", note);
   })();
   // Simulation context: names, logos, and the line it draws the score around.
   const comps = summaryRaw?.header?.competitions?.[0]?.competitors || [];
@@ -8763,27 +9788,46 @@ async function openInsights(gameId) {
 // Swipe down to close a sheet: only from the top of the sheet, so
 // scrolling the content still works; the card follows the finger and
 // snaps back if the pull is short.
+// Pull a sheet down to close it, the one way every window does it.
+// Starts only on a clearly downward drag (8px, more down than sideways),
+// never from an input or from content that is scrolled down (that drag
+// scrolls it back up instead), closes past `far` px or on a quick flick,
+// and always springs back otherwise, touchcancel included (iOS sends it
+// when it takes the gesture for a scroll; without it a sheet stayed
+// half-dragged and the next touch misbehaved).
+function pullToClose(root, getCard, onClose, far = 90) {
+  let st = null;
+  const card = () => (typeof getCard === "function" ? getCard() : getCard);
+  const reset = (el, anim = true) => { if (!el) return; el.style.transition = anim ? "transform .2s ease, opacity .2s ease" : "none"; el.style.transform = ""; el.style.opacity = ""; };
+  root.addEventListener("touchstart", (e) => {
+    st = null;
+    if (e.touches.length !== 1 || e.target.closest?.("input, textarea, select, [contenteditable]")) return;
+    for (let el = e.target; el; el = el.parentElement) { if (el.scrollTop > 2) return; if (el === root) break; }
+    st = { x0: e.touches[0].clientX, y0: e.touches[0].clientY, t0: Date.now(), dy: 0, dir: null };
+  }, { passive: true });
+  root.addEventListener("touchmove", (e) => {
+    if (!st) return;
+    const dx = e.touches[0].clientX - st.x0, dy = e.touches[0].clientY - st.y0;
+    if (!st.dir && Math.hypot(dx, dy) > 8) st.dir = dy > 0 && Math.abs(dy) > Math.abs(dx) ? "down" : "other";
+    if (st.dir !== "down") { if (st.dir === "other") st = null; return; }
+    const c = card(); if (!c) return;
+    if (e.cancelable) e.preventDefault(); // the drag is ours: nothing behind scrolls
+    st.dy = Math.max(0, dy);
+    c.style.transition = "none"; c.style.transform = `translateY(${st.dy * 0.9}px)`; c.style.opacity = String(Math.max(0.5, 1 - st.dy / 600));
+  }, { passive: false });
+  const end = (cancel) => {
+    if (!st) return;
+    const { dy, t0, dir } = st; st = null;
+    const c = card();
+    if (!cancel && dir === "down" && (dy > far || (dy > 45 && Date.now() - t0 < 250))) { if (c) { c.style.transition = "transform .2s ease, opacity .2s ease"; c.style.transform = "translateY(110%)"; } setTimeout(() => { onClose(); reset(c, false); }, 180); }
+    else reset(c);
+  };
+  root.addEventListener("touchend", () => end(false));
+  root.addEventListener("touchcancel", () => end(true));
+}
 function swipeToClose(modal, card, close) {
-  let y0 = null, dy = 0, t0 = 0;
   modal.dataset.swipe = "own";
-  modal.addEventListener("touchstart", (e) => {
-    if (modal.scrollTop > 2 || e.touches.length !== 1 || e.target.closest("select")) { y0 = null; return; }
-    y0 = e.touches[0].clientY; dy = 0; t0 = Date.now();
-    if (card) card.style.transition = "none";
-  }, { passive: true });
-  modal.addEventListener("touchmove", (e) => {
-    if (y0 === null) return;
-    dy = e.touches[0].clientY - y0;
-    if (dy <= 0) { if (card) card.style.transform = ""; return; }
-    if (card) { card.style.transform = `translateY(${dy * 0.85}px)`; card.style.opacity = String(Math.max(0.4, 1 - dy / 500)); }
-  }, { passive: true });
-  modal.addEventListener("touchend", () => {
-    if (y0 === null) return;
-    if (card) card.style.transition = "transform .2s ease, opacity .2s ease";
-    if (dy > 110 || (dy > 50 && Date.now() - t0 < 250)) close();
-    if (card) { card.style.transform = ""; card.style.opacity = ""; }
-    y0 = null; dy = 0;
-  });
+  pullToClose(modal, card, close, 110);
 }
 // Every other window that has a way out swipes down to close too: the
 // arcade popups, the grid check, the rules and the Game Box. A swipe does
@@ -8793,7 +9837,7 @@ function swipeToClose(modal, card, close) {
 // Only from the top: if anything under the finger is scrolled down, the
 // pull scrolls it back up instead; a sideways drag never closes.
 (() => {
-  const SEL = ".wpx-overlay:not(#qotw-modal), #grid-modal, #rules-modal, #sim-modal, #gridcard-modal, #player-modal, #sh2h-modal";
+  const SEL = ".wpx-overlay:not(#qotw-modal), #grid-modal, #rules-modal, #avatar-modal, #sim-modal, #gridcard-modal, #mypicks-modal, #player-modal, #sh2h-modal";
   const CLOSE = '.wpx-x, [data-act="close"], #rules-close-btn, [aria-label="Close"]';
   let st = null;
   const reset = (card) => { if (card) { card.style.transform = ""; card.style.opacity = ""; } };
@@ -8814,8 +9858,9 @@ function swipeToClose(modal, card, close) {
     if (!st.dir && Math.hypot(dx, dy) > 8) st.dir = Math.abs(dy) > Math.abs(dx) && dy > 0 ? "down" : "other";
     if (st.dir !== "down") { reset(st.card); if (st.dir === "other") st = null; return; }
     st.dy = Math.max(0, dy);
+    if (e.cancelable) e.preventDefault();
     if (st.card) { st.card.style.transform = `translateY(${st.dy * 0.85}px)`; st.card.style.opacity = String(Math.max(0.4, 1 - st.dy / 500)); }
-  }, { passive: true, capture: true });
+  }, { passive: false, capture: true });
   const end = () => {
     if (!st) return;
     const { ov, card, dy, t0 } = st; st = null;
@@ -8829,6 +9874,300 @@ function swipeToClose(modal, card, close) {
   document.addEventListener("touchend", end, { capture: true });
   document.addEventListener("touchcancel", end, { capture: true });
 })();
+// "Since you last looked": the signed-in player's own picks that flipped
+// between covering and not, and their points and place, against what they
+// saw last visit. Only their own picks, so nothing hidden ever shows. A
+// visit starts on load or after 5 minutes away; what they see is saved as
+// they look, so the next visit compares with exactly that.
+const SINCE_KEY = "brochiefs_since_v1";
+let sinceBase, sinceAway = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) sinceAway = Date.now();
+  else if (sinceAway && Date.now() - sinceAway > 5 * 60 * 1000) sinceBase = undefined;
+});
+function sinceState(game, pick, l) {
+  if (!pick || !l || !l.found || !(l.completed || l.state === "in")) return null;
+  const res = { awayScore: l.awayScore, homeScore: l.homeScore };
+  if (pick.mode === "ATS" && resultOutcome(game, res)?.push) return "push";
+  return scorePick(game, pick, res) > 0 ? "up" : "down";
+}
+// The play as a short result: "Run for 15 yds", "Pass complete for 22 yds · 1st down",
+// "Incomplete pass · Penalty, offside". Names, numbers and tacklers are dropped.
+function playSummary(t) {
+  t = String(t || "").replace(/^\(\d+:\d+\)\s*/, "").replace(/^\(?(No Huddle-?\s*)?(Shotgun|Pistol|Under Center|Wildcat)?\)?\s*/i, "").replace(/#\d+\s*/g, "").trim();
+  if (!t) return "";
+  const yds = (n) => `${Math.abs(n)} yd${Math.abs(n) === 1 ? "" : "s"}`;
+  let m;
+  const tags = [];
+  if (/touchdown/i.test(t)) tags.push("Touchdown");
+  else if (/1st down|first down/i.test(t)) tags.push("1st down");
+  const pen = t.match(/PENALTY\s+([A-Z]{2,5})\s+(.+?)(?:\s*\(|,|\s+\d+\s+yards?|$)/i);
+  const penTxt = pen ? `Penalty, ${pen[2].replace(/\s*\(.*$/, "").trim().toLowerCase()}` : "";
+  let main = "";
+  // Who: "Dante Moore" -> "D. Moore" (ESPN starts most plays with the name).
+  const nm = (x) => { const w = String(x || "").trim().replace(/^([A-Z])\.(?=[A-Z])/, "$1. ").split(/\s+/); if (/^[A-Z]\.$/.test(w[0])) return w.join(" "); return w.length > 1 ? `${w[0][0]}. ${w.slice(1).join(" ")}` : w[0] || ""; };
+  const NAME = "((?:[A-Z]\\.\\s?[A-Z][A-Za-z'-]+)|(?:[A-Z][A-Za-z.'-]+(?:\\s[A-Z][A-Za-z.'-]+){1,2}))";
+  const lead = t.match(new RegExp(`^${NAME}\\s+(?:pass|run|rush|scrambles?|sacked|kneels?|left|right|up)`)), who = lead ? nm(lead[1]) : "";
+  const to = t.match(new RegExp(`pass (?:complete|incomplete)?\\s*(?:short |deep )?(?:left |right |middle )?to ${NAME}`)), rec = to ? nm(to[1]) : "";
+  // Scoring plays come as "Evan Stewart 12 Yd pass from Dante Moore (…Kick)".
+  if ((m = t.match(new RegExp(`^${NAME}\\s+(\\d+)\\s*yd\\s+pass\\s+from\\s+${NAME}`, "i")))) return `TD! ${nm(m[3])} to ${nm(m[1])}, ${yds(+m[2])}`;
+  if ((m = t.match(new RegExp(`^${NAME}\\s+(\\d+)\\s*yd\\s+(?:run|rush)`, "i")))) return `TD! ${nm(m[1])} run, ${yds(+m[2])}`;
+  if ((m = t.match(/(\d+)\s*yd\s+pass\s+(?:from|to)\b/i))) return `Touchdown pass, ${yds(+m[1])}`;
+  if ((m = t.match(/(\d+)\s*yd\s+(?:run|rush)\b/i))) return `Touchdown run, ${yds(+m[1])}`;
+  if ((m = t.match(/(\d+)\s*yd\s+(?:interception|fumble|punt|kickoff)\s+return/i))) return `Touchdown return, ${yds(+m[1])}`;
+  if (/intercepted/i.test(t)) main = "Interception";
+  else if (/fumble/i.test(t) && /recovered by/i.test(t)) main = "Fumble";
+  else if ((m = t.match(/sacked.*?for a loss of (\d+) yards?/i))) main = `Sack, loss of ${yds(+m[1])}`;
+  else if (/sacked/i.test(t)) main = "Sack";
+  else if (/pass incomplete/i.test(t)) main = "Incomplete pass";
+  else if ((m = t.match(/pass complete.*?for (?:a loss of )?(-?\d+) yards?/i))) main = /for a loss of/i.test(t) ? `Pass, loss of ${yds(+m[1])}` : `Pass complete for ${yds(+m[1])}`;
+  else if (/pass complete.*?for no gain/i.test(t)) main = "Pass complete, no gain";
+  else if ((m = t.match(/(?:rush|run|scramble[sd]?|kneel|(?:left|right) (?:end|tackle|guard)|up the middle).*?for (?:a loss of )?(-?\d+) yards?/i))) main = /for a loss of/i.test(t) || +m[1] < 0 ? `Run, loss of ${yds(+m[1])}` : `Run for ${yds(+m[1])}`;
+  else if (/(?:rush|run).*?for no gain/i.test(t)) main = "Run, no gain";
+  else if ((m = t.match(/(\d+)\s*(?:yd|yard)s?\s+field goal\s+(?:attempt\s+)?(?:is\s+)?(good|no good|missed|blocked)/i))) main = `${m[1]}-yd field goal ${m[2].toLowerCase() === "good" ? "good" : "missed"}`;
+  else if ((m = t.match(/punts?\s+(\d+)\s+yards?/i))) main = `Punt, ${yds(+m[1])}`;
+  else if (/extra point.*good|kick\)?\s*$/i.test(t) && /extra point|PAT/i.test(t)) main = /no good|missed|blocked/i.test(t) ? "Extra point missed" : "Extra point good";
+  else if ((m = t.match(/kicks?(?:off)?\s+(\d+)\s+yards?/i))) main = /touchback/i.test(t) ? "Kickoff, touchback" : "Kickoff";
+  else if ((m = t.match(/^timeout\s+([A-Z][A-Za-z.&' ]+?)(?:,|$)/i))) main = `Timeout ${m[1].trim()}`;
+  else if (/end of (\d|the)|end quarter|end of half|halftime/i.test(t)) main = t.replace(/\.$/, "");
+  // A bare extra-point fragment: "Tom McGough KICK)" / "(T.McGough KICK)".
+  if (!main && (m = t.match(/^\(?\s*(.+?)\s+(KICK|PAT)\)?\s*$/i))) return `${nm(m[1])} extra point good`;
+  if (!main && (m = t.match(/^\(?\s*(.+?)\s+(KICK|PAT)\s+(failed|no good|blocked|missed)\)?\s*$/i))) return `${nm(m[1])} extra point missed`;
+  if (!main && penTxt) return [penTxt, ...tags].join(" · ");
+  if (!main) return t.replace(/\(.*?\)/g, "").replace(/#\d+\s+/g, "").replace(/\s{2,}/g, " ").trim().slice(0, 80);
+  // Put the player on it: "J. Haynes run for 6 yds", "D. Moore to E. Stewart, 12 yds".
+  if (who) {
+    if (/^Pass complete for /.test(main) && rec) main = `${who} to ${rec}, ${main.replace(/^Pass complete for /, "")}`;
+    else if (/^Incomplete pass/.test(main)) main = `${who} incomplete${rec ? ` to ${rec}` : ""}`;
+    else if (/^(Run|Pass|Sack)/.test(main)) main = `${who} ${main[0].toLowerCase()}${main.slice(1)}`;
+    else if (/^Interception/.test(main)) main = `${who} intercepted`;
+  }
+  return [main, ...(penTxt ? [penTxt] : []), ...tags].join(" · ");
+}
+// The last play each live game showed, so a new one can flash.
+const lvnSeen = {}, lvnScore = {};
+function liveNowHtml(games, live, mine) {
+  // How much each game moves your chance to win the week (the gap between
+  // your chance if your pick hits and if it misses), from the simulation.
+  const wd = typeof winChanceMemo !== "undefined" ? winChanceMemo.detail?.[currentManager] : null;
+  const gapOf = (g) => { const e = wd?.games?.find((x) => Number(x.game?.id) === Number(g.id) && !x.thin); return e ? Math.abs(e.ifHit - e.ifMiss) : 0; };
+  // Most important first; kickoff order breaks ties.
+  games = [...games].sort((a, b) => gapOf(b) - gapOf(a) || Date.parse(a.kickoff) - Date.parse(b.kickoff));
+  const clock = (l) => { const m = String(l.detail || "").match(/^(\d+:\d+)\s*-\s*(\d)/); return m ? `Q${m[2]} ${m[1]}` : String(l.detail || "LIVE").replace(/ - /, " "); };
+  const side = (g, l, k) => {
+    const id = k === "a" ? g.awayId : g.homeId, team = k === "a" ? g.away : g.home;
+    const nm = bugName(k === "a" ? g.awayShort : g.homeShort), sc = k === "a" ? l.awayScore : l.homeScore;
+    const lead = k === "a" ? l.awayScore > l.homeScore : l.homeScore > l.awayScore;
+    return `<span class="lvn-tm${mine[g.id]?.team === team ? " me" : ""}${lead ? " lead" : ""}"><img src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>${escapeCd(nm)}</b><em>${sc ?? 0}</em></span>`;
+  };
+  // One game: its importance bars sit in the header's right corner. More:
+  // each row carries its own beside the points.
+  const one = games.length === 1;
+  const rows = games.map((g) => {
+    const l = live[g.id], sit = l.situation || {};
+    // The play in plain words: drop ESPN's leading clock and formation
+    // ("(10:33) No Huddle-Shotgun #1 J.Becht pass ..." -> "#1 J.Becht pass ...").
+    const play = String(sit.lastPlay || "").trim().replace(/^\(\d+:\d+\)\s*/, "").replace(/^(No Huddle-?\s*)?(Shotgun|Pistol|Under Center|Wildcat)?\s*/i, "").trim();
+    const pid = sit.lastPlayTeamId;
+    const plogo = pid ? `<img class="lvn-pl" src="${logoUrl(pid)}" alt="" loading="lazy" onerror="this.style.display='none'">` : "";
+    // Still text, up to two lines: several games at once stay readable.
+    const ticker = play ? `<span class="lvn-tk" title="${escapeCd(play)}">${plogo}<span>${escapeCd(playSummary(play))}</span></span>` : `<span class="lvn-tk dim">${escapeCd(sit.downDistance || "Waiting on the next play")}</span>`;
+    // Your points in play: what the pick scores if it ended now, out of
+    // what it is worth (a losing lock shows its penalty).
+    const pk = mine[g.id];
+    let pts = "";
+    if (pk?.team) {
+      const v = scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) || 0, worth = pickWorth(g, pk);
+      pts = `<span class="lvn-pts ${v > 0 ? "up" : "dn"}" title="Your points if it ended now (worth ${worth})">${v > 0 ? `+${v}` : v < 0 ? `−${-v}` : "0"}</span>`;
+    }
+    // How much this game moves your chance to win the week: the gap between
+    // your chance if the pick hits and if it misses, from the simulation.
+    // Three bars, no words: how much this game moves your week.
+    const gap = gapOf(g), lit = gap >= 0.15 ? 3 : gap >= 0.05 ? 2 : gap >= 0.01 ? 1 : 0;
+    const bars = `<span class="lvn-imp l${lit}" title="Moves your chance to win the week by ${Math.round(gap * 100)} points"><i></i><i></i><i></i></span>`;
+    // A play this phone has not shown yet: the row lights up for a moment.
+    const fresh = play && lvnSeen[g.id] !== undefined && lvnSeen[g.id] !== play;
+    if (play) lvnSeen[g.id] = play;
+    // Alerts: a score since this phone last drew the box (touchdown when it
+    // went up by 6 or more), a turnover in the latest play, and the red
+    // zone while a team is inside the 20.
+    const tot = (Number(l.awayScore) || 0) + (Number(l.homeScore) || 0), was = lvnScore[g.id];
+    lvnScore[g.id] = tot;
+    const scored = was !== undefined && tot > was ? (tot - was >= 6 ? "TOUCHDOWN" : tot - was === 3 ? "FIELD GOAL" : "SCORE") : "";
+    const turnover = fresh && /intercept|fumble[^.]*recover|turnover on downs|\bsafety\b|blocked (punt|field goal|kick)/i.test(play) ? (/intercept/i.test(play) ? "INTERCEPTION" : /fumble/i.test(play) ? "FUMBLE" : /downs/i.test(play) ? "TURNOVER ON DOWNS" : /safety/i.test(play) ? "SAFETY" : "BLOCKED") : "";
+    const rz = !!sit.isRedZone && !scored;
+    const alert = scored ? `<span class="lvn-al score">${scored}</span>` : turnover ? `<span class="lvn-al turn">${turnover}</span>` : rz ? `<span class="lvn-al rz">RED ZONE</span>` : "";
+    return `<button type="button" class="lvn-row${fresh ? " fresh" : ""}${scored ? ` al-score${scored === "TOUCHDOWN" ? " td" : ""}` : turnover ? " al-turn" : rz ? " al-rz" : ""}" data-lvn="${g.id}"><span class="lvn-top">${side(g, l, "a")}<span class="lvn-mid"><span class="lvn-clk">${escapeCd(clock(l))}</span>${alert}</span>${side(g, l, "h")}</span><span class="lvn-bot">${ticker}${one ? "" : bars}${pts}</span></button>`;
+  }).join("");
+  const g0 = games[0], gap0 = one ? gapOf(g0) : 0, lit0 = gap0 >= 0.15 ? 3 : gap0 >= 0.05 ? 2 : gap0 >= 0.01 ? 1 : 0;
+  const hBars = one ? `<span class="lvn-imp l${lit0}" title="Moves your chance to win the week by ${Math.round(gap0 * 100)} points"><i></i><i></i><i></i></span>` : "";
+  return `<i class="since-h lvn-h"><span class="lvn-dot"></span>LIVE NOW<em> · ${games.length} game${games.length === 1 ? "" : "s"}</em>${hBars}</i>${rows}`;
+}
+function renderSinceLine(ranked, cloudPicks, live) {
+  const el = document.getElementById("since-line");
+  const me = currentManager;
+  if (!el || !me || !MANAGERS.includes(me)) return;
+  // Nothing to report before the first kickoff of the week.
+  if (!GAMES.some((g) => isGameLocked(g) || live[g.id]?.found && live[g.id].state !== "pre")) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  // While games are being played: a LIVE NOW box, one row per game in
+  // progress with the score, the clock and a ticker of the latest play
+  // from the gamecast. Tap a row for that game.
+  const inPlay = GAMES.filter((g) => live[g.id]?.found && live[g.id].state === "in" && !live[g.id].completed);
+  if (inPlay.length) { el.innerHTML = liveNowHtml(inPlay, live, cloudPicks?.[me]?.picks || {}); el.dataset.sg = ""; el.classList.add("lv-now-on"); el.classList.remove("hidden"); return; }
+  el.classList.remove("lv-now-on");
+  const row = ranked.find((r) => r.name === me);
+  const picks = sanitizePicks(cloudPicks[me]?.picks || {});
+  const cov = {};
+  for (const g of GAMES) { const st = sinceState(g, picks[g.id], live[g.id]); if (st) cov[g.id] = st; }
+  const livePts = GAMES.some((g) => live[g.id]?.found && live[g.id].state === "in" && !live[g.id].completed) ? inFlightPoints(picks, live) : null;
+  const fin = GAMES.filter((g) => cov[g.id] && live[g.id]?.completed).map((g) => g.id);
+  const now = { mgr: me, week: currentWeek, at: Date.now(), pts: row?.score ?? 0, place: row?.place ?? null, live: livePts, cov, fin };
+  if (sinceBase === undefined) { try { sinceBase = JSON.parse(localStorage.getItem(SINCE_KEY) || "null"); } catch { sinceBase = null; } if (sinceBase && (sinceBase.mgr !== me || sinceBase.week !== currentWeek)) sinceBase = null; }
+  try { localStorage.setItem(SINCE_KEY, JSON.stringify(now)); } catch {}
+  const b = sinceBase, flips = [], liveRows = [];
+  // One game, two lines: team and line on top with a single status pill
+  // at the right; score, opponent and clock beneath. Steady states
+  // ("covering") live in the pill; a flip ("now covering", "cashed") is
+  // news, so it also reads beside the team.
+  const STEADY = /^(covering|not covering|pushing)$/;
+  const row2 = (g, is, say) => {
+    const l = live[g.id], pk = picks[g.id];
+    const team = escapeCd(pk.team === g.home ? g.homeShort : g.awayShort);
+    const v = scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) ?? 0;
+    const tone = is === "up" ? "up" : is === "push" ? "eq" : "dn";
+    const home = pk.team === g.home, id = home ? g.homeId : g.awayId;
+    const mine = home ? l.homeScore : l.awayScore, opp = home ? l.awayScore : l.homeScore;
+    const oc = teamCode(g, home ? g.away : g.home), oppCode = escapeCd(oc.length <= 2 ? (home ? g.awayShort : g.homeShort) : oc);
+    const clock = l.completed ? "Final" : escapeCd(shortStatus(l.detail || `Q${l.period ?? "?"} ${l.clock ?? ""}`));
+    const sp = Number(g.spread) || 0, fav = pk.team === g.favorite, lead = (mine ?? 0) - (opp ?? 0);
+    const edge = pk.mode === "SU" ? lead : lead + (fav ? -sp : sp);
+    const lineTxt = pk.mode === "SU" ? "to win" : `${fav ? "-" : "+"}${sp}`;
+    const pill = l.completed ? (v > 0 ? `+${v}` : is === "push" ? "push" : "missed")
+      : edge > 0 ? `+${v} · by ${edge}` : edge < 0 ? `needs ${-edge}` : pk.mode === "SU" ? "tied" : "push";
+    const news = STEADY.test(say) ? "" : ` <u>${escapeCd(say)}</u>`;
+    return `<span class="since-row ${tone}" data-sg="${g.id}"><i>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" decoding="async">` : ""}</i><span><span class="since-t"><b>${team}</b> <span class="since-lt">${lineTxt}</span>${news}</span><span class="since-sc">${mine}–${opp} vs ${oppCode} · ${clock}</span></span><em class="since-pill">${pill}</em><s>›</s></span>`;
+  };
+  let first = null, liveFirst = null;
+  for (const g of GAMES) {
+    const is = cov[g.id], l = live[g.id];
+    if (!is) continue;
+    if (l.state === "in" && !l.completed) { liveRows.push(row2(g, is, is === "up" ? "covering" : is === "push" ? "pushing" : "not covering")); if (liveFirst === null) liveFirst = g.id; }
+    if (!b) continue;
+    const was = b.cov?.[g.id];
+    // A game that went final since the last look always reads, cashed or
+    // missed, even when it was already covering (or not) before.
+    const newlyFinal = l.completed && !(b.fin || []).includes(g.id);
+    if (!newlyFinal && (was === is || (!was && is === "down"))) continue;
+    flips.push(row2(g, is, is === "up" ? (l.completed ? "cashed" : "now covering") : is === "push" ? "pushing" : (l.completed ? "missed" : "no longer covering")));
+    if (first === null) first = g.id;
+  }
+  const dp = b ? now.pts - (b.pts || 0) : 0, dPlace = b && b.place && now.place ? b.place - now.place : 0;
+  const dl = b && livePts !== null ? livePts - (b.live ?? 0) : 0;
+  const changed = !!b && (flips.length > 0 || dp !== 0 || dPlace !== 0 || dl !== 0);
+  // Saturday: while a game is on there is always something here. With no
+  // change since the last look it shows where each live pick stands now.
+  const liveMode = !changed && livePts !== null;
+  if (!changed && !liveMode) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  const mv = (d, up = "▲", dn = "▼") => (d > 0 ? `<u class="up">${up}${d}</u>` : d < 0 ? `<u class="dn">${dn}${-d}</u>` : `<u class="eq">–</u>`);
+  const tile = (k, v, d) => `<span class="since-tile"><small>${k}</small><span><b>${v}</b>${d}</span></span>`;
+  const tiles = tile("LIVE", livePts === null ? "–" : `${livePts > 0 ? "+" : ""}${livePts}`, livePts === null ? "" : mv(dl))
+    + tile("POINTS", now.pts, mv(dp))
+    + tile("PLACE", now.place ? `${row?.tied ? "T-" : ""}${ordinal(now.place).toUpperCase()}` : "–", mv(dPlace, "↑", "↓"));
+  // Changed: what flipped first, then every other pick still live, so a
+  // second game in progress never drops out of view.
+  const flipIds = new Set(); for (const g of GAMES) if (cov[g.id] && b && (() => { const l = live[g.id], was = b.cov?.[g.id], is = cov[g.id]; const nf = l.completed && !(b.fin || []).includes(g.id); return nf || !(was === is || (!was && is === "down")); })()) flipIds.add(g.id);
+  const restLive = GAMES.filter((g) => cov[g.id] && live[g.id].state === "in" && !live[g.id].completed && !flipIds.has(g.id)).map((g) => row2(g, cov[g.id], cov[g.id] === "up" ? "covering" : cov[g.id] === "push" ? "pushing" : "not covering"));
+  const list = liveMode ? liveRows : [...flips, ...restLive];
+  el.dataset.sg = (liveMode ? liveFirst : first) ?? "";
+  // Past two games the rest fold under a toggle; it stays open across
+  // refreshes until tapped again.
+  const extra = list.length > 3 ? list.length - 2 : 0;
+  const rows = extra ? [...list.slice(0, 2), ...list.slice(2).map((r) => r.replace('<span class="since-row ', '<span class="since-row since-x ')), `<button type="button" class="since-more">${sinceOpen ? "Show less" : `+${extra} more ${liveMode ? "live picks" : "picks changed"}`}</button>`] : list;
+  el.classList.toggle("since-open", sinceOpen);
+  el.innerHTML = `<i class="since-h">${liveMode ? `YOUR LIVE PICKS${b?.at ? `<em> · NO CHANGE SINCE ${new Date(b.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toUpperCase()}</em>` : ""}` : "SINCE YOU LAST LOOKED"}</i>${rows.length ? `<span class="since-rows">${rows.join("")}</span>` : ""}<span class="since-tiles">${tiles}</span>`;
+  el.classList.remove("hidden");
+}
+// Tap: jump to that game's score card (the flip tapped, else the first).
+var sinceOpen = false; // var: read by renderSinceLine, which can run before this line
+document.getElementById("since-line")?.addEventListener("click", (e) => {
+  const lvn = e.target.closest("[data-lvn]");
+  if (lvn) { noteUse("live-now"); return openInsights(Number(lvn.dataset.lvn)); }
+  const more = e.target.closest(".since-more");
+  if (more) {
+    sinceOpen = !sinceOpen; noteUse("since-more", sinceOpen ? "open" : "close");
+    const el = e.currentTarget, n = el.querySelectorAll(".since-x").length;
+    el.classList.toggle("since-open", sinceOpen);
+    more.textContent = sinceOpen ? "Show less" : `+${n} more ${/LIVE PICKS/.test(el.querySelector(".since-h")?.textContent || "") ? "live picks" : "picks changed"}`;
+    return;
+  }
+  // The LIVE / POINTS / PLACE tiles go to your row on the leaderboard.
+  if (e.target.closest(".since-tiles")) { noteUse("since-tiles");
+    const row = document.querySelector("#rankings-list .ranking-row.is-me") || document.getElementById("rankings-list");
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+    row?.classList.add("since-flash"); setTimeout(() => row?.classList.remove("since-flash"), 1600);
+    return;
+  }
+  // A game row opens that game's Gamecast, same as tapping its score card.
+  const rowId = e.target.closest(".since-row[data-sg]")?.dataset.sg;
+  if (rowId && GAMES.some((g) => String(g.id) === rowId)) { noteUse("since-game", GAMES.find((g) => String(g.id) === rowId)?.homeShort); openInsights(Number(rowId)); return; }
+  const el = e.currentTarget, id = e.target.closest("[data-sg]")?.dataset.sg || el.dataset.sg;
+  const card = id && document.querySelector(`#live-scores-list [data-game="${id}"]`);
+  if (!card) { document.getElementById("rankings-list")?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+  card.classList.add("since-flash"); setTimeout(() => card.classList.remove("since-flash"), 1600);
+});
+// Goalposts on the Gamecast field, drawn in screen space over the tilted
+// field: each back line carries a hidden anchor (.gp-bar) the field's tilt
+// slants like the line itself. From its two ends: a stem rises from the
+// middle, the crossbar runs parallel to the back line at the stem's top,
+// and the uprights stand straight up from the crossbar's ends.
+function drawGoalposts(stage) {
+  stage.querySelector(".gc-gpsvg")?.remove();
+  const sr = stage.getBoundingClientRect(); if (!sr.width) return;
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("class", "gc-gpsvg"); svg.setAttribute("width", sr.width); svg.setAttribute("height", sr.height);
+  svg.setAttribute("aria-hidden", "true");
+  for (const ez of stage.querySelectorAll(".gc-ez")) {
+    const bar = ez.querySelector(".gp-bar"); if (!bar) continue;
+    const r = bar.getBoundingClientRect(), left = ez.classList.contains("l");
+    // The back line leans out at the bottom: on the left goal the top end is
+    // to the right, on the right goal to the left.
+    const top = { x: (left ? r.right : r.left) - sr.left, y: r.top - sr.top }, bot = { x: (left ? r.left : r.right) - sr.left, y: r.bottom - sr.top };
+    const mid = { x: (top.x + bot.x) / 2, y: (top.y + bot.y) / 2 };
+    const H = 16, U = 20; // stem height, uprights above the crossbar
+    const a = { x: top.x, y: top.y - H }, b = { x: bot.x, y: bot.y - H };
+    const d = `M${mid.x} ${mid.y} L${mid.x} ${mid.y - H} M${a.x} ${a.y} L${b.x} ${b.y} M${a.x} ${a.y} L${a.x} ${a.y - U} M${b.x} ${b.y} L${b.x} ${b.y - U}`;
+    const g = document.createElementNS(NS, "g");
+    g.setAttribute("class", "gp" + (ez.classList.contains("show") && ez.classList.contains("fg") ? (ez.classList.contains("miss") ? " miss" : " lit") : ""));
+    g.innerHTML = `<path class="gp-sh" d="${d}"/><path class="gp-ln" d="${d}"/><ellipse class="gp-base" cx="${mid.x}" cy="${mid.y}" rx="4" ry="1.6"/>`;
+    svg.appendChild(g);
+  }
+  stage.appendChild(svg);
+}
+new MutationObserver((muts) => {
+  for (const m of muts) for (const n of m.addedNodes) {
+    if (n.nodeType !== 1) continue;
+    const st = n.matches?.(".gc-stage") ? [n] : n.querySelectorAll?.(".gc-stage") || [];
+    for (const s of st) requestAnimationFrame(() => drawGoalposts(s));
+  }
+}).observe(document.documentElement, { childList: true, subtree: true });
+addEventListener("resize", () => document.querySelectorAll(".gc-stage").forEach(drawGoalposts));
+// A game row in a Path to Win card opens that game's Gamecast (the card
+// closes under it), as a game row does everywhere else.
+document.addEventListener("click", (e) => {
+  const r = e.target.closest?.(".pr-screen.pc .pc-row[data-pcg]");
+  if (!r) return;
+  const id = Number(r.dataset.pcg); if (!GAMES.some((g) => g.id === id)) return;
+  const m = r.closest(".pr-screen"); m.classList.add("out"); setTimeout(() => m.remove(), 220);
+  noteUse("path-game", GAMES.find((g) => g.id === id)?.homeShort);
+  openInsights(id);
+});
+// A name in the Gamecast room opens that player's card.
+document.addEventListener("click", (e) => {
+  const li = e.target.closest?.(".gc-rc[data-pl]");
+  if (li) openPlayerCard(li.dataset.pl);
+});
 (() => {
   const m = document.getElementById("h2h-modal");
   if (m) swipeToClose(m, m.querySelector(".h2h-card"), () => m.classList.add("hidden"));
@@ -8981,7 +10320,7 @@ function renderH2H() {
     const sc = r ? `${r.awayScore}–${r.homeScore}` : st === "live" ? `${lv.awayScore ?? 0}–${lv.homeScore ?? 0}` : "@";
     const k = new Date(g.kickoff);
     const when = st === "final" ? (/OT/i.test(String(lv?.detail || "")) ? "FINAL/OT" : "FINAL") : st === "live" ? esc(String(lv.detail || "LIVE").replace(/\s*-\s*/, " ").toUpperCase()) : st === "void" ? "NO RESULT" : `${k.toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" }).toUpperCase()} ${k.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }).replace(":00", "")}`;
-    return `<div class="h2x-mid"><span class="h2x-teams">${esc(abbr(g, "away"))} <b>${sc}</b> ${esc(abbr(g, "home"))}</span><small class="h2x-when ${st}">${st === "live" ? "<u></u>" : ""}${when}</small></div>`;
+    return `<div class="h2x-mid" data-rdgame="${g.id}" role="button" tabindex="0" aria-label="Open ${esc(g.awayShort)} at ${esc(g.homeShort)}"><span class="h2x-teams">${esc(abbr(g, "away"))} <b>${sc}</b> ${esc(abbr(g, "home"))}</span><small class="h2x-when ${st}">${st === "live" ? "<u></u>" : ""}${when}</small></div>`;
   };
   const pickCell = (g, name, pick, side) => {
     if (hiddenFor(name, g)) return `<div class="h2x-pick ${side} locked"><span class="h2x-tm">Hidden</span><small>until kickoff</small></div>`;
@@ -9192,6 +10531,133 @@ if (STUDIO) {
   });
 }
 
+// Replay visuals: who was on a pick as dots, a share as a bar.
+function line2(cls, label, who, big, small) { return `<div class="rx-tbl ${cls}"><span class="rx-tbk">${label}</span><span class="rx-tbn">${who}</span><b>${big}</b><em>${small}</em></div>`; }
+function rxDots(n, of, cls) { n = Math.max(0, Math.min(of || 0, n || 0)); return `<span class="rx-dots ${cls}">${Array.from({ length: of || 0 }, (_, i) => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</span>`; }
+function rxBar(n, of, cls) { const p = of ? Math.round((n / of) * 100) : 0; return `<span class="rx-bar ${cls}"><i style="width:${p}%"></i></span>`; }
+function rxCountUp(root) {
+  for (const el of root.querySelectorAll("[data-count]")) {
+    const to = Number(el.dataset.count); if (!Number.isFinite(to) || to <= 0) continue;
+    const t0 = performance.now(), dur = 900;
+    const tick = (t) => { const k = Math.min(1, (t - t0) / dur); el.textContent = String(Math.round(to * (1 - Math.pow(1 - k, 3)))); if (k < 1) requestAnimationFrame(tick); };
+    el.textContent = "0"; requestAnimationFrame(tick);
+  }
+}
+// Theme poll: one vote per player, shown until they vote, then never again.
+const THEME_POLL = "theme-v1", THEME_POLL_SEEN = `brochiefs_poll_${THEME_POLL}`;
+let themePollBusy = false, themePollVoted = false;
+async function maybeThemePoll() {
+  if (window.NO_POPUPS) return;
+  if (themePollBusy || themePollVoted) return;
+  const me = loadMe();
+  if (!me || !MANAGERS.includes(me) || !WORKER_URL || PREVIEW || window.__liveView || window.__adminEntry) return;
+  try { if (localStorage.getItem(THEME_POLL_SEEN)) return; } catch {}
+  if (document.getElementById("theme-poll")) return;
+  let mine = null;
+  themePollBusy = true;
+  try { const r = await fetch(`${WORKER_URL}/poll?id=${THEME_POLL}&manager=${encodeURIComponent(me)}&t=${Date.now()}`, { cache: "no-store" }); if (r.ok) mine = (await r.json()).vote; } catch {} // a failed check still shows the poll: no vote, no way past
+  themePollBusy = false;
+  if (mine) { themePollVoted = true; try { localStorage.setItem(THEME_POLL_SEEN, mine); } catch {} return; }
+  if (document.getElementById("theme-poll")) return;
+  const opts = [["retro", "🕹️", "Retro Arcade"], ["dark", "🌙", "Current Dark Mode"], ["either", "🤷", "Who Cares"]];
+  const m = document.createElement("div");
+  m.id = "theme-poll"; m.className = "modal-overlay tpoll"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Theme poll");
+  m.innerHTML = `<div class="modal-card tpoll-card"><div class="tpoll-k">QUICK POLL · ONE VOTE</div><h3>Which theme do you prefer?</h3>
+    <div class="tpoll-opts">${opts.map(([k, ic, t]) => `<button type="button" data-tv="${k}"><span>${ic}</span><b>${t}</b></button>`).join("")}</div><div class="tpoll-err" hidden>Couldn't save that. Try again.</div></div>`;
+  document.body.appendChild(m);
+  // A hard gate: nothing closes it but a vote. If anything removes or hides
+  // it, it comes straight back.
+  const keep = new MutationObserver(() => { if (themePollVoted) { keep.disconnect(); return; } if (!m.isConnected) document.body.appendChild(m); if (m.classList.contains("hidden")) m.classList.remove("hidden"); if (m.style.display) m.style.removeProperty("display"); });
+  keep.observe(document.body, { childList: true }); keep.observe(m, { attributes: true, attributeFilter: ["class", "style"] });
+  fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: THEME_POLL, manager: me, action: "view" }) }).catch(() => {});
+  noteUse("theme-poll-shown");
+  m.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-tv]"); if (!b) return;
+    // Who Cares dodges: other side, then top, then bottom; catchable there.
+    if (b.dataset.tv === "either" && (b.dataset.dodge | 0) < 3) {
+      const n = (b.dataset.dodge | 0) + 1; b.dataset.dodge = n;
+      b.className = `dodge-${n}`; noteUse("theme-poll-dodge", String(n));
+      return;
+    }
+    m.querySelectorAll("button").forEach((x) => (x.disabled = true)); b.classList.add("on");
+    try {
+      const r = await fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: THEME_POLL, manager: me, choice: b.dataset.tv, token: loadAuth()?.manager === me ? loadAuth().token : undefined }) });
+      if (!r.ok) throw new Error();
+      themePollVoted = true;
+      try { localStorage.setItem(THEME_POLL_SEEN, b.dataset.tv); } catch {}
+      noteUse("theme-poll-vote", b.dataset.tv);
+      m.querySelector(".tpoll-card").innerHTML = `<div class="tpoll-done">✓ Vote in. Thanks!</div>`;
+      setTimeout(() => m.remove(), 900);
+    } catch { m.querySelector(".tpoll-err").hidden = false; m.querySelectorAll("button").forEach((x) => (x.disabled = false)); b.classList.remove("on"); }
+  });
+}
+setTimeout(() => maybeThemePoll(), 600);
+// Keep checking: picking your name later, or a failed load, still lands on the poll.
+setInterval(() => { themePollBusy = false; maybeThemePoll(); }, 5000);
+
+// Messages from the Chief: the commissioner writes one on Live; it pops up
+// here once, as the Chief, on the member's next visit. THANKS CHIEF or a
+// reply closes it, and Live sees it was seen, thanked and any reply. It
+// keeps showing on each visit until answered.
+let chiefMsgBusy = false;
+async function maybeChiefMsg() {
+  if (chiefMsgBusy || document.getElementById("chief-msg") || document.getElementById("theme-poll")) return;
+  const me = loadMe();
+  if (!me || !MANAGERS.includes(me) || !WORKER_URL || PREVIEW || window.__liveView || window.__adminEntry || document.hidden) return;
+  chiefMsgBusy = true;
+  let msgs = [];
+  try { const r = await fetch(`${WORKER_URL}/chief-msg?manager=${encodeURIComponent(me)}&t=${Date.now()}`, { cache: "no-store" }); if (r.ok) msgs = (await r.json()).messages || []; } catch {}
+  chiefMsgBusy = false;
+  // Messages already thanked or answered on this phone. The Worker's store
+  // can serve an old copy for up to a minute, which brought the same
+  // message straight back after Thanks.
+  const DONE_KEY = "brochiefs_chief_done_v1";
+  const doneIds = (() => { try { return JSON.parse(localStorage.getItem(DONE_KEY) || "[]"); } catch { return []; } })();
+  const msg = msgs.find((x) => !doneIds.includes(x.id));
+  if (!msg || document.getElementById("chief-msg") || loadMe() !== me) return;
+  const send = (body) => fetch(`${WORKER_URL}/chief-msg`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ manager: me, id: msg.id, ...body }) });
+  send({ seen: 1 }).catch(() => {});
+  // Shown once: remembered the moment it appears, so closing the app or
+  // leaving it unanswered never brings it back.
+  try { localStorage.setItem(DONE_KEY, JSON.stringify([...doneIds, msg.id].slice(-50))); } catch {}
+  track("chief-msg-seen", { event: true });
+  const m = document.createElement("div");
+  m.id = "chief-msg"; m.className = "modal-overlay cmsg"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Message from the Chief");
+  m.innerHTML = `<div class="modal-card cmsg-card">
+    <div class="cmsg-badge"><img src="assets/images/chief/chief2-96.webp" alt="" decoding="async"></div>
+    <div class="cmsg-k">MESSAGE FROM THE CHIEF</div>
+    <div class="cmsg-to">to ${escapeCd(shown(me))} · ${new Date(msg.at).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</div>
+    <p class="cmsg-text">${escapeCd(msg.text).replace(/\n/g, "<br>")}</p>
+    <div class="cmsg-reply" hidden><textarea maxlength="500" rows="3" placeholder="Reply to the Chief"></textarea></div>
+    <div class="cmsg-btns"><button type="button" class="cmsg-rep">REPLY</button><button type="button" class="cmsg-ok">THANKS CHIEF</button></div>
+  </div>`;
+  document.body.appendChild(m);
+  const ta = m.querySelector("textarea"), rep = m.querySelector(".cmsg-rep"), ok = m.querySelector(".cmsg-ok");
+  // Closes at once and is remembered on this phone; the send retries in
+  // the background so a slow signal never leaves the pop-up stuck open.
+  const done = (reply) => {
+    try { localStorage.setItem(DONE_KEY, JSON.stringify([...doneIds, msg.id].slice(-50))); } catch {}
+    m.remove();
+    track("chief-msg", { event: true, d: reply ? "reply" : "thanks" });
+    const body = reply ? { reply } : {};
+    const attempt = (n) => send(body).then((r) => { if (!r.ok) throw 0; }).catch(() => { if (n < 4) setTimeout(() => attempt(n + 1), 3000 * (n + 1)); });
+    attempt(0);
+  };
+  rep.addEventListener("click", () => {
+    const box = m.querySelector(".cmsg-reply");
+    if (box.hidden) { box.hidden = false; rep.textContent = "SEND"; rep.classList.add("on"); ok.textContent = "JUST THANKS"; ta.focus(); return; }
+    const t = ta.value.trim(); if (!t) { ta.focus(); return; }
+    done(t);
+  });
+  ok.addEventListener("click", () => done(""));
+}
+// Right away: a visit can be a second long, so the message is fetched at
+// startup and shown the moment the first screen is up.
+setTimeout(() => maybeChiefMsg(), 0);
+document.addEventListener("DOMContentLoaded", () => maybeChiefMsg());
+setInterval(() => maybeChiefMsg(), 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(maybeChiefMsg, 800); });
+
 // Last sealed week in five lines, computed by the Worker at seal time.
 // Leads the board, open, until Thursday morning, then it is gone.
 let renderRecap = function () {
@@ -9200,7 +10666,8 @@ let renderRecap = function () {
   if (!toggle || !panel) return;
   const last = Object.values(weekSummaries).filter((s) => s?.complete && s.recap).sort((a, b) => b.week - a.week)[0];
   // Gone once the next slate is up, or Thursday morning, whichever first.
-  if (!last || currentWeek > last.week || Date.now() >= recapExpiry(last)) { toggle.classList.add("hidden"); panel.classList.add("hidden"); return; }
+  if (!last || currentWeek > last.week || Date.now() >= recapExpiry(last)) { toggle.classList.add("hidden"); panel.classList.add("hidden"); paintSeasonStrip(true); paintNextSlate(); return; }
+  paintSeasonStrip(false); paintNextSlate();
   const r = last.recap;
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const names = (w) => w.length <= 2 ? w.join(" & ") : `${w.slice(0, -1).join(", ")} & ${w.at(-1)}`;
@@ -9210,68 +10677,135 @@ let renderRecap = function () {
   // it hangs a little past the colour bar, the way the template draws it.
   const art = (f) => `<img class="recap-ico" src="${awardArt(`recap/${f}`)}" alt="" aria-hidden="true" decoding="async">`;
   const ICON = { target: art("crown"), skull: art("bomb"), up: art("chart"), coin: art("coin"), hash: art("flag") };
-  // Team art in the template's pixel style: hand-drawn for the teams the
-  // template has, and for everyone else ESPN's logo fetched tiny and blown
-  // up with hard pixel edges, so every card reads the same.
-  const TEAM_ART = new Set([99, 344, 2390, 194, 84]);
-  // Art published from the Creative Studio comes first; then the template's
-  // hand-drawn five; then ESPN's logo in pixels.
+  // Art published from the Creative Studio comes first; otherwise ESPN's
+  // logo at full resolution (the old tiny, blown-up pixel version blurred).
   const studio = (id) => creativeArt.art?.[`replay-logo:team:${Number(id)}`]?.v;
   const logo = (id, alt = "") => !id ? `<span class="recap-logo blank"></span>`
-    : studio(id) ? `<img class="recap-logo px-art" data-slot="team:${Number(id)}" src="${WORKER_URL}/art/img/${encodeURIComponent(studio(id))}" alt="${esc(alt)}" loading="lazy" onerror="this.onerror=null;this.src='https://a.espncdn.com/combiner/i?img=/i/teamlogos/${window.LEAGUE?.logos || "ncaa"}/${window.LEAGUE?.logoCut || "500-dark"}/${Number(id)}.png&w=26&h=26';this.className='recap-logo px'">`
-    : TEAM_ART.has(Number(id)) ? `<img class="recap-logo px-art" src="assets/images/teams/${Number(id)}.webp" alt="${esc(alt)}" loading="lazy">`
-    : `<img class="recap-logo px" src="https://a.espncdn.com/combiner/i?img=/i/teamlogos/${window.LEAGUE?.logos || "ncaa"}/${window.LEAGUE?.logoCut || "500-dark"}/${Number(id)}.png&w=26&h=26" alt="${esc(alt)}" loading="lazy">`;
+    : studio(id) ? `<img class="recap-logo px-art" data-slot="team:${Number(id)}" src="${WORKER_URL}/art/img/${encodeURIComponent(studio(id))}" alt="${esc(alt)}" loading="lazy" onerror="this.onerror=null;this.src='${logoUrl(Number(id))}';this.className='recap-logo'">`
+    : `<img class="recap-logo" src="${logoUrl(Number(id))}" alt="${esc(alt)}" loading="lazy" onerror="this.style.visibility='hidden'">`;
+  // Every team the replay names gets its logo: the week's slate maps each
+  // name (full and short, ranks stripped) to its ESPN id, longest first so
+  // "Miami OH" wins over "Miami". Runs on text that is already escaped.
+  // The light week summary the phone draws from has no slate, so the names
+  // also come from the detailed week when loaded, this week's games when it
+  // is still this week, and the replay's own cards (they carry team ids).
+  const tmNames = new Map();
+  const tmAdd = (n, id) => { const k = esc(String(n || "").replace(/^#\d+\s+/, "").trim()); if (k.length > 1 && id && !tmNames.has(k)) tmNames.set(k, Number(id)); };
+  const slateFor = last.slate || (seasonLedger || []).find((w) => w.week === last.week)?.slate || (currentWeek === last.week ? GAMES : []);
+  for (const g of slateFor || []) { tmAdd(g.away, g.awayId); tmAdd(g.home, g.homeId); tmAdd(g.awayShort, g.awayId); tmAdd(g.homeShort, g.homeId); }
+  if (r.best) tmAdd(String(r.best.team || ""), r.best.teamId);
+  if (r.worst) tmAdd(String(r.worst.team || ""), r.worst.teamId);
+  for (const x of r.consensus?.sides || []) tmAdd(x.team, x.id);
+  for (const x of r.locks?.list || []) tmAdd(x.short, x.id);
+  if (r.tb) { const [ta, th] = String(r.tb.matchup || "").split(/\s+(?:at|@)\s+/); tmAdd(ta, r.tb.awayId); tmAdd(th, r.tb.homeId); }
+  const tmRx = tmNames.size ? new RegExp(`(?<![A-Za-z])(${[...tmNames.keys()].sort((x, y) => y.length - x.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?![A-Za-z])`, "g") : null;
+  // One logo per team per card: \`seen\` is the card's set of team ids already
+  // shown (its art logo included), so a repeat of the name stays plain text.
+  const tl = (html, seen = new Set()) => (tmRx ? String(html).replace(tmRx, (m) => { const id = tmNames.get(m); if (seen.has(id)) return m; seen.add(id); return `<em class="t-inl"><img class="t-inl-logo" src="${logoUrl(id)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">${m}</em>`; }) : html);
   const mine = (w) => (Array.isArray(w) ? w : [w]).includes(currentManager);
   // [label, class, art, headline, sub, stat, statLabel, isMe]
   if (r.best) {
     const b = r.best;
-    cards.push([ICON.target + "PICK OF THE WEEK", "hit", logo(b.teamId, b.team), `${chips(b.who)}<span class="recap-pick">${esc(b.pick)}</span>`,
-      `Only ${b.takers} of ${b.of} ${b.takers === 1 ? "took it" : `were on ${esc(b.team || b.pick)}`}${Array.isArray(b.who) && b.who.length < b.takers ? ` · ${b.who.length} cashed` : ""} · ${esc(b.final || b.score)}`, `+${b.pts}`, Array.isArray(b.who) && b.who.length > 1 ? "PTS TOP" : "PTS", mine(b.who)]);
+    const seenB = new Set([Number(b.teamId)]);
+    cards.push([ICON.target + "PICK OF THE WEEK", "hit", logo(b.teamId, b.team), `${chips(b.who)}<span class="recap-pick">${tl(esc(b.pick), seenB)}</span>`,
+      `${b.takers} of ${b.of} ${b.takers === 1 ? "took it" : "on it"}${Array.isArray(b.who) && b.who.length < b.takers ? ` · ${b.who.length} cashed` : ""} · ${tl(esc(b.final || b.score), seenB)}`, `+${b.pts}`, Array.isArray(b.who) && b.who.length > 1 ? "PTS TOP" : "PTS", mine(b.who), rxDots(b.takers, b.of, "hit")]);
   }
   if (r.worst) {
     const w = r.worst;
-    cards.push([ICON.skull + "WORST PICK", "miss", logo(w.teamId, w.team), `<span class="recap-pick">${esc(w.pick)}</span>`,
-      `${w.takers} of ${w.of} got zero · ${esc(w.final || w.score)}`, `${w.takers}/${w.of}`, "PICKED", mine(w.who)]);
+    const seenW = new Set([Number(w.teamId)]);
+    cards.push([ICON.skull + "WORST PICK", "miss", logo(w.teamId, w.team), `<span class="recap-pick">${tl(esc(w.pick), seenW)}</span>`,
+      `${w.takers} of ${w.of} on it · ${tl(esc(w.final || w.score), seenW)}`, ...(Number.isFinite(w.missBy) ? [String(w.missBy), "MISSED BY", mine(w.who), ""] : [`${w.takers}/${w.of}`, "PICKED", mine(w.who), rxBar(w.takers, w.of, "miss")])]);
   }
   if (r.movement?.up) {
     const u = r.movement.up, d = r.movement.down;
     cards.push([ICON.up + "MOVEMENT", "move", `<img class="recap-logo chart" src="assets/images/recap/chart.webp" alt="" decoding="async">`, `${chips([u.name])}<span class="recap-pick">to #${u.to} on the season</span>`,
-      d ? `${esc(shown(d.name))} fell ${d.to - d.from} to #${d.to}` : "Nobody fell", `▲${u.from - u.to}`, "SPOTS", mine([u.name, d?.name].filter(Boolean))]);
+      d ? `${esc(shown(d.name))} fell ${d.to - d.from} to #${d.to}` : "Nobody fell", `▲${u.from - u.to}`, "SPOTS", mine([u.name, d?.name].filter(Boolean)), `<span class="rx-climb"><i>#${u.from}</i><b>→</b><i class="to">#${u.to}</i></span>`]);
   }
   if (r.consensus?.sides?.length > 1) {
     const c = r.consensus;
     const [a, b] = c.sides;
-    cards.push([ICON.coin + "COIN FLIP", "split", `<span class="recap-vs">${logo(a.id, a.team)}${logo(b.id, b.team)}</span>`, `<span class="recap-pick">${esc(c.matchup)}</span>`,
-      `${esc(a.team)} ${a.n} · ${esc(b.team)} ${b.n} · ${esc(c.final || c.score)}`, `${a.n}-${b.n}`, "SPLIT", false]);
+    const seenC = new Set();
+    cards.push([ICON.coin + "COIN FLIP", "split", `<span class="recap-vs">${logo(a.id, a.team)}${logo(b.id, b.team)}</span>`, `<span class="recap-pick">League split ${a.n}-${b.n}</span>`,
+      `${tl(esc(c.matchup), seenC)}<br>${tl(esc(c.final || c.score), seenC)}`, `${a.n}-${b.n}`, "SPLIT", false, `<span class="rx-split"><i style="flex:${a.n}">${esc(a.team)} ${a.n}</i><i style="flex:${b.n}">${esc(b.team)} ${b.n}</i></span>`]);
   }
   if (r.tb) {
     const t = r.tb;
     const guess = [...new Set(t.guesses || [t.guess])].join(" & ");
-    cards.push([ICON.hash + "TIEBREAKER", "tb", `<span class="recap-vs">${logo(t.awayId)}${logo(t.homeId)}</span>`, `${chips(t.who)}<span class="recap-pick">said ${esc(guess)}</span>`,
-      `${esc(t.matchup)} came in at ${t.actual}`, t.off === 0 ? "🎯" : `${t.off}`, t.off === 0 ? "EXACT" : "OFF", mine(t.who)]);
+    // Closest and furthest guess, read from the sealed week's rows.
+    const gs = (last.rows || []).filter((x) => Number.isFinite(Number(x.tbGuess)) && x.tbGuess !== null && x.tbGuess !== "").map((x) => ({ n: x.name, g: Number(x.tbGuess), off: Math.abs(Number(x.tbGuess) - t.actual) }));
+    const worstOff = gs.length ? Math.max(...gs.map((x) => x.off)) : null, worst = gs.filter((x) => x.off === worstOff);
+    const line = (cls, label, who, g, off) => `<div class="rx-tbl ${cls}"><span class="rx-tbk">${label}</span><span class="rx-tbn">${esc(who)}</span><b>${esc(g)}</b><em>${off === 0 ? "exact" : `off ${off}`}</em></div>`;
+    const bestNames = (t.who || []).map((x) => shown(x)).join(", ");
+    const viz = `<div class="rx-tbw">${line("best", "Closest", bestNames, guess, t.off)}${worst.length && worstOff > t.off ? line("worst", "Furthest", worst.map((x) => shown(x.n)).join(", "), [...new Set(worst.map((x) => x.g))].join(" & "), worstOff) : ""}</div>`;
+    cards.push([ICON.hash + "TIEBREAKER", "tb", `<span class="recap-vs">${logo(t.awayId)}${logo(t.homeId)}</span>`, `<span class="recap-pick">Actual total ${t.actual}</span>`,
+      tl(esc(t.matchup)), "", "", mine(t.who), viz]);
   }
   // Lock of the week: who hit theirs, who missed, the best lock leading.
   if (r.locks && (r.locks.list || []).length) {
     const L = r.locks, top = L.list[0], n = L.list.length;
-    cards.push(["🔒 LOCK OF THE WEEK", "lk", logo(top.id, top.short), `${chips(L.hit.length ? L.hit : top.name)}<span class="recap-pick">${L.hit.length ? `hit ${L.hit.length === 1 ? "their lock" : "locks"}` : "nobody hit"}</span>`,
-      `${L.hit.length} hit · ${L.miss.length} missed${L.push.length ? ` · ${L.push.length} pushed` : ""}${L.none.length ? ` · ${L.none.length} no lock` : ""}`, `${L.hit.length}/${n}`, "HIT", mine(L.hit)]);
+    // The art is every team that hit (one logo each), not just the first
+    // lock, so it never names a team most people didn't lock.
+    const hitTeams = [...new Map(L.list.filter((x) => x.result === "hit" && x.id).map((x) => [x.id, x])).values()].slice(0, 3);
+    const lkArt = hitTeams.length === 1 ? logo(hitTeams[0].id, hitTeams[0].short) : hitTeams.length ? `<span class="recap-vs n${hitTeams.length}">${hitTeams.map((x) => logo(x.id, x.short)).join("")}</span>` : `<span class="recap-lk" aria-hidden="true">🔒</span>`;
+    const myLk = L.list.find((x) => x.name === currentManager);
+    const word = L.hit.length === 0 ? "No locks hit" : L.hit.length === n ? "Every lock hit" : `${L.hit.length} of ${n} locks hit`;
+    const pad = `<span class="rx-locks">${L.list.map((x) => `<i class="${x.result === "hit" ? "hit" : x.result === "push" ? "push" : "miss"}${x.name === currentManager ? " me" : ""}" title="${esc(shown(x.name))}">🔒</i>`).join("")}</span>`;
+    const nm = (a) => a.map((x) => esc(shown(x))).join(", ");
+    const hitPts = L.list.find((x) => x.result === "hit")?.pts;
+    // Two boxes, the same shape as the tiebreaker's: who hit, and yours
+    // (or who missed, when you had no lock).
+    const box1 = line2("best", "Hit", L.hit.length ? (L.hit.length === 1 ? nm(L.hit) : `${L.hit.length} players`) : "Nobody", hitPts != null ? `+${hitPts}` : "", L.hit.length ? "each" : "");
+    const box2 = myLk ? line2(myLk.result === "hit" ? "best" : myLk.result === "push" ? "" : "worst", "Your lock", `${tl(esc(myLk.short))} ${esc(myLk.line === "SU" ? "to win" : myLk.line)}`, myLk.result === "hit" ? `+${myLk.pts}` : myLk.result === "push" ? "0" : (myLk.pts < 0 ? "−" + Math.abs(myLk.pts) : "0"), myLk.result === "hit" ? "hit" : myLk.result === "push" ? "push" : "missed")
+      : line2("worst", "Missed", L.miss.length ? nm(L.miss) : "Nobody", "", `${L.miss.length} missed`);
+    cards.push(["🔒 LOCKS", "lk", lkArt, `<span class="recap-pick">${word}</span>`, pad, "", "", mine(L.hit), `<div class="rx-tbw">${box1}${box2}</div>`]);
   }
-  const key = `${last.week}|${cards.length}|${currentManager}|${creativeArt.at || 0}|${[...recapOpen].join(",")}`;
+  const key = `${last.week}|${cards.length}|${currentManager}|${creativeArt.at || 0}|${[...recapOpen].join(",")}|${(seasonLedger || []).length}`;
   toggle.classList.remove("hidden");
   toggle.firstChild.textContent = `📰 ${String(last.label || `WEEK ${last.week}`).toUpperCase()} RECAP `;
   if (panel.dataset.drawn === key) return;
   panel.dataset.drawn = key;
-  panel.innerHTML = `<div class="recap-marquee" role="button" tabindex="0" aria-expanded="true" title="Tap to fold"><span>★ ${esc(String(last.label || `WEEK ${last.week}`).toUpperCase())} REPLAY ★</span><small>GAME OVER · FINAL STATS <i class="recap-caret">▾</i></small></div>` + cards.map(([h, cls, art, main, sub, stat, statLabel, me], i) =>
-    `<div class="recap-card arc ${cls}${me ? " me" : ""}${recapOpen.has(cls) ? " open" : ""}" style="--i:${i}" data-rc="${cls}" role="button" tabindex="0" aria-expanded="${recapOpen.has(cls)}">
+  // Hero: the week's winner (podium of three), the margin, the viewer's
+  // own line. Then the two headline stories full width, the rest as tiles.
+  const rows = (last.rows || []).filter((x) => x && x.name && Number.isFinite(x.score)).sort((a, b) => b.score - a.score || (a.tbDiff ?? 999) - (b.tbDiff ?? 999));
+  const podium = rows.slice(0, 3);
+  const champ = podium[0], margin = rows[1] ? champ.score - rows[1].score : null;
+  const av = (n, cls = "") => `<span class="rx-av ${cls}" style="--ac:${accentFor(n)}">${avatarOverrides[n] || esc(shown(n)[0])}</span>`;
+  const hero = champ ? `<div class="rx-hero">
+      <div class="rx-kicker">${esc(String(last.label || `Week ${last.week}`).toUpperCase())} CHAMPION</div>
+      <div class="rx-champ">${av(champ.name, "big")}<b class="rx-cn">${esc(shown(champ.name))}</b><div class="rx-num"><b data-count="${champ.score}">${champ.score}</b><span>PTS</span></div></div>
+      <div class="rx-margin">wins the week${margin != null ? ` · ${margin === 0 ? "on the tiebreaker" : `by ${margin}`}` : ""}</div>
+      <div class="rx-podium">${podium.map((r, i) => `<div class="rx-step s${i + 1}${r.name === currentManager ? " me" : ""}">${av(r.name)}<b>${esc(shown(r.name))}</b><i>${r.score}</i><em>${i + 1}</em></div>`).join("")}</div>
+    </div>` : "";
+  const meRow = rows.find((x) => x.name === currentManager);
+  let you = "";
+  if (meRow) {
+    const place = 1 + rows.filter((x) => x.score > meRow.score).length, avg = rows.reduce((a, x) => a + x.score, 0) / rows.length, vs = Math.round((meRow.score - avg) * 10) / 10;
+    const best = (meRow.ledger || []).filter((l) => l.result === "hit").sort((a, b) => (b.pts || 0) - (a.pts || 0))[0];
+    const bestTxt = best ? (() => { const g = (last.slate || []).find((x) => Number(x.id) === Number(best.g)); const t = g ? (best.team === g.home ? g.homeShort : best.team === g.away ? g.awayShort : best.team) : best.team; return `${tl(esc(t))} ${esc(best.line || "")} +${best.pts}`; })() : "";
+    const avgR = Math.round(avg * 10) / 10;
+    you = `<div class="rx-you"><div class="rx-yl">YOUR WEEK</div><div class="rx-ycols">
+      <div><b>${ordinal(place)}</b><span>place<br><i>of ${rows.length}</i></span></div>
+      <div><b data-count="${meRow.score}">${meRow.score}</b><span>points<br><i>this week</i></span></div>
+      <div class="${vs >= 0 ? "up" : "dn"}"><b>${vs >= 0 ? "+" : "−"}${Math.abs(vs)}</b><span>vs league<br><i>avg ${avgR}</i></span></div>
+      ${(() => { const mine = Object.values(weekSummaries).filter((w) => w?.complete && w.week < last.week).map((w) => (w.rows || []).find((x) => x.name === currentManager)?.score).filter(Number.isFinite); if (!mine.length) return `<div><b>–</b><span>vs you<br><i>first week</i></span></div>`; const ma = mine.reduce((a, x) => a + x, 0) / mine.length, d = Math.round((meRow.score - ma) * 10) / 10; return `<div class="${d >= 0 ? "up" : "dn"}"><b>${d >= 0 ? "+" : "−"}${Math.abs(d)}</b><span>vs you<br><i>avg ${Math.round(ma * 10) / 10}</i></span></div>`; })()}
+    </div>${bestTxt ? `<div class="rx-best">Best call: ${bestTxt}</div>` : ""}</div>`;
+  }
+  const head = new Set(["hit", "miss"]);
+  const card = ([h, cls, art, main, sub, stat, statLabel, me, viz], i) =>
+    `<div class="recap-card rx ${head.has(cls) ? "rx-wide" : "rx-tile"} ${cls}${me ? " me" : ""}" style="--i:${i}" data-rc="${cls}" role="button" tabindex="0" aria-haspopup="dialog">
       <div class="recap-head">${h}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
-      <div class="recap-art">${art}</div>
-      <div class="recap-body">
-        <div class="recap-main">${main}</div>
-        <div class="recap-sub">${sub}</div>
-      </div>
-      <div class="recap-stat"><b>${stat}</b><span>${statLabel}</span></div>
-      ${recapOpen.has(cls) ? `<div class="recap-more">${recapDetail(last, cls)}</div>` : ""}
-    </div>`).join("");
+      <div class="rx-row"><div class="recap-art">${art}</div>
+      <div class="recap-body"><div class="recap-main">${main}</div><div class="recap-sub">${String(sub).replace(/(\d)-(\d)/g, "$1&#8209;$2")}</div></div>
+      <div class="recap-stat"><b>${stat}</b><span>${statLabel}</span></div></div>
+      ${viz ? `<div class="rx-viz">${viz}</div>` : ""}
+    </div>`;
+  window.__recapWeek = last.week;
+  document.getElementById("week-champ")?.classList.add("hidden");
+  panel.innerHTML = hero + recapSeasonStrip() + you + `<div class="rx-grid">${cards.map(card).join("")}</div>`;
+  // Count up the first time this week's replay is seen.
+  const seenKey = `brochiefs_rx_seen_${last.week}`;
+  let seen = false; try { seen = !!localStorage.getItem(seenKey); localStorage.setItem(seenKey, "1"); } catch {}
+  if (!seen && !matchMedia("(prefers-reduced-motion: reduce)").matches) rxCountUp(panel);
 };
 
 // Tap a replay card for the whole story behind it: who took which side on
@@ -9287,12 +10821,27 @@ function recapDetail(sum, kind) {
   else if (kind !== "move" && !(sum.rows || []).some((r) => r.ledger)) { fetchSeasonLedger().then(() => { if ((seasonLedger || []).some((w) => w.week === sum.week)) { document.getElementById("recap-panel").dataset.drawn = ""; renderRecap(); } }); return `<div class="rm-none">Loading the picks…</div>`; }
   const rows = (sum.rows || []).filter((r) => r && r.name);
   if (!rows.length) return `<div class="rm-none">Details aren't saved for this week.</div>`;
-  const nm = (n) => `<b class="${n === currentManager ? "me" : ""}">${esc(shown(n))}</b>`;
+  const nm = (n) => `<b class="${n === currentManager ? "me" : ""}" data-rxp="${esc(n)}" role="button">${esc(shown(n))}</b>`;
   if (kind === "lk") {
     const L = (sum.recap || {}).locks || last_locks(sum);
     if (!L || !(L.list || []).length) return `<div class="rm-none">No locks this week.</div>`;
     const lg = (id) => (id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : "");
-    return `<div class="rm-h">EVERY LOCK</div>${L.list.map((x) => `<div class="rm-side ${x.result === "hit" ? "hit" : x.result === "push" ? "" : "miss"}"><span>${lg(x.id)}${esc(x.short)} ${esc(x.line === "SU" ? "to win" : x.line)}</span><i>${x.result === "hit" ? `+${x.pts} lock` : x.result === "push" ? "push" : `${x.pts < 0 ? "−" + Math.abs(x.pts) : "0"} lock`}</i><div class="pick-chips">${nameChips([x.name])}</div></div>`).join("")}${L.none.length ? `<div class="rm-foot">No lock: ${L.none.map((n) => esc(shown(n))).join(", ")}</div>` : ""}`;
+    // One row per lock and result, everyone who had it underneath.
+    const grp = new Map();
+    for (const x of L.list) { const k = `${x.id}|${x.line}|${x.result}`; const e = grp.get(k) || { ...x, who: [] }; e.who.push(x.name); grp.set(k, e); }
+    // How much each lock beat or missed its number, from the sealed score.
+    const finalOf = (gid) => { for (const r of sum.rows || []) { const l = (r.ledger || []).find((y) => Number(y.g) === Number(gid) && /^\d+-\d+$/.test(String(y.score || ""))); if (l) return l.score.split("-").map(Number); } return null; };
+    const slateG = (gid) => (sum.slate || []).find((g) => Number(g.id) === Number(gid)) || GAMES.find((g) => Number(g.id) === Number(gid));
+    const byWhat = (x) => {
+      const f = finalOf(x.g), g = slateG(x.g); if (!f || !g) return "";
+      const [as, hs] = f, home = x.team === g.home, margin = home ? hs - as : as - hs;
+      const fmt = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+      if (x.line === "SU" || !Number.isFinite(parseFloat(x.line))) return margin > 0 ? `won by ${margin}` : margin < 0 ? `lost by ${-margin}` : "tied";
+      const d = margin + parseFloat(x.line);
+      return d > 0 ? `covered by ${fmt(d)}` : d < 0 ? `missed by ${fmt(-d)}` : "landed on the number";
+    };
+    const order = { hit: 0, push: 1, miss: 2 };
+    return `<div class="rm-h">Every lock this week</div>${[...grp.values()].sort((a, b) => (order[a.result] ?? 3) - (order[b.result] ?? 3) || b.who.length - a.who.length).map((x) => `<div class="rm-side ${x.result === "hit" ? "hit" : x.result === "push" ? "" : "miss"}"><span>${lg(x.id)}${esc(x.short)} ${esc(x.line === "SU" ? "to win" : x.line)}</span><i>${x.result === "hit" ? `HIT +${x.pts}` : x.result === "push" ? "PUSH" : `MISSED ${x.pts < 0 ? "−" + Math.abs(x.pts) : "0"}`}</i>${byWhat(x) ? `<small class="rm-by">${byWhat(x)}</small>` : ""}<div class="pick-chips">${nameChips(x.who)}</div></div>`).join("")}${L.none.length ? `<div class="rm-foot">No lock: ${L.none.map((n) => esc(shown(n))).join(", ")}</div>` : ""}<div class="rm-close">Tap to close</div>`;
   }
   if (kind === "move") {
     // Season standings after this week, with how far each player moved
@@ -9302,37 +10851,82 @@ function recapDetail(sum, kind) {
     const place = (t) => { const list = [...t.entries()].sort((a, b) => b[1] - a[1]); const m = new Map(); list.forEach(([n, p]) => m.set(n, 1 + list.filter(([, q]) => q > p).length)); return m; };
     const now = total(sum.week), was = total(sum.week - 1), pNow = place(now), pWas = place(was);
     const list = [...now.entries()].sort((a, b) => b[1] - a[1]);
-    return `<div class="rm-h">SEASON STANDINGS AFTER WEEK ${sum.week}</div><ol class="rm-rank">${list.map(([n, pts]) => {
+    return `<div class="rm-h">Season standings after week ${sum.week}</div><div class="rm-cols"><span>#</span><span>Player</span><span>Move</span><span>Season</span><span>Week</span></div><ol class="rm-rank">${list.map(([n, pts]) => {
       const d = was.size ? (pWas.get(n) ?? pNow.get(n)) - pNow.get(n) : 0;
       const wk = (rows.find((r) => r.name === n) || {}).score;
-      return `<li><em>${pNow.get(n)}</em>${nm(n)}<i class="${d > 0 ? "up" : d < 0 ? "down" : "same"}">${d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "–"}</i><span>${pts} pts${wk != null ? ` <small>+${wk} this week</small>` : ""}</span></li>`;
-    }).join("")}</ol>`;
+      return `<li class="${n === currentManager ? "me" : ""} p${pNow.get(n)}"><em>${pNow.get(n)}</em>${nm(n)}<i class="${d > 0 ? "up" : d < 0 ? "down" : "same"}">${d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "–"}</i><span><b class="rm-pts">${pts}</b><small>${wk != null ? `+${wk} wk` : ""}</small></span></li>`;
+    }).join("")}</ol><div class="rm-close">Tap to close</div>`;
   }
   if (kind === "tb") {
     const g = rows.filter((r) => r.tbGuess != null).sort((a, b) => (a.tbDiff ?? 999) - (b.tbDiff ?? 999));
-    return `<div class="rm-h">EVERY GUESS · ACTUAL ${esc(sum.recap?.tb?.actual ?? sum.tiebreaker?.actual ?? "?")}</div><ol class="rm-list">${g.map((r) => `<li>${nm(r.name)}<span>${r.tbGuess}${r.tbDiff != null ? ` · ${r.tbDiff === 0 ? "exact" : `off ${r.tbDiff}`}` : ""}</span></li>`).join("")}</ol>`;
+    return `<div class="rm-h">Every tiebreaker guess · actual total ${esc(sum.recap?.tb?.actual ?? sum.tiebreaker?.actual ?? "?")}</div><ol class="rm-list">${g.map((r) => `<li>${nm(r.name)}<span>${r.tbGuess}${r.tbDiff != null ? ` · ${r.tbDiff === 0 ? "exact" : `off ${r.tbDiff}`}` : ""}</span></li>`).join("")}</ol><div class="rm-close">Tap to close</div>`;
   }
   const r = sum.recap || {};
   const team = kind === "hit" ? r.best?.team : kind === "miss" ? r.worst?.team : r.consensus?.sides?.[0]?.team;
   const g = (sum.slate || []).find((x) => [x.awayShort, x.homeShort].includes(team));
   if (!g) return `<div class="rm-none">Couldn't find that game.</div>`;
-  const sides = new Map();
+  // Grouped by team: one block per side of the game, its spread and
+  // straight-up pickers as labelled lines inside, blanks in their own block.
+  const teams = new Map();
   for (const row of rows) {
     const l = (row.ledger || []).find((x) => Number(x.g) === Number(g.id));
-    const side = l ? `${l.team === g.home ? g.homeShort : l.team === g.away ? g.awayShort : l.team} ${l.line || l.mode || ""}`.trim() : "No pick";
-    const x = sides.get(side) || { side, team: l?.team, teamId: l ? (l.team === g.home ? g.homeId : l.team === g.away ? g.awayId : null) : null, hit: l?.result === "hit", pts: l?.result === "hit" ? l.pts : 0, who: [] };
-    x.who.push(row.name); sides.set(side, x);
+    const has = l && l.team && l.mode;
+    const key = has ? l.team : "__none";
+    const t = teams.get(key) || { key, short: has ? (l.team === g.home ? g.homeShort : l.team === g.away ? g.awayShort : l.team) : "No pick", id: has ? (l.team === g.home ? g.homeId : l.team === g.away ? g.awayId : teamIdOf(l.team)) : null, bets: new Map(), n: 0, hit: false };
+    t.n++;
+    const bk = has ? (l.mode === "SU" ? "SU" : `ATS ${l.line || ""}`) : "none";
+    const bet = t.bets.get(bk) || { label: !has ? "" : l.mode === "SU" ? "TO WIN" : (l.line || "SPREAD"), su: has && l.mode === "SU", hit: has && l.result === "hit", push: has && l.result === "push", pts: has && l.result === "hit" ? l.pts : 0, who: [] };
+    bet.who.push(row.name); t.bets.set(bk, bet); if (bet.hit) t.hit = true; teams.set(key, t);
   }
-  return `<div class="rm-h">${esc(g.awayShort)} AT ${esc(g.homeShort)} · WHO TOOK WHAT</div>${[...sides.values()].sort((a, b) => b.who.length - a.who.length).map((x) => { const id = x.teamId || (x.team ? teamIdOf(x.team) : null); return `<div class="rm-side ${x.hit ? "hit" : "miss"}"><span>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${esc(x.side)}</span><i>${x.hit ? `+${x.pts} each` : "0"}</i><div class="pick-chips">${nameChips(x.who)}</div></div>`; }).join("")}`;
+  const order = [...teams.values()].sort((a, b) => (a.key === "__none") - (b.key === "__none") || (b.hit - a.hit) || b.n - a.n);
+  const status = (x) => x.hit ? `<em class="hit">CASHED +${x.pts} each</em>` : x.push ? `<em>PUSH</em>` : `<em class="miss">MISSED</em>`;
+  return `<div class="rm-h">Everyone's pick: ${esc(g.awayShort)} at ${esc(g.homeShort)}</div>${order.map((t) => `<div class="rm-team ${t.key === "__none" ? "none" : t.hit ? "hit" : "miss"}">
+    <div class="rm-th">${t.id ? `<img src="${logoUrl(t.id)}" alt="" loading="lazy" onerror="this.remove()">` : ""}<b>${esc(t.short)}</b><i>${t.n} ${t.n === 1 ? "pick" : "picks"}</i></div>
+    ${[...t.bets.values()].sort((a, b) => a.su - b.su).map((x) => `<div class="rm-bet">${x.label ? `<span class="rm-bl">${esc(x.label)}</span>${status(x)}` : ""}<div class="pick-chips">${nameChips(x.who)}</div></div>`).join("")}
+  </div>`).join("")}<div class="rm-close">Tap to close</div>`;
 }
 document.getElementById("recap-panel")?.addEventListener("click", (e) => {
+  if (e.target.closest(".rx-hero")) { noteUse("recap-hero"); return; }
+  if (e.target.closest(".rx-season")) { noteUse("recap-season"); return openSeasonSheet(currentManager); }
+  if (e.target.closest(".rx-you")) { noteUse("recap-you"); if (currentManager) openPlayerCard(currentManager); return; }
   const c = e.target.closest(".recap-card[data-rc]");
   if (!c || e.target.closest(".pick-chip, a, button")) return;
+  // The story behind a card opens in a sheet; the replay itself never moves.
   const k = c.dataset.rc;
-  if (recapOpen.has(k)) recapOpen.delete(k); else { recapOpen.add(k); noteUse("recap-card", k); }
-  e.currentTarget.classList.add("dealt"); // already dealt in: redraw without replaying the deal
-  renderRecap();
+  noteUse("recap-card", k);
+  openRecapSheet(k, c.querySelector(".recap-head")?.textContent?.replace("YOU", "").trim() || "");
 });
+function openRecapSheet(kind, title) {
+  const last = Object.values(weekSummaries).filter((s) => s?.complete && s.recap).sort((a, b) => b.week - a.week)[0];
+  if (!last) return;
+  let m = document.getElementById("rx-sheet");
+  if (!m) {
+    m = document.createElement("div"); m.id = "rx-sheet"; m.className = "modal-overlay rx-sheet hidden"; m.setAttribute("role", "dialog");
+    m.innerHTML = `<div class="modal-card rx-sheet-card"><div class="rx-sh-h"><b></b><button type="button" class="rx-sh-x" aria-label="Close">✕</button></div><div class="rx-sh-body recap-more"></div></div>`;
+    document.body.appendChild(m);
+    const close = (how = "swipe") => { if (!m.classList.contains("hidden")) noteUse("recap-sheet-close", how); m.classList.add("hidden"); };
+    // A name opens that player's card; any other tap inside the story closes
+    // it, as its "Tap to close" says (a tap there used to do nothing).
+    m.addEventListener("click", (e) => {
+      if (e.target === m) return close("outside");
+      if (e.target.closest(".rx-sh-x")) return close("x");
+      const p = e.target.closest("[data-rxp]");
+      if (p) { noteUse("recap-sheet-player", p.dataset.rxp); close("player"); return openPlayerCard(p.dataset.rxp); }
+      if (e.target.closest("a, button, .pick-chip, input")) return;
+      if (e.target.closest(".rx-sh-body")) close("tap");
+    });
+    if (typeof swipeToClose === "function") swipeToClose(m, m.querySelector(".rx-sheet-card"), () => close("swipe"));
+  }
+  m.setAttribute("aria-label", title);
+  m.querySelector(".rx-sh-h b").textContent = title;
+  const body = m.querySelector(".rx-sh-body");
+  const draw = () => { body.innerHTML = recapDetail(last, kind).replace(/<div class="rm-close">Tap to close<\/div>/g, ""); };
+  draw();
+  // Picks may still be loading; redraw once they land.
+  if (/Loading the picks/.test(body.textContent)) fetchSeasonLedger?.().then(() => !m.classList.contains("hidden") && draw()).catch(() => {});
+  { const c = m.querySelector(".rx-sheet-card"); if (c) { c.style.transform = ""; c.style.opacity = ""; } }
+  m.classList.remove("hidden");
+}
 
 // The REPLAY marquee is the fold: tap it to tuck the cards away.
 document.getElementById("recap-panel")?.addEventListener("click", (e) => {
@@ -9373,15 +10967,15 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
   renderRecap = (...a) => { orig(...a); paint(); };
 })();
 
-// The leaderboard folds like the sections under it. It starts open, and
-// the choice is remembered on the device.
+// The leaderboard folds like the sections under it. It opens on every
+// load; a fold lasts until the app is opened again.
 (() => {
   const toggle = document.getElementById("leaderboard-toggle");
   const list = document.getElementById("rankings-list");
   if (!toggle || !list) return;
   const KEY = "brochiefs_leaderboard_open_v2";
   let open = true;
-  try { open = localStorage.getItem(KEY) !== "0"; } catch { /* private mode */ }
+  try { localStorage.removeItem(KEY); } catch { /* private mode */ }
   const h2hBtn = document.getElementById("h2h-open");
   const paint = () => {
     list.classList.toggle("hidden", !open);
@@ -9389,11 +10983,11 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
     toggle.setAttribute("aria-expanded", String(open));
     // The compare button belongs to the list, so it folds with it.
     h2hBtn?.classList.toggle("hidden", !open);
+    document.getElementById("sim-open")?.classList.toggle("lb-folded", !open);
   };
   toggle.addEventListener("click", () => {
     open = !open;
     paint();
-    try { localStorage.setItem(KEY, open ? "1" : "0"); } catch { /* private mode */ }
   });
   paint();
 })();
@@ -9431,20 +11025,28 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
 // Tap a pot row, or a name on the replay: that player's season on one
 // card. Everything comes from the sealed weeks, so it is what was graded.
 function playerSeason(name) {
-  // The detailed weeks (with every pick) when they are loaded, else the plain ones.
-  const weeks = (seasonLedger && seasonLedger.length ? seasonLedger : Object.values(weekSummaries).filter((w) => w?.complete)).slice().sort((a, b) => a.week - b.week).filter((w) => window.LEAGUE?.sport !== "nfl" || w.week === currentWeek);
+  // Every finished week: the detailed one (with every pick) where it has
+  // loaded, else the plain summary, so a week missing from either still
+  // counts. Weeks this player sat out show as a gap, not a hole.
+  const byWeek = new Map();
+  for (const w of Object.values(weekSummaries)) if (w?.complete) byWeek.set(w.week, w);
+  for (const w of seasonLedger || []) if (w?.complete) byWeek.set(w.week, w);
+  const weeks = [...byWeek.values()].sort((a, b) => a.week - b.week);
   const scores = [], picks = [];
-  let w = 0, l = 0, atsW = 0, atsN = 0, suW = 0, suN = 0, lockW = 0, lockL = 0;
+  let w = 0, l = 0, atsW = 0, atsN = 0, suW = 0, suN = 0, lockW = 0, lockL = 0, dogW = 0, dogN = 0, favW = 0, favN = 0, placeSum = 0, placeN = 0, tbSum = 0, tbN = 0;
   for (const wk of weeks) {
     const me = (wk.rows || []).find((r) => r.name === name);
-    if (!me) continue;
+    if (!me) { scores.push({ week: wk.week, score: null, missed: true }); continue; }
     scores.push({ week: wk.week, score: me.score, won: (wk.winners || []).includes(name), high: wk.highScore });
+    if (Number.isFinite(me.place)) { placeSum += me.place; placeN++; }
+    if (Number.isFinite(me.tbDiff)) { tbSum += me.tbDiff; tbN++; }
     for (const lg of me.ledger || []) {
       if (lg.result !== "hit" && lg.result !== "miss") continue;
       const hit = lg.result === "hit";
       hit ? w++ : l++;
       if (lg.mode === "ATS") { atsN++; if (hit) atsW++; } else { suN++; if (hit) suW++; }
       if (lg.lock) hit ? lockW++ : lockL++;
+      if (lg.favorite) { if (lg.team === lg.favorite) { favN++; if (hit) favW++; } else { dogN++; if (hit) dogW++; } }
       // How many others were on the same team that week.
       const with_ = (wk.rows || []).filter((r) => (r.ledger || []).some((x) => x.g === lg.g && x.team === lg.team)).length;
       const others = (wk.rows || []).filter((r) => (r.ledger || []).some((x) => x.g === lg.g && x.team !== lg.team && x.result === "hit")).length;
@@ -9457,19 +11059,31 @@ function playerSeason(name) {
       const game = g ? `${g.awayShort} ${Number.isFinite(as) ? as : ""} at ${g.homeShort} ${Number.isFinite(hs) ? hs : ""}`.replace(/\s+/g, " ").trim() : "";
       const margin = Number.isFinite(as) && Number.isFinite(hs) && g ? (as === hs ? "tied" : `${as > hs ? g.awayShort : g.homeShort} by ${Math.abs(as - hs)}`) : "";
       const line = g && g.spread != null ? `${g.favorite === g.home ? g.homeShort : g.awayShort} −${g.spread}` : "";
-      picks.push({ teamFull: lg.team, teamId: g ? (lg.team === g.home ? g.homeId : lg.team === g.away ? g.awayId : null) : null, awayId: g?.awayId, homeId: g?.homeId, away: g?.away, home: g?.home, awayShort: g?.awayShort, homeShort: g?.homeShort, as, hs, week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: lg.mode === "SU" ? `${team} to win` : `${team} ${lg.line || ""} on the spread`.replace(/\s+/g, " ").trim(), mode: lg.mode, sameNames, oppNames, with_, of: (wk.rows || []).length, others, game, margin, line });
+      // Points short of what the pick needed (−1.5 losing by 30 = 31.5).
+      const tMargin = g && Number.isFinite(as) && Number.isFinite(hs) ? (lg.team === g.away ? as - hs : hs - as) : null;
+      const lineN = lg.mode === "SU" ? 0 : Number(String(lg.line || "").replace("−", "-"));
+      const missBy = tMargin === null ? 0 : -(tMargin + (Number.isFinite(lineN) ? lineN : 0));
+      picks.push({ who: name, missBy, lock: !!lg.lock, teamFull: lg.team, teamId: g ? (lg.team === g.home ? g.homeId : lg.team === g.away ? g.awayId : null) : null, awayId: g?.awayId, homeId: g?.homeId, away: g?.away, home: g?.home, awayShort: g?.awayShort, homeShort: g?.homeShort, as, hs, week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: lg.mode === "SU" ? `${team} to win` : `${team} ${lg.line || ""} on the spread`.replace(/\s+/g, " ").trim(), mode: lg.mode, sameNames, oppNames, with_, of: (wk.rows || []).length, others, game, margin, line });
     }
   }
-  const sorted = [...scores].sort((a, b) => b.score - a.score);
-  const best = picks.filter((p) => p.hit).sort((a, b) => b.pts - a.pts || a.with_ - b.with_)[0];
-  const worst = picks.filter((p) => !p.hit).sort((a, b) => b.others - a.others || b.worth - a.worth)[0];
+  const played = scores.filter((x) => !x.missed);
+  const sorted = [...played].sort((a, b) => b.score - a.score);
+  // How one-sided the game was against you: your side vs the other side.
+  const gap = (p) => (p.oppNames?.length || 0) - (p.with_ || 1);
+  // Best: most points, then the loneliest call (1 vs 9 beats 5 vs 5).
+  const best = picks.filter((p) => p.hit).sort((a, b) => b.pts - a.pts || gap(b) - gap(a))[0];
+  // Worst: the biggest miss on the field; being alone on it only breaks ties.
+  const worst = picks.filter((p) => !p.hit).sort((a, b) => b.missBy - a.missBy || gap(b) - gap(a) || b.worth - a.worth)[0];
   return {
     scores, w, l, best, worst,
     top: sorted[0], low: sorted[sorted.length - 1],
-    avg: scores.length ? scores.reduce((s, x) => s + x.score, 0) / scores.length : null,
+    avg: played.length ? played.reduce((s, x) => s + x.score, 0) / played.length : null,
     wins: scores.filter((x) => x.won),
     ats: atsN ? Math.round((atsW / atsN) * 100) : null, atsN, atsW, su: suN ? Math.round((suW / suN) * 100) : null, suN, suW,
     lockW, lockL,
+    dog: dogN ? Math.round((dogW / dogN) * 100) : null, dogN, dogW, fav: favN ? Math.round((favW / favN) * 100) : null, favN,
+    avgFinish: placeN ? placeSum / placeN : null, tbOff: tbN ? tbSum / tbN : null,
+    points: played.reduce((t, x) => t + (x.score || 0), 0),
   };
 }
 // Team logos for past weeks: the sealed weeks keep names, not ESPN ids, so
@@ -9516,15 +11130,21 @@ function openPlayerCard(name, again) {
     m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".plc-x")) m.classList.add("hidden"); });
   }
   m.dataset.name = name;
-  const pts = pr.points ?? d.scores.reduce((t, x) => t + x.score, 0);
-  const max = Math.max(1, ...d.scores.map((x) => x.score));
+  const pts = pr.points ?? d.scores.reduce((t, x) => t + (x.score || 0), 0);
+  // The week being played: points from games already final, marked live.
+  const cur = weekSummaries[currentWeek];
+  const myPicks = lastGoodCloudPicks?.[name]?.picks || {};
+  const liveWk = !cur?.complete && GAMES.some((g) => isGameLocked(g)) && Object.keys(myPicks).length && !d.scores.some((x) => x.week === currentWeek)
+    ? { week: currentWeek, score: (() => { const f = computeLiveResults(latestLive); return GAMES.reduce((t, g) => t + (f[g.id] ? scorePick(g, myPicks[g.id], f[g.id]) || 0 : 0), 0); })(), live: true } : null;
+  const bars = liveWk ? [...d.scores, liveWk] : d.scores;
+  const max = Math.max(1, ...bars.map((x) => x.score || 0));
   const pct = d.w + d.l ? Math.round((d.w / (d.w + d.l)) * 100) : null;
   // A fighting game stat bar: label, value, ten segments filled to the share.
-  const bar = (label, val, share, note = "") => `<div class="plc-sb" data-statrank="${label}" role="button" tabindex="0"><span>${label}</span><i>${Array.from({ length: 10 }, (_, k) => `<u class="${k < Math.round(share * 10) ? "on" : ""}"></u>`).join("")}</i><b>${val}</b><em>${note}</em></div>`;
+  const bar = (label, val, share, note = "") => `<div class="plc-sb ${/WORST/.test(label) ? "t-mid" : share >= 0.6 ? "t-hi" : share >= 0.45 ? "t-mid" : "t-lo"}" data-statrank="${label}" role="button" tabindex="0"><span>${label}</span><i>${Array.from({ length: 10 }, (_, k) => `<u class="${k < Math.round(share * 10) ? "on" : ""}"></u>`).join("")}</i><b>${val}</b><em>${note}</em>${statPlace(label, name)}</div>`;
   const logo = (full, known) => { const id = known || teamIdOf(full); return id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : `<span class="plc-nologo"></span>`; };
   const pick = (p, hit) => !p ? "" : `<div class="plc-pick ${hit ? "hit" : "miss"}">
-      <div class="plc-pt"><small>${hit ? "BEST PICK" : "WORST PICK"} · WEEK ${p.week}</small><b>${hit ? `+${p.pts}` : "0"} PTS</b></div>
-      <div class="plc-call">${logo(p.teamFull, p.teamId)}<span><b>${esc(p.text)}</b><small>${hit ? `${p.with_} of ${p.of} made this pick${p.with_ <= 2 ? " · almost nobody else" : ""}` : p.others ? `${p.others} of ${p.of} took the other side and got it right` : `${p.with_} of ${p.of} made this pick`}</small></span></div>
+      <div class="plc-pt"><small>${hit ? "BEST PICK" : "WORST PICK"} · WEEK ${p.week}${p.lock ? ` <span class="plc-lock">🔒 LOCK</span>` : ""}</small><b>${hit ? `+${p.pts}` : "0"} PTS</b></div>
+      <div class="plc-call">${logo(p.teamFull, p.teamId)}<span><b>${esc(p.text)}</b><small><i class="plc-vs">${p.with_ || 1}</i> on ${esc(shown(p.who || ""))}'s side · <i class="plc-vs">${p.oppNames?.length || 0}</i> on the other</small></span></div>
       ${p.away ? `<div class="plc-score"><span class="${p.as > p.hs ? "w" : ""}">${logo(p.away, p.awayId)}<i>${esc(p.awayShort)}</i><b>${Number.isFinite(p.as) ? p.as : ""}</b></span><em>FINAL</em><span class="${p.hs > p.as ? "w" : ""}"><b>${Number.isFinite(p.hs) ? p.hs : ""}</b><i>${esc(p.homeShort)}</i>${logo(p.home, p.homeId)}</span></div>` : ""}
       <div class="plc-more">${p.sameNames?.length ? `<div class="plc-wh"><small>ALSO ON IT</small><div class="pick-chips">${nameChips(p.sameNames)}</div></div>` : `<div class="plc-wh"><small>ALSO ON IT</small><em>Nobody else</em></div>`}${p.oppNames?.length ? `<div class="plc-wh"><small>OTHER SIDE</small><div class="pick-chips">${nameChips(p.oppNames)}</div></div>` : ""}</div>
       <i class="plc-caret">▾</i>
@@ -9534,7 +11154,7 @@ function openPlayerCard(name, again) {
     m.addEventListener("click", (e) => {
       if (e.target.closest("[data-champs]")) return openChampions(m.dataset.name);
       const sr = e.target.closest("[data-statrank]");
-      if (sr) return openStatRank(sr.dataset.statrank, m.dataset.name);
+      if (sr) return openStatSheet(sr.dataset.statrank, m.dataset.name, "week");
       // The avatar: yours opens the avatar editor, anyone else's the season
       // head to head, you against them.
       if (e.target.closest("[data-plcav]")) {
@@ -9552,16 +11172,18 @@ function openPlayerCard(name, again) {
       pk.classList.toggle("open");
     });
   }
-  m.innerHTML = `<div class="modal-card plc-card">
+  m.innerHTML = `<div class="modal-card plc-card" style="--pc:${accentFor(name)}">
     <button type="button" class="plc-x" aria-label="Close">✕</button>
     <div class="plc-top">
       <button type="button" class="plc-av" data-plcav="1" aria-label="${name === currentManager ? "Change your avatar" : `Season head to head with ${esc(shown(name))}`}"><span>${avatarOverrides[name] || shown(name)[0]}</span></button>
       <div class="plc-id"><small>PLAYER ${String(MANAGERS.indexOf(name) + 1).padStart(2, "0")}</small><b>${esc(shown(name).toUpperCase())}</b>
         <div class="plc-badges">${pr.seasonPlace ? `<span class="rank">${pr.tied ? "T" : "#"}${pr.seasonPlace}</span>` : ""}<span>${pts} PTS</span>${pr.earned ? `<span class="cash">${money(pr.earned)}</span>` : ""}${d.wins.length ? `<button type="button" class="gold" data-champs="1" aria-label="All champions"><i class="plc-tro">🏆</i>×${d.wins.length}</button>` : ""}</div></div>
     </div>
-    ${d.scores.length ? `
-    <div class="plc-sec">POINTS EACH WEEK <span>gold = won the week</span></div>
-    <div class="plc-bars">${d.scores.map((x) => `<i data-wkstand="${x.week}" class="${x.won ? "won" : ""}${x === d.top ? " top" : ""}"><b>${x.score}</b><s style="height:${Math.max(8, (x.score / max) * 100)}%"></s><em>W${x.week}</em></i>`).join("")}</div>
+    ${d.top ? `
+    <div class="plc-sec">POINTS EACH WEEK <span class="plc-key">${window.APP_STYLE === "pro" ? `<i class="k-hi"></i>above avg <i class="k-lo"></i>below <i class="k-won"></i>won` : "gold = won"}${liveWk ? " · dashed = live" : ""}</span></div>
+    <div class="plc-bars">${bars.map((x) => x.missed ? `<i class="sat" title="Week ${x.week}: no picks"><b>–</b><s style="height:6%"></s><em>W${x.week}</em></i>`
+      : x.live ? `<i class="live" title="Week ${x.week}: so far, games still to play"><b>${x.score}</b><s style="height:calc((100% - 34px) * ${Math.max(0.08, x.score / max).toFixed(3)})"></s><em>W${x.week}</em></i>`
+      : `<i data-wkstand="${x.week}" class="${x.won ? "won" : ""}${x === d.top ? " top" : ""} ${d.avg != null && x.score >= d.avg + 1.5 ? "t-hi" : d.avg != null && x.score <= d.avg - 1.5 ? "t-lo" : "t-mid"}"><b>${x.score}</b><s style="height:calc((100% - 34px) * ${Math.max(0.08, x.score / max).toFixed(3)})"></s><em>W${x.week}</em></i>`).join("")}</div>
     <div class="plc-sec">STATS</div>
     <div class="plc-stats">
       ${bar("AVG WEEK", `${d.avg.toFixed(1)}`, d.avg / 20, "pts")}
@@ -9592,17 +11214,235 @@ function bottomSheet(id) {
   m.id = id; m.className = "modal-overlay wks-modal hidden"; m.setAttribute("role", "dialog");
   document.body.appendChild(m);
   m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".wks-x")) m.classList.add("hidden"); });
-  let y0 = null, dy = 0;
-  m.addEventListener("touchstart", (e) => { const c = m.querySelector(".wks-card"); if (!c || c.scrollTop > 0) return; y0 = e.touches[0].clientY; dy = 0; c.style.transition = "none"; }, { passive: true });
-  m.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); m.querySelector(".wks-card").style.transform = `translateY(${dy}px)`; }, { passive: true });
-  m.addEventListener("touchend", () => { if (y0 == null) return; const c = m.querySelector(".wks-card"); c.style.transition = ""; c.style.transform = ""; if (dy > 70) m.classList.add("hidden"); y0 = null; });
+  pullToClose(m, () => m.querySelector(".wks-card"), () => m.classList.add("hidden"), 70);
   return m;
+}
+
+// --- Season scoreboard ----------------------------------------------------
+// Six stats, each on a bar whose ends are the league's worst (left) and best
+// (right), with this player's marker between. Lower-is-better stats are
+// flipped so the right end always means best.
+const SEASON_BOARD = [
+  { k: "points", label: "POINTS", wk: "WEEK", get: (d) => d.points, fmt: (v) => `${v}` },
+  { k: "weeklyWins", label: "WEEKLY WINS", wk: "FINISH", get: (d) => d.wins.length, fmt: (v) => `${v}` },
+  // Rates rank fairly when people sat out weeks; the record shows the count.
+  { k: "hitPct", label: "PICKS RIGHT", wk: "RIGHT", get: (d) => (d.w + d.l ? Math.round((100 * d.w) / (d.w + d.l)) : null), fmt: (v) => `${v}%`, rec: (d) => `${d.w}-${d.l}` },
+  { k: "atsPct", label: "VS SPREAD", wk: "SPREAD", get: (d) => d.ats, fmt: (v) => `${v}%`, rec: (d) => `${d.atsW}-${d.atsN - d.atsW}` },
+  { k: "dogPct", label: "UNDERDOGS", wk: "DOG", get: (d) => d.dog, fmt: (v) => `${v}%`, rec: (d) => `${d.dogW}-${d.dogN - d.dogW}` },
+  { k: "avgFinish", label: "AVG FINISH", wk: "FINISH", get: (d) => d.avgFinish, fmt: (v) => v.toFixed(1), low: true },
+  { k: "tbOff", label: "TIEBREAKER", wk: "TB", get: (d) => d.tbOff, fmt: (v) => `${Math.round(v)} off`, efmt: (v) => `${Math.round(v)}`, rfmt: (v) => `${v.toFixed(1)} off`, low: true },
+];
+function seasonBoardData(name) {
+  const all = MANAGERS.map((n) => ({ n, d: playerSeason(n) })).filter((x) => x.d.points || x.d.w + x.d.l);
+  const me = all.find((x) => x.n === name);
+  if (!me || all.length < 3) return null;
+  const rows = SEASON_BOARD.map((s) => {
+    const vals = all.map((x) => ({ n: x.n, v: s.get(x.d) })).filter((x) => x.v != null && Number.isFinite(x.v));
+    const mine = vals.find((x) => x.n === name);
+    if (!mine || vals.length < 3) return null;
+    const better = (a, b) => (s.low ? a < b : a > b);
+    const sorted = [...vals].sort((a, b) => (s.low ? a.v - b.v : b.v - a.v));
+    const best = sorted[0], worst = sorted[sorted.length - 1];
+    const bestN = vals.filter((x) => x.v === best.v).length, worstN = vals.filter((x) => x.v === worst.v).length;
+    const place = 1 + vals.filter((x) => better(x.v, mine.v)).length;
+    const span = best.v - worst.v;
+    const share = span ? (mine.v - worst.v) / span : 0.5;
+    const tied = vals.filter((x) => x.v === mine.v).length > 1;
+    return { ...s, mine: mine.v, recTxt: s.rec ? s.rec(me.d) : "", best, worst, bestN, worstN, place, tied, of: vals.length, share: Math.max(0, Math.min(1, share)) };
+  }).filter(Boolean);
+  const ranked = rows.filter((r) => r.of >= 3);
+  const top = [...ranked].sort((a, b) => a.place - b.place)[0], low = [...ranked].sort((a, b) => b.place - a.place)[0];
+  const d = me.d;
+  return { rows, top, low, d, weeklyWins: d.wins.length, players: all.length };
+}
+function seasonBoardRows(b, rows, name) {
+  const esc = escapeCd, mine = name === currentManager;
+  const end = (x, nTied, v, fmt, you) => `<b>${fmt(v)}</b><small>${you ? (mine ? "YOU" : esc(shown(name).toUpperCase())) + (nTied > 1 ? ` +${nTied - 1}` : "") : nTied > 1 ? `${nTied} TIED` : esc(shown(x.n).toUpperCase())}</small>`;
+  return rows.map((r) => {
+    const cls = r.place === 1 ? "lead" : r.place <= 3 ? "t-hi" : r.place > r.of - 3 ? "t-lo" : "t-mid";
+    const atBest = r.mine === r.best.v, atWorst = !atBest && r.mine === r.worst.v;
+    const atEnd = atBest ? " at-best" : atWorst ? " at-worst" : "";
+    const ef = r.efmt || r.fmt;
+    return `<div class="sbd-r ${cls}${atEnd}" data-sbk="${r.k}" role="button" tabindex="0" aria-label="${r.label}: league ranking">
+      <span class="sbd-l">${r.label}<em class="sbd-rk">${r.tied ? "T-" : ""}${ordinal(r.place)}<small> of ${r.of}</small></em>${r.recTxt ? `<i class="sbd-rec">${r.recTxt}</i>` : ""}</span>
+      <span class="sbd-e w">${end(r.worst, r.worstN, r.worst.v, ef, atWorst)}</span>
+      <span class="sbd-bar"><u></u><s style="width:${(r.share * 100).toFixed(1)}%;--sw:${Math.max(0.04, r.share).toFixed(3)}"></s><i style="left:${(r.share * 100).toFixed(1)}%"><em class="${r.share > 0.75 ? "r" : r.share < 0.25 ? "l" : ""}">${r.fmt(r.mine)}${r.recTxt ? `<small>${r.recTxt}</small>` : ""}</em></i></span>
+      <span class="sbd-e b">${end(r.best, r.bestN, r.best.v, ef, atBest)}</span>
+    </div>`;
+  }).join("");
+}
+function seasonBoardFoot(b) {
+  return b.top && b.low && b.top !== b.low
+    ? `<div class="sbd-foot"><span><small>BEST AT</small>${b.top.label.toLowerCase()} (${b.top.tied ? "t-" : ""}${ordinal(b.top.place).toLowerCase()})</span><span><small>WORST AT</small>${b.low.label.toLowerCase()} (${b.low.tied ? "t-" : ""}${ordinal(b.low.place).toLowerCase()})</span></div>` : "";
+}
+// Recap, under the week's winner: your three best stats, tap for the rest.
+function recapSeasonStrip() {
+  if (!currentManager || !MANAGERS.includes(currentManager)) return "";
+  // The plain week summaries carry no picks; load the detailed weeks once,
+  // then draw the replay again so the strip appears.
+  // Only once the real slate is in and the screen is usable (seasonSoon
+  // decides the phase); before that the strip comes from this phone's copy.
+  if (!(seasonLedger && seasonLedger.length) && !recapSeasonStrip.asked && slateFromNetwork && appHealth.ld != null) {
+    recapSeasonStrip.asked = true;
+    seasonSoon();
+    setTimeout(() => { recapSeasonStrip.asked = false; }, 30000);
+  }
+  const b = seasonBoardData(currentManager);
+  // Wait for the picks: without them only points, finish and tiebreaker
+  // exist, and "your best three" would just be whatever three loaded. Until
+  // they land, show the strip this phone drew last time (it only changes
+  // when a week is sealed).
+  const CK = "brochiefs_season_strip_v1", sealed = Math.max(0, ...Object.values(weekSummaries).filter((w) => w?.complete).map((w) => w.week));
+  if (!b || !b.rows.some((r) => r.k === "hitPct")) {
+    try { const c = JSON.parse(localStorage.getItem(CK) || "null"); if (c && c.me === currentManager && c.week === sealed) return c.html; } catch {}
+    return "";
+  }
+  const top3 = [...b.rows].sort((x, y) => x.place - y.place || y.share - x.share).slice(0, 3);
+  const html = `<div class="rx-season" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Your season against the league">
+    <div class="rx-ssh"><span>YOUR SEASON <i>vs the league</i></span><b>ALL STATS ›</b></div>
+    <div class="sbd">${seasonBoardRows(b, top3, currentManager)}</div>
+  </div>`;
+  try { localStorage.setItem(CK, JSON.stringify({ me: currentManager, week: sealed, html })); } catch {}
+  return html;
+}
+// Once the recap is gone (next slate up), the strip keeps its own spot on
+// Scores until the first kickoff of the new slate.
+// Between weeks: the week on screen has sealed, its replay has gone, and
+// the next slate is not up yet. One card at the top says so.
+// Between weeks: the week on screen has sealed and its replay has gone,
+// and the next slate is not up yet.
+function lastSealedWeek() { return Object.values(weekSummaries).filter((s) => s?.complete).sort((a, b) => b.week - a.week)[0] || null; }
+function betweenWeeks() { const last = lastSealedWeek(); return !!last && Number(last.week) === Number(currentWeek) && Date.now() >= recapExpiry(last); }
+// One row at the top: the week to come, and last week's winner as a chip
+// (tap for their card).
+function paintNextSlate() {
+  const el = document.getElementById("next-slate");
+  if (!el) return;
+  const last = lastSealedWeek();
+  const champs = betweenWeeks() ? last.winners || [] : [];
+  const html = !betweenWeeks() ? "" : `<div class="ns-main"><span class="ns-k">NEXT SLATE</span><span class="ns-t">Week ${Number(last.week) + 1} coming soon</span></div>
+    ${champs.length ? `<button type="button" class="ns-champ" data-nschamp="${escapeCd(champs[0])}" aria-label="Defending champ ${escapeCd(champs.map(shown).join(" and "))}">${champs.map((n) => `<span class="ns-av" style="--accent:${accentFor(n)}">${escapeCd(avatarOverrides[n] || shown(n)[0])}</span>`).join("")}<span class="ns-cn"><small>CHAMP</small><b>${champs.map((n) => escapeCd(shown(n))).join(" & ")}</b></span></button>` : ""}`;
+  if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
+  el.classList.toggle("hidden", !html);
+}
+document.getElementById("next-slate")?.addEventListener("click", (e) => {
+  const c = e.target.closest("[data-nschamp]");
+  if (c) { noteUse("next-slate-champ", c.dataset.nschamp); openPlayerCard(c.dataset.nschamp); }
+});
+function paintSeasonStrip(standalone) {
+  const el = document.getElementById("season-strip");
+  if (!el) return;
+  // Until the next first kickoff: a sealed week still on screen (no new
+  // slate yet) means that kickoff has not come.
+  const html = standalone && (!firstKickoffPassed() || weekSummaries[currentWeek]?.complete) ? recapSeasonStrip() : "";
+  if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
+  el.classList.toggle("hidden", !html);
+}
+document.getElementById("season-strip")?.addEventListener("click", (e) => {
+  if (e.target.closest(".rx-season")) { noteUse("season-strip"); openSeasonSheet(currentManager); }
+});
+// The player card's stats, in the same shape as SEASON_BOARD.
+const CARD_STATS = {
+  "AVG WEEK": { k: "avgWeek", label: "AVG WEEK", wk: "WEEK", get: (d) => d.avg, fmt: (v) => v.toFixed(1) },
+  "BEST WEEK": { k: "bestWeek", label: "BEST WEEK", wk: "WEEK", get: (d) => d.top?.score, fmt: (v) => `${v}` },
+  "WORST WEEK": { k: "worstWeek", label: "WORST WEEK", wk: "WEEK", get: (d) => d.low?.score, fmt: (v) => `${v}` },
+  "PICKS RIGHT": "hitPct", "ON SPREAD": "atsPct",
+  "TO WIN": { k: "suPct", label: "TO WIN", wk: "WIN", get: (d) => d.su, fmt: (v) => `${v}%`, rec: (d) => `${d.suW}-${d.suN - d.suW}` },
+  "🔒 LOCKS": { k: "lockPct", label: "LOCKS", wk: "LOCK", get: (d) => (d.lockW + d.lockL ? Math.round((100 * d.lockW) / (d.lockW + d.lockL)) : null), fmt: (v) => `${v}%`, rec: (d) => `${d.lockW}-${d.lockL}` },
+};
+const statSpec = (key) => { const c = CARD_STATS[key]; const k = typeof c === "string" ? c : c ? null : key; return k ? SEASON_BOARD.find((x) => x.k === k) : c; };
+// One stat, one sheet: a summary line, then LEAGUE (every player ranked,
+// best first) and BY WEEK (this player's weeks against the league), the
+// same look everywhere. The season window opens on LEAGUE; a player card
+// opens on BY WEEK.
+function openStatSheet(key, name = currentManager, tab = "league") {
+  const st = statSpec(key);
+  if (!st) return;
+  const esc = escapeCd;
+  const rows = MANAGERS.map((n) => { const d = playerSeason(n); const v = st.get(d); return v != null && Number.isFinite(v) ? { n, v, rec: st.rec ? st.rec(d) : "" } : null; }).filter(Boolean)
+    .sort((a, b) => (st.low ? a.v - b.v : b.v - a.v));
+  const better = (a, b) => (st.low ? a < b : a > b);
+  const fmt = st.rfmt || st.fmt;
+  const best = rows[0]?.v, worst = rows[rows.length - 1]?.v, span = rows.length ? best - worst : 0;
+  const placeOf = (v) => 1 + rows.filter((x) => better(x.v, v)).length, tiedOf = (v) => rows.filter((x) => x.v === v).length > 1;
+  const me = rows.find((r) => r.n === name);
+  const avg = rows.length ? rows.reduce((a, r) => a + r.v, 0) / rows.length : null;
+  const sum = me ? `<div class="sbr-sum"><div class="sbr-s1"><b>${fmt(me.v)}</b><span>${tiedOf(me.v) ? "T-" : ""}${ordinal(placeOf(me.v))} of ${rows.length}</span></div><div class="sbr-s2">league avg ${fmt(/%$/.test(st.fmt(1)) ? Math.round(avg) : Math.round(avg * 10) / 10)} · best ${esc(shown(rows[0].n))} ${fmt(best)}</div></div>` : "";
+  const list = rows.map((r) => {
+    const place = placeOf(r.v), share = span ? (r.v - worst) / span : 1;
+    const tier = place === 1 ? "lead" : place <= 3 ? "t-hi" : place > rows.length - 3 ? "t-lo" : "t-mid";
+    return `<li class="sbr-r ${tier}${r.n === name ? " me" : ""}"><span class="sbr-rk">${tiedOf(r.v) ? "T-" : ""}${ordinal(place)}</span><span class="sbr-nm">${esc(shown(r.n))}</span><span class="sbr-bar"><i style="width:${Math.max(4, Math.round(share * 100))}%;--sw:${Math.max(0.04, share).toFixed(3)}"></i></span><span class="sbr-v">${fmt(r.v)}${r.rec ? `<small>${esc(r.rec)}</small>` : ""}</span></li>`;
+  }).join("");
+  const wk = st.wk ? weekRowsFor(st.wk, name) : null;
+  const m = bottomSheet("season-rank");
+  document.body.appendChild(m); // over whatever opened it
+  m.innerHTML = `<div class="modal-card wks-card sbr-card"><i class="wks-grab" aria-hidden="true"></i>
+    <div class="wks-h"><b>${esc(st.label)}</b><small>${esc(shown(name).toUpperCase())}</small><button type="button" class="wks-x" aria-label="Back">✕</button></div>
+    ${sum}
+    ${wk ? `<div class="sbr-tabs" role="tablist"><button type="button" role="tab" data-sbtab="league" aria-selected="${tab === "league"}">LEAGUE</button><button type="button" role="tab" data-sbtab="week" aria-selected="${tab !== "league"}">BY WEEK</button></div>` : ""}
+    <div class="sbr-pane" data-pane="league"${wk && tab !== "league" ? " hidden" : ""}>${st.low ? `<div class="sbr-note">Lower is better</div>` : ""}<ol class="sbr">${list}</ol></div>
+    ${wk ? `<div class="sbr-pane" data-pane="week"${tab === "league" ? " hidden" : ""}><div class="sbr-note">${esc(wk.sub)}</div><div class="sbk-list${colW(wk.body, "em") ? "" : " nonote"}" style="--nc:${colW(wk.body, "em")};--vc:${colW(wk.body, "b")}">${wk.body || `<div class="sbk-none">No finished weeks yet.</div>`}</div></div>` : ""}
+  </div>`;
+  if (!m.dataset.tabs) {
+    m.dataset.tabs = "1";
+    m.addEventListener("click", (e) => { const t = e.target.closest("[data-sbtab]"); if (!t) return; for (const b of m.querySelectorAll("[data-sbtab]")) b.setAttribute("aria-selected", String(b === t)); for (const p of m.querySelectorAll("[data-pane]")) p.hidden = p.dataset.pane !== t.dataset.sbtab; noteUse("stat-tab", t.dataset.sbtab); });
+  }
+  noteUse("stat-sheet", `${st.k}:${tab}`);
+  m.classList.remove("hidden");
+}
+const openBoardRank = (k, name) => openStatSheet(k, name, "league");
+// The dedicated window: every stat, best and worst at, and the Chief's roast.
+function openSeasonSheet(name = currentManager, waited) {
+  const b = name && seasonBoardData(name);
+  // Tapped the remembered strip before the picks landed: open once they do.
+  if (!b || !b.rows.some((r) => r.k === "hitPct")) { if (!waited) fetchSeasonLedger().then(() => openSeasonSheet(name, true)).catch(() => {}); if (!b) return; }
+  const esc = escapeCd;
+  const m = bottomSheet("season-board");
+  if (!m.dataset.roastTap) {
+    m.dataset.roastTap = "1";
+    m.addEventListener("click", (e) => { const r = e.target.closest("[data-roast]"); if (r) return roastMySeason(m.dataset.name, r); const row = e.target.closest("[data-sbk]"); if (row) openBoardRank(row.dataset.sbk, m.dataset.name); });
+  }
+  m.dataset.name = name;
+  m.innerHTML = `<div class="modal-card wks-card sbd-card"><i class="wks-grab" aria-hidden="true"></i>
+    <div class="wks-h"><b>VS THE LEAGUE</b><small>${esc(shown(name).toUpperCase())}</small><button type="button" class="wks-x" aria-label="Close">✕</button></div>
+    <div class="sbd"><div class="sbd-key"><span>WORST</span><span>BEST</span></div>${seasonBoardRows(b, b.rows, name)}</div>${seasonBoardFoot(b)}
+    ${name === currentManager ? `<button type="button" class="sbd-roast" data-roast="1"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async">ROAST MY SEASON</button>
+    <div class="sbd-said hidden" aria-live="polite"><div class="sbd-who"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async"><b>THE CHIEF</b></div><p></p></div>` : ""}
+  </div>`;
+  noteUse("season-sheet");
+  m.classList.remove("hidden");
+}
+// The Chief's take on your own season: once per finished week, cached on
+// the Worker, so a re-tap shows the same roast.
+async function roastMySeason(name, btn) {
+  if (name !== currentManager || btn.classList.contains("busy")) return;
+  const out = btn.nextElementSibling; const b = seasonBoardData(name);
+  if (!b) return;
+  const week = Math.max(0, ...b.d.scores.filter((x) => !x.missed).map((x) => x.week));
+  const league = {};
+  for (const r of b.rows) league[r.k] = { best: r.best.v, worst: r.worst.v, place: r.place };
+  const d = b.d, rankRow = b.rows.find((r) => r.k === "points");
+  const stats = { points: d.points, hitPct: d.w + d.l ? Math.round((100 * d.w) / (d.w + d.l)) : null, atsPct: d.ats, suPct: d.su, dogPct: d.dog, favPct: d.fav,
+    lockPct: d.lockW + d.lockL ? Math.round((100 * d.lockW) / (d.lockW + d.lockL)) : null, avgFinish: d.avgFinish, tbOff: d.tbOff, weeklyWins: b.weeklyWins,
+    rank: rankRow?.place, players: b.players, weeks: d.scores.filter((x) => !x.missed).length, league,
+    // Ground truth for "why no wins": how close you came, and whether the
+    // tiebreaker ever decided your week (only when tied for the top score).
+    closestToWin: (() => { const g = d.scores.filter((x) => !x.missed && !x.won && Number.isFinite(x.high)).map((x) => x.high - x.score); return g.length ? Math.min(...g) : null; })(),
+    tiebreakerDecided: d.scores.filter((x) => !x.missed && Number.isFinite(x.high) && x.score === x.high).length };
+  btn.classList.add("busy"); btn.lastChild.textContent = "THE CHIEF IS LOOKING…";
+  noteUse("season-roast");
+  try {
+    const r = await fetch(`${WORKER_URL}/season-roast`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, week, stats }) });
+    const j = await r.json().catch(() => ({}));
+    out.querySelector("p").textContent = j.roast || j.error || "The Chief is out. Try again soon.";
+  } catch { out.querySelector("p").textContent = "Couldn't reach the Chief. Try again."; }
+  out.classList.remove("hidden"); btn.classList.add("hidden");
 }
 
 // --- Stat ranking -------------------------------------------------------
 // A stat bar on a player card: the whole league ranked on that stat.
 const STAT_RANK = {
-  "AVG WEEK": (d) => d.scores.length ? [d.avg, d.avg.toFixed(1)] : null,
+  "AVG WEEK": (d) => d.avg != null ? [d.avg, d.avg.toFixed(1)] : null,
   "BEST WEEK": (d) => d.top ? [d.top.score, `${d.top.score}`, `W${d.top.week}`] : null,
   "WORST WEEK": (d) => d.low ? [d.low.score, `${d.low.score}`, `W${d.low.week}`] : null,
   "PICKS RIGHT": (d) => d.w + d.l ? [d.w / (d.w + d.l), `${Math.round((100 * d.w) / (d.w + d.l))}%`, `${d.w}-${d.l}`] : null,
@@ -9610,6 +11450,59 @@ const STAT_RANK = {
   "TO WIN": (d) => d.suN ? [d.su, `${d.su}%`, `${d.suN} picks`] : null,
   "🔒 LOCKS": (d) => d.lockW + d.lockL ? [d.lockW / (d.lockW + d.lockL), `${d.lockW}-${d.lockL}`, `${Math.round((100 * d.lockW) / (d.lockW + d.lockL))}%`] : null,
 };
+// Where a player stands in the league on one stat: "3rd", "T-2nd", gold
+// when they lead it. Empty when the stat cannot be ranked.
+function statPlace(stat, name) {
+  try {
+    const f = STAT_RANK[stat]; if (!f) return "";
+    const rows = MANAGERS.map((n) => { const v = f(playerSeason(n)); return v ? { n, v: v[0] } : null; }).filter(Boolean);
+    const me = rows.find((r) => r.n === name); if (!me || rows.length < 2) return "";
+    const place = 1 + rows.filter((r) => r.v > me.v).length, tied = rows.filter((r) => r.v === me.v).length > 1;
+    // Rank lives in the tap-through league list, not on the row.
+    if (place > 0) return "";
+    return `<span class="plc-rk${place === 1 ? " lead" : " top"}" title="Rank in the league">${tied ? "T-" : ""}${ordinal(place).toLowerCase()}</span>`;
+  } catch { return ""; }
+}
+// One stat, week by week, for one player: what built the number.
+// Week by week for one stat and one player: the rows of the BY WEEK tab.
+// Widest text in a column of week rows, in characters, so the column hugs it.
+const colW = (html, tag) => Math.max(0, ...[...(html || "").matchAll(new RegExp(`<${tag}>([^<]*)</${tag}>`, "g"))].map((m) => m[1].replace(/&[a-z#0-9]+;/g, "x").length));
+function weekRowsFor(stat, name) {
+  const esc = escapeCd;
+  const byWeek = new Map();
+  for (const w of Object.values(weekSummaries)) if (w?.complete) byWeek.set(w.week, w);
+  for (const w of seasonLedger || []) if (w?.complete) byWeek.set(w.week, w);
+  const weeks = [...byWeek.values()].sort((a, b) => a.week - b.week).map((wk) => ({ wk, me: (wk.rows || []).find((r) => r.name === name) }));
+  const teamOf = (wk, lg) => { const g = (wk.slate || []).find((x) => Number(x.id) === Number(lg.g)); return g ? (lg.team === g.home ? g.homeShort : lg.team === g.away ? g.awayShort : lg.team) : lg.team; };
+  const tally = (me, pred) => { let w = 0, n = 0; for (const lg of me?.ledger || []) { if (lg.result !== "hit" && lg.result !== "miss") continue; if (!pred(lg)) continue; n++; if (lg.result === "hit") w++; } return { w, n }; };
+  const pc = (x) => Math.max(0, Math.min(100, Math.round(x * 100)));
+  const row = (wkNo, barShare, val, note, cls = "", lg = null) => `<div class="sbk-r ${cls}"><span class="sbk-w">W${wkNo}</span><i class="sbk-bar"><u style="width:${pc(barShare)}%;--sw:${Math.max(0.04, Math.min(1, barShare || 0)).toFixed(3)}"></u>${lg != null ? `<s style="left:${pc(lg)}%" title="League average"></s>` : ""}</i><b>${val}</b><em>${note}</em></div>`;
+  // League average for one week, on the same scale as the row's bar.
+  const lgAvg = (wk, f) => { const v = (wk.rows || []).map(f).filter((x) => x != null && Number.isFinite(x)); return v.length ? v.reduce((a, x) => a + x, 0) / v.length : null; };
+  let title = stat, sub = "", body = "";
+  if (/WEEK/.test(stat)) {
+    const sc = weeks.filter((x) => x.me && Number.isFinite(x.me.score));
+    const max = Math.max(1, ...sc.map((x) => x.me.score)), min = Math.min(...sc.map((x) => x.me.score)), avg = sc.reduce((a, x) => a + x.me.score, 0) / (sc.length || 1);
+    sub = "Points each week vs the league average (tick)";
+    const lmax = Math.max(max, ...weeks.flatMap(({ wk }) => (wk.rows || []).map((r) => r.score || 0)));
+    body = weeks.map(({ wk, me }) => { const la = lgAvg(wk, (r) => r.score); if (!me) return row(wk.week, 0, "–", "sat out", "dim"); const d = la == null ? null : me.score - la; return row(wk.week, me.score / lmax, me.score, d == null ? "" : `${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)} vs league`, d > 0 ? "hi" : d < 0 ? "lo" : "", la == null ? null : la / lmax); }).join("");
+  } else if (/LOCK/.test(stat)) {
+    sub = "Every lock, week by week";
+    body = weeks.map(({ wk, me }) => { const lk = (me?.ledger || []).find((l) => l.lock); if (!lk) return row(wk.week, 0, "–", "no lock", "dim"); const hit = lk.result === "hit"; const all = (wk.rows || []).map((r) => (r.ledger || []).find((l) => l.lock)).filter(Boolean), lh = all.filter((l) => l.result === "hit").length; return row(wk.week, hit ? 1 : 0, hit ? "HIT" : lk.result === "push" ? "PUSH" : "MISS", `${esc(teamOf(wk, lk))} · lg ${lh}/${all.length} hit`, hit ? "hi" : "lo", all.length ? lh / all.length : null); }).join("");
+  } else if (stat === "FINISH") {
+    sub = "Your place each week (higher bar is better)";
+    body = weeks.map(({ wk, me }) => { if (!me || !Number.isFinite(me.place)) return row(wk.week, 0, "–", "sat out", "dim"); const n = (wk.rows || []).length || 10; return row(wk.week, (n - me.place + 1) / n, ordinal(me.place), (wk.winners || []).includes(name) ? "🏆 WON" : "", me.place <= 3 ? "hi" : me.place > n - 3 ? "lo" : ""); }).join("");
+  } else if (stat === "TB") {
+    sub = "Tiebreaker miss each week vs the league average (tick); shorter is better";
+    const tmax = Math.max(1, ...weeks.flatMap(({ wk }) => (wk.rows || []).map((r) => Number(r.tbDiff) || 0)));
+    body = weeks.map(({ wk, me }) => { if (!me || !Number.isFinite(me.tbDiff)) return row(wk.week, 0, "–", "no guess", "dim"); const la = lgAvg(wk, (r) => (Number.isFinite(r.tbDiff) ? r.tbDiff : null)); return row(wk.week, 1 - me.tbDiff / tmax, `${me.tbDiff}`, la == null ? "off" : `off · lg ${la.toFixed(1)}`, la != null && me.tbDiff < la ? "hi" : la != null && me.tbDiff > la ? "lo" : "", la == null ? null : 1 - la / tmax); }).join("");
+  } else {
+    const pred = /DOG/.test(stat) ? (l) => l.favorite && l.team !== l.favorite : /SPREAD/.test(stat) ? (l) => l.mode === "ATS" : /WIN/.test(stat) ? (l) => l.mode !== "ATS" : () => true;
+    sub = (/DOG/.test(stat) ? "Underdog picks right" : /SPREAD/.test(stat) ? "Spread picks right" : /WIN/.test(stat) ? "To-win picks right" : "Picks right") + " each week vs the league average (tick)";
+    body = weeks.map(({ wk, me }) => { const la = lgAvg(wk, (r) => { const t = tally(r, pred); return t.n ? t.w / t.n : null; }); if (!me) return row(wk.week, 0, "–", "sat out", "dim"); const t = tally(me, pred); if (!t.n) return row(wk.week, 0, "–", "none", "dim"); const p = t.w / t.n; return row(wk.week, p, `${t.w}-${t.n - t.w}`, la == null ? `${Math.round(p * 100)}%` : `${Math.round(p * 100)}% · lg ${Math.round(la * 100)}%`, la == null ? "" : p > la + 0.001 ? "hi" : p < la - 0.001 ? "lo" : "", la); }).join("");
+  }
+  return { sub, body };
+}
 function openStatRank(stat, name) {
   const f = STAT_RANK[stat];
   if (!f) return;
@@ -9678,7 +11571,7 @@ let weekDetailAll = null;
 async function fetchWeekDetail() {
   if (weekDetailAll) return weekDetailAll;
   try {
-    const res = await fetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
+    const res = await workerFetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
     if (res.ok) weekDetailAll = (await res.json()).summaries || {};
   } catch {}
   return weekDetailAll || {};
@@ -9754,7 +11647,7 @@ async function fetchSeasonLedger() {
   if (!WORKER_URL) return null;
   if (seasonLedger && Date.now() - seasonLedgerAt < 5 * 60 * 1000) return seasonLedger;
   try {
-    const res = await fetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
+    const res = await workerFetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return seasonLedger;
     const data = await res.json();
     seasonLedger = Object.values(data.summaries || {}).filter((w) => w?.complete && Array.isArray(w.rows)).sort((a, b) => a.week - b.week);
@@ -9766,7 +11659,7 @@ async function fetchSeasonLedger() {
 // Pure: the boards from a list of counting weeks. Every board carries
 // everyone, ranked, so the panel can show the top three and the viewer.
 function seasonStats(weeks, liveBlanks = {}) {
-  const by = new Map(MANAGERS.map((n) => [n, { name: n, atsW: 0, atsL: 0, dogHits: 0, fades: 0, picks: 0, blanks: 0, lone: 0, tbSum: 0, tbN: 0, bestWeek: null, streak: 0, pts: 0 }]));
+  const by = new Map(MANAGERS.map((n) => [n, { name: n, atsW: 0, atsL: 0, dogHits: 0, fades: 0, picks: 0, blanks: 0, lone: 0, tbSum: 0, tbN: 0, bestWeek: null, streak: 0, bestStreak: 0, bestWk: null, pts: 0 }]));
   // How many were on each team in each game, for the lone-wolf board.
   const onTeam = new Map();
   for (const w of weeks) for (const r of w.rows) for (const l of r.ledger || []) if (l.team) { const k = `${w.week}|${l.g}|${l.team}`; onTeam.set(k, (onTeam.get(k) || 0) + 1); }
@@ -9785,7 +11678,7 @@ function seasonStats(weeks, liveBlanks = {}) {
       if (l.mode === "SU" && dog && l.result === "hit") m.dogHits += 1;
       if (l.result === "hit" && (onTeam.get(`${w.week}|${l.g}|${l.team}`) || 0) <= 3) m.lone += 1;
       // Correct-pick streak, in ledger order, carried across weeks.
-      if (l.result === "hit") m.streak += 1; else if (l.result === "miss") m.streak = 0;
+      if (l.result === "hit") { m.streak += 1; if (m.streak > m.bestStreak) { m.bestStreak = m.streak; m.bestWk = w.week; } } else if (l.result === "miss") m.streak = 0;
     }
   }
   // This week's blanks count the moment the card locks, so a no-show is
@@ -9798,11 +11691,13 @@ function seasonStats(weeks, liveBlanks = {}) {
     ats: all.filter((m) => m.atsW + m.atsL >= 3).sort((a, b) => pct(b.atsW, b.atsL) - pct(a.atsW, a.atsL) || b.atsW - a.atsW).map((m) => ({ name: m.name, n: pct(m.atsW, m.atsL), value: `${m.atsW}-${m.atsL}`, sub: `${Math.round(pct(m.atsW, m.atsL) * 100)}%` })),
     dogs: all.filter((m) => m.dogHits).sort((a, b) => b.dogHits - a.dogHits).map((m) => ({ name: m.name, n: m.dogHits, value: String(m.dogHits), sub: m.dogHits === 1 ? "hit" : "hits" })),
     lone: all.filter((m) => m.lone).sort((a, b) => b.lone - a.lone).map((m) => ({ name: m.name, n: m.lone, value: String(m.lone), sub: m.lone === 1 ? "hit" : "hits" })),
-    streak: all.filter((m) => m.streak >= 2).sort((a, b) => b.streak - a.streak).map((m) => ({ name: m.name, n: m.streak, value: String(m.streak), sub: "in a row" })),
+    // Longest run of correct picks this season (a "right now" streak was
+    // empty most of the week, since one Saturday miss resets everyone).
+    streak: all.filter((m) => m.bestStreak >= 2).sort((a, b) => b.bestStreak - a.bestStreak).map((m) => ({ name: m.name, n: m.bestStreak, value: String(m.bestStreak), sub: m.streak === m.bestStreak ? "in a row · still going" : `in a row · week ${m.bestWk}` })),
     fader: all.filter((m) => m.picks >= 5).sort((a, b) => b.fades / b.picks - a.fades / a.picks).map((m) => ({ name: m.name, n: m.fades / m.picks, value: `${Math.round((m.fades / m.picks) * 100)}%`, sub: `${m.fades} of ${m.picks}` })),
     tb: all.filter((m) => m.tbN).sort((a, b) => a.tbSum / a.tbN - b.tbSum / b.tbN).map((m) => ({ name: m.name, n: m.tbSum / m.tbN, low: true, value: (m.tbSum / m.tbN).toFixed(1), sub: "avg miss", more: `avg miss${sameTbN ? "" : ` · ${m.tbN} wk${m.tbN === 1 ? "" : "s"}`}` })),
     best: all.filter((m) => m.bestWeek).sort((a, b) => b.bestWeek.score - a.bestWeek.score).map((m) => ({ name: m.name, n: m.bestWeek.score, value: String(m.bestWeek.score), sub: `Week ${m.bestWeek.week}` })),
-    blanks: all.filter((m) => m.blanks).sort((a, b) => b.blanks - a.blanks).map((m) => ({ name: m.name, n: m.blanks, value: String(m.blanks), sub: "blank", more: "left blank" })),
+    blanks: all.filter((m) => m.blanks).sort((a, b) => b.blanks - a.blanks).map((m) => ({ name: m.name, n: m.blanks, value: String(m.blanks), sub: m.blanks === 1 ? "pick left blank" : "picks left blank", more: "left blank" })),
   };
 }
 
@@ -9855,7 +11750,9 @@ function sideSeasonStats(history) {
 // Season stats: a case of trophy tiles, two across. Each tile shows the
 // leader and where the viewer stands; a tap opens the full ranking, with
 // a bar for each player. Side bets sit underneath, off the books.
-const seasonOpenTiles = new Set();
+// Each board's full ranking, kept for its pop-up.
+const HS_BOARDS = {};
+let HS_ALL = "";
 async function renderSeasonStats() {
   const panel = document.getElementById("season-panel");
   if (!panel || panel.classList.contains("hidden")) return;
@@ -9884,53 +11781,73 @@ async function renderSeasonStats() {
   const ORD = (k) => `${k}${k % 100 >= 11 && k % 100 <= 13 ? "TH" : ["TH", "ST", "ND", "RD"][k % 10] || "TH"}`;
   const tile = (key, icon, label, note, rows, color, art = key) => {
     const list = ranked(rows);
-    const open = seasonOpenTiles.has(key);
+    const open = false;
     const lead = list[0];
     const tied = lead ? list.filter((r) => r.rank === 1).length - 1 : 0;
     const mine = list.find((r) => r.name === me);
     const top = Math.max(...list.map((r) => Math.abs(r.n)), 0) || 1;
     const lo = Math.min(...list.map((r) => r.n));
     const width = (r) => Math.max(6, Math.round(100 * (r.low ? (lo || 0.1) / (r.n || 0.1) : Math.abs(r.n) / top)));
-    const full = !open ? "" : `<div class="hs-full"><div class="hs-note">${note}</div>${list.map((r) => `<div class="hs-r${r.name === me ? " me" : ""}${r.rank === 1 ? " first" : ""}"><i class="hs-rk">${r.rank}</i>${av(r.name)}<span class="hs-nm">${esc(shown(r.name))}</span><span class="hs-bar"><u class="${r.signed && r.n < 0 ? "neg" : ""}" style="width:${width(r)}%"></u></span><b class="hs-v${r.signed ? (r.n > 0 ? " up" : r.n < 0 ? " down" : "") : ""}">${esc(r.value)}<small>${esc(r.more || r.sub || "")}</small></b></div>`).join("")}</div>`;
+    const full = `<div class="hs-full"><div class="hs-note">${note}</div>${list.map((r) => `<div class="hs-r${r.name === me ? " me" : ""}${r.rank === 1 ? " first" : ""}"><i class="hs-rk">${r.rank}</i>${av(r.name)}<span class="hs-nm">${esc(shown(r.name))}</span><span class="hs-bar"><u class="${r.signed && r.n < 0 ? "neg" : ""}" style="width:${width(r)}%"></u></span><b class="hs-v${r.signed ? (r.n > 0 ? " up" : r.n < 0 ? " down" : "") : ""}">${esc(r.value)}<small>${esc(r.more || r.sub || "")}</small></b></div>`).join("")}</div>`;
+    HS_BOARDS[key] = { label, color, icon, html: lead ? full : `<div class="hs-none">NOBODY YET</div>` };
     // The tile art is pixel art cut from the league's own template, one
     // per board; the emoji stands in if it fails to load.
     return `<div class="hs-tile${open ? " open" : ""}${!lead ? " empty" : ""}" style="--c:${color}">
       <button type="button" class="hs-tap" data-hs="${key}" aria-expanded="${open}">
         <span class="hs-art"><img src="${awardArt(`hs/${art}`)}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('i'),{textContent:'${icon}'}))"></span>
         <span class="hs-body">
-          <span class="hs-t-head"><span>${label}</span><em>${lead ? (open ? "▴" : "▾") : ""}</em></span>
+          <span class="hs-t-head"><span>${label}</span><em>${lead ? "›" : ""}</em></span>
           ${lead ? `<span class="hs-name"><b>${esc(shown(lead.name))}</b>${tied ? `<i title="tied with ${tied} more">+${tied}</i>` : ""}</span>
-          <span class="hs-line"><small>${esc(lead.sub || "")}</small><strong class="${lead.signed && lead.n < 0 ? "down" : ""}">${esc(lead.value)}</strong></span>
-          <span class="hs-you">${mine && mine.rank > 1 ? `YOU · ${ORD(mine.rank)} · ${esc(mine.value)}` : mine ? "YOU LEAD" : `${list.length} RANKED`}</span>` : `<span class="hs-none">NOBODY YET</span>`}
+          <strong class="hs-v-top${lead.signed && lead.n < 0 ? " down" : ""}${String(lead.value).length > 3 ? " long" : ""}">${esc(lead.value)}</strong>
+          <span class="hs-foot"><small>${esc(lead.sub || "")}</small><span class="hs-you">${mine && mine.rank > 1 ? `YOU ${ORD(mine.rank)} · ${esc(mine.value)}` : mine ? "YOU LEAD" : `${list.length} RANKED`}</span></span>` : `<span class="hs-none">NOBODY YET</span>`}
         </span>
-      </button>${full}</div>`;
+      </button></div>`;
   };
-  panel.innerHTML = `<div class="hs-marquee"><span>★ HIGH SCORES ★</span><small>${weeks.length} WEEK${weeks.length === 1 ? "" : "S"} ON THE RECORD · TAP A BOARD FOR EVERYONE</small></div>
-    <div class="hs-grid">
-      ${tile("ats", "🎯", "BEST ATS", "Spread picks, at least 3", s.ats, "var(--neon-green)")}
-      ${tile("streak", "🔥", "HOT HAND", "Correct picks in a row, right now", s.streak, "#ff9f1c")}
-      ${tile("dogs", "🐶", "DOG HITS", "Underdogs straight up, 3 pts each", s.dogs, "var(--neon-pink)")}
-      ${tile("lone", "🐺", "LONE WOLF", "Correct with 3 or fewer on the team", s.lone, "var(--neon-purple)")}
-      ${tile("fader", "🙃", "FADER", "Share of picks against the favorite", s.fader, "var(--neon-cyan)")}
-      ${tile("tb", "📏", "TB SNIPER", "Average tiebreaker miss, lower is better", s.tb, "var(--neon-yellow)")}
-      ${tile("best", "🏆", "BEST WEEK", "Highest single week score", s.best, "#3fd0ff")}
-      ${s.blanks.length ? tile("blanks", "💤", "NO SHOWS", "Games left unpicked", s.blanks, "#a77bff") : ""}
-    </div>
+  // Four featured boards up front; every board, side bets included, sits
+  // behind VIEW ALL HIGH SCORES in a pop-up. A board opens its full
+  // ranking in its own pop-up rather than growing in place.
+  const all = [
+    ["streak", "🔥", "HOT HAND", "Longest run of correct picks this season", s.streak, "#ff9f1c"],
+    ["lone", "🐺", "LONE WOLF", "Correct with 3 or fewer on the team", s.lone, "#b9a6ff"],
+    ["dogs", "🐶", "DOG HITS", "Underdogs straight up, 3 pts each", s.dogs, "var(--neon-pink)"],
+    ["best", "🏆", "BEST WEEK", "Highest single week score", s.best, "#3fd0ff"],
+    ["ats", "🎯", "BEST ATS", "Spread picks, at least 3", s.ats, "var(--neon-green)"],
+    ["fader", "🙃", "FADER", "Share of picks against the favorite", s.fader, "var(--neon-cyan)"],
+    ["tb", "📏", "TB SNIPER", "Average tiebreaker miss, lower is better", s.tb, "var(--neon-yellow)"],
+    ...(s.blanks.length ? [["blanks", "💤", "NO SHOWS", "Games left unpicked", s.blanks, "#a77bff"]] : []),
+  ].map((a) => tile(...a));
+  const sideTiles = tile("side-bank", "💵", "BANKROLL", "Money won or lost across side bets", side.bank, "var(--neon-green)", "bank") + tile("side-picks", "🎲", "SIDE PICKS", "Side bet picks right, over/unders included", side.picks, "var(--neon-yellow)", "dice");
+  HS_ALL = `<div class="hs-grid">${all.join("")}</div>
     <div class="hs-side">
       <div class="hs-side-h"><img src="${awardArt("hs/coins")}" alt="" loading="lazy" decoding="async"><span>SIDE BETS</span><small>OFF THE BOOKS · ${side.bets} BET${side.bets === 1 ? "" : "S"}</small></div>
       <div class="hs-side-note">Their own record. Side bets never count toward pool standings, payouts or the boards above.</div>
-      <div class="hs-grid">
-        ${tile("side-bank", "💵", "BANKROLL", "Money won or lost across side bets", side.bank, "var(--neon-green)", "bank")}
-        ${tile("side-picks", "🎲", "SIDE PICKS", "Side bet picks right, over/unders included", side.picks, "var(--neon-yellow)", "dice")}
-      </div>
+      <div class="hs-grid">${sideTiles}</div>
     </div>`;
+  panel.innerHTML = `<div class="hs-marquee"><small>${weeks.length} WEEK${weeks.length === 1 ? "" : "S"} · TAP A BOARD</small></div>
+    <div class="hs-grid">${all.slice(0, 4).join("")}</div>
+    <button type="button" class="hs-all-btn" data-hs-all>VIEW ALL HIGH SCORES ›</button>`;
+}
+function openHsBoard(key) {
+  const b = HS_BOARDS[key]; if (!b) return;
+  const m = bottomSheet("hs-board");
+  document.body.appendChild(m); // over the all-boards sheet when opened from it
+  m.innerHTML = `<div class="modal-card wks-card hs-card" style="--c:${b.color}"><i class="wks-grab" aria-hidden="true"></i>
+    <div class="wks-h"><b>${escapeCd(b.label)}</b><small>THE LEAGUE</small><button type="button" class="wks-x" aria-label="Back">✕</button></div>${b.html}</div>`;
+  m.classList.remove("hidden");
+  track("hs-board", { event: true, d: key });
+}
+function openHsAll() {
+  const m = bottomSheet("hs-all");
+  m.innerHTML = `<div class="modal-card wks-card hs-card hs-all-card"><i class="wks-grab" aria-hidden="true"></i>
+    <div class="wks-h"><b>HIGH SCORES</b><small>EVERY BOARD</small><button type="button" class="wks-x" aria-label="Back">✕</button></div>${HS_ALL}</div>`;
+  if (!m.dataset.wired) { m.dataset.wired = "1"; m.addEventListener("click", (e) => { const t = e.target.closest("[data-hs]"); if (t) openHsBoard(t.dataset.hs); }); }
+  m.classList.remove("hidden");
+  track("hs-all", { event: true });
 }
 document.getElementById("season-panel")?.addEventListener("click", (e) => {
+  if (e.target.closest("[data-hs-all]")) return openHsAll();
   const b = e.target.closest("[data-hs]");
-  if (!b) return;
-  const k = b.dataset.hs;
-  if (seasonOpenTiles.has(k)) seasonOpenTiles.delete(k); else { seasonOpenTiles.add(k); track("hs-board", { event: true, d: k }); }
-  renderSeasonStats();
+  if (b) openHsBoard(b.dataset.hs);
 });
 (() => {
   const toggle = document.getElementById("season-toggle");
@@ -9983,19 +11900,22 @@ async function checkForUpdate(quiet = false) {
     if (!res.ok) return;
     const data = await res.json();
     if (!(data && typeof data.v === "string" && data.v && data.v !== APP_VERSION)) return;
-    let already = "";
-    try { already = sessionStorage.getItem(RELOADED_KEY) || ""; } catch { /* private mode */ }
-    // One automatic reload per build. If the cache still hands back the
-    // old index.html after that, the bar takes over rather than a loop.
-    // Found mid-session: reload too, but only once the person is idle, so
-    // nobody is yanked out of a pick or a sheet. Until then the bar shows.
-    if (already !== data.v && (quiet || !userBusy())) {
-      try { sessionStorage.setItem(RELOADED_KEY, data.v); } catch { /* private mode */ }
+    // Reload on its own, while nobody is mid-tap. GitHub Pages can keep
+    // handing back the old index.html for up to ten minutes after a deploy,
+    // so one reload is not always enough (Nov 21: the bar sat there): try
+    // again every two minutes, up to six times per build, then leave the
+    // bar for a tap rather than loop.
+    let tried = { v: "", n: 0, at: 0 };
+    try { tried = JSON.parse(sessionStorage.getItem(RELOADED_KEY) || "null") || tried; } catch { /* private mode */ }
+    if (tried.v !== data.v) tried = { v: data.v, n: 0, at: 0 };
+    const due = tried.n < 6 && Date.now() - tried.at > (tried.n ? 120000 : 0);
+    if (due && (quiet || !userBusy(8000))) {
+      try { sessionStorage.setItem(RELOADED_KEY, JSON.stringify({ v: data.v, n: tried.n + 1, at: Date.now() })); } catch { /* private mode */ }
       reloadFresh();
       return;
     }
     showUpdateBar();
-    if (already !== data.v) updateWaiting = true;
+    if (tried.n < 6) updateWaiting = true;
   } catch { /* offline, or the file is not there yet: say nothing */ }
 }
 
@@ -10042,8 +11962,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) { ch
 // the last 20 seconds. A waiting build reloads at the first idle moment.
 let lastInteract = Date.now(), updateWaiting = false;
 ["pointerdown", "keydown", "scroll", "touchmove"].forEach((ev) => addEventListener(ev, () => { lastInteract = Date.now(); }, { passive: true, capture: true }));
-function userBusy() {
-  if (Date.now() - lastInteract < 20000) return true;
+function userBusy(idleMs = 20000) {
+  if (Date.now() - lastInteract < idleMs) return true;
   const a = document.activeElement;
   if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return true;
   return !![...document.querySelectorAll(".modal-overlay, .wpx-overlay, .np-screen, #sim-modal")].find((el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none");
@@ -10051,7 +11971,9 @@ function userBusy() {
 // Once a minute: cheap (a tiny static file), and a deploy reaches an open
 // screen within a minute or two of going live.
 setInterval(() => { if (!document.hidden) checkForUpdate(false); }, 60 * 1000);
-setInterval(() => { if (updateWaiting && !userBusy()) checkForUpdate(false); }, 10 * 1000);
+// An update waits only 8s of stillness (not the 20s other idle work
+// uses), checked every 3s, so the bar rarely lingers: it reloads itself.
+setInterval(() => { if (updateWaiting && !userBusy(8000)) checkForUpdate(false); }, 3 * 1000);
 
 // The splash shows once per 12 hours per device. Inside that window the
 // app opens straight to where the tap would have landed, and from the
@@ -10061,6 +11983,7 @@ const SPLASH_TTL = 12 * 60 * 60 * 1000;
 // A signed-in player goes straight to the scoreboard: this week's games
 // and the last board from this phone draw at once, and fresh ones replace
 // them as they land. No splash, at any point in the week.
+const picksStillOpen = () => GAMES.length > 0 && GAMES.some((g) => !isGameLocked(g));
 function goToScoresNow() {
   logoScreen.classList.add("hidden");
   loginScreen.classList.add("hidden");
@@ -10070,7 +11993,11 @@ function goToScoresNow() {
   updateMePill();
   // A new slate with nothing kicked off yet: picks first. Once the week is
   // under way, the scoreboard.
-  if (window.LEAGUE?.sport === "nfl" || (GAMES.length && !firstKickoffPassed())) showPicksScreen(); else showScoreboard();
+  // Picks while any game can still be picked or changed; Scores once all are locked.
+  // A game on right now (kicked off in the last four hours) opens Scores.
+  const now = Date.now(), liveNow = GAMES.some((g) => { const k = new Date(g.kickoff).getTime(); return k <= now && now - k < 4 * 3600e3; });
+  if (window.LEAGUE?.sport === "nfl") showPicksScreen();
+  else if (fantasyDay()) showHistory(); else if (picksStillOpen() && !liveNow) showPicksScreen(); else showScoreboard();
   document.documentElement.classList.remove("known");
 }
 (async () => {
@@ -10093,6 +12020,9 @@ function goToScoresNow() {
     refreshAuthState(),
     loadRoster(),
   ]);
+  // Week done and nothing live: nothing competes, so the season strip's
+  // picks start now. Picks open waits for idle; live games skip it.
+  if (weekSummaries?.[currentWeek]?.complete) seasonSoon();
   const slateChanged = routed && slateSignature() !== lastSlateSignature;
   lastSlateSignature = slateSignature();
   lastLockSignature = lockSignature();
@@ -10102,7 +12032,7 @@ function goToScoresNow() {
     // from the one this phone had (a new week, a changed game).
     // The saved slate was last week's: the new one is open for picks, so
     // go there instead of the old board.
-    if (slateChanged && !firstKickoffPassed() && !scoreboardScreen.classList.contains("hidden")) { showPicksScreen(); return; }
+    if (!fantasyDay() && picksStillOpen() && !scoreboardScreen.classList.contains("hidden")) { showPicksScreen(); return; }
     if (slateChanged && !scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
     return;
   }
@@ -10118,7 +12048,7 @@ function goToScoresNow() {
   // splash entirely and lands on the scoreboard.
   if (window.__liveView) {
     startLiveView();
-  } else if (loadMe() && (firstKickoffPassed() || (fresh && !nowPlayingDue()))) {
+  } else if (loadMe() && (!picksStillOpen() || firstKickoffPassed() || (fresh && !nowPlayingDue()))) {
     goToPlayerSelect();
   } else {
     track("/splash");
@@ -10136,19 +12066,32 @@ async function startLiveView() {
   homeHeader.classList.remove("hidden");
   bottomNav.classList.remove("hidden");
   currentManager = null;
-  if (view === "history") return showHistory();
+  // Fantasy as a member saw it: his matchup, row and team news (fantasy has
+  // no private picks). Pick'em views stay signed out so no one's open picks show.
+  if (view === "history" || view === "fantasy") {
+    const q = new URLSearchParams(location.search), as = q.get("as") || "", f = q.get("f") || "";
+    const nm = MANAGERS.find((n) => n.toLowerCase() === as.toLowerCase() || (NAME_SHOWN[n] || "").toLowerCase() === as.toLowerCase());
+    if (nm) currentManager = nm;
+    showHistory();
+    for (let i = 0; i < 100 && !window.fantasyOpen?.ready?.(); i++) await new Promise((r) => setTimeout(r, 100));
+    if (f) window.fantasyOpen?.(f, x);
+    return;
+  }
   if (view === "trivia") return showTrivia();
+  // The grid check card for the admin page: counts only, picks stay masked.
+  if (view === "grid") { showScoreboard(); await ensureExtras(); for (let i = 0; i < 50 && !window.openGridCard; i++) await new Promise((r) => setTimeout(r, 100)); return window.openGridCard?.(); }
   showScoreboard();
   const until = async (ok, ms = 10000) => { const t0 = Date.now(); while (!ok() && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 100)); return ok(); };
+  if (view === "recap" && x) { if (await until(() => Object.values(weekSummaries || {}).some((s) => s?.complete && s.recap), 15000)) openRecapSheet(x, ({ hit: "PICK OF THE WEEK", miss: "WORST PICK", move: "MOVEMENT", split: "COIN FLIP", tb: "TIEBREAKER" })[x] || ""); }
   if (!(await until(() => liveWeekRows.length))) return;
   const who = MANAGERS.find((n) => n === x);
   if (view === "game" && GAMES.some((g) => String(g.id) === x)) openInsights(Number(x));
   else if (view === "card" && who) {
-    expandedRankings.add(who);
     await renderScoreboard();
-    document.querySelector(`.rd-path-btn[data-path="${CSS.escape(who)}"]`)?.closest(".ranking-row")?.scrollIntoView({ block: "start" });
+    openRankSheet(who);
   } else if (view === "path" && who && (await until(() => winChanceMemo.ctx))) openPathCard(who);
   else if (view === "h2h") openH2H();
+  // A week replay card (shared by everyone, so the signed-out view is the same).
 }
 
 // The bottom nav always wins: tapping a tab closes any sheet or popup that
@@ -10171,7 +12114,9 @@ async function startLiveView() {
 // Avatars live on the Worker; pull them on open and whenever the app comes
 // back to the front, so a change on one phone shows on every other.
 syncAvatars();
-document.addEventListener("visibilitychange", () => { if (!document.hidden) syncAvatars(); });
+// A phone just back in the foreground is often still reconnecting: wait a
+// beat before asking.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(() => { if (!document.hidden) syncAvatars(); }, 1500); });
 
 // --- Logos that stay put ---------------------------------------------
 // The board, the picks list and the all picks table are redrawn from their
@@ -10260,19 +12205,42 @@ renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
     const tag = host.id ? `#${host.id}` : `.${String(host.className || host.tagName).split(" ")[0]}`;
     return `${tag}${txt ? ` “${txt}”` : ""}`.slice(0, 40);
   };
-  const interactive = (el) => !!el.closest?.("button, a, input, select, textarea, label, summary, [role=button], [onclick], [data-sec], [tabindex]") || getComputedStyle(el).cursor === "pointer";
+  // A pointer cursor counts only where it is set, not where it is merely
+  // inherited: the whole leaderboard row is a pointer, so every name, score
+  // and game inside an open player card read as "does something" and a dead
+  // tap there was never logged.
+  const ownPointer = (el) => getComputedStyle(el).cursor === "pointer" && (!el.parentElement || getComputedStyle(el.parentElement).cursor !== "pointer");
+  const interactive = (el) => !!el.closest?.("button, a, input, select, textarea, label, summary, [role=button], [onclick], [data-sec], [tabindex]") || ownPointer(el);
   // Rage: 3 taps inside 1 second within 30px.
   let taps = [], rageAt = 0;
   // Dead: a tap on a non interactive element that changes nothing on screen.
-  let mutated = false;
-  new MutationObserver(() => { mutated = true; }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
+  // Did the tap do anything? Only changes that answer it count: at or
+  // around the thing tapped, or a sheet, screen or overlay opening. Any
+  // change anywhere used to count, and on game day the clocks and scores
+  // tick every second, so no tap ever read as dead.
+  let mutated = false, tapEl = null;
+  const answers = (t) => {
+    if (!tapEl || !(t instanceof Node)) return false;
+    const n = t.nodeType === 1 ? t : t.parentElement;
+    if (!n) return false;
+    if (n === document.body || n.closest?.("[role=dialog], .modal-overlay, .wpx-overlay, .lks, .lt-modal, .screen:not(.hidden) > .wrap > :is(section, div)[class*=sheet]")) return true;
+    if (tapEl.contains(n)) return true;
+    let up = tapEl; for (let i = 0; i < 4 && up; i++) { if (up === n) return true; up = up.parentElement; }
+    return false;
+  };
+  new MutationObserver((list) => { if (!mutated && list.some((m) => answers(m.target) || (m.type === "attributes" && m.target.classList?.contains("screen")))) mutated = true; }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
+  addEventListener("scroll", () => { if (tapEl) mutated = true; }, { capture: true, passive: true });
   let deadAt = 0;
   document.addEventListener("pointerdown", (e) => {
     // Three quick taps on the logo are the admin shortcut, not frustration.
     if (e.target.closest?.(".home-logo-img") || (typeof homeLogoBtn !== "undefined" && homeLogoBtn?.contains(e.target))) return;
+    // Three taps on Picks open the my-picks export, also on purpose.
+    if (e.target.closest?.("#nav-picks-btn")) return;
     const now = Date.now();
-    taps = taps.filter((t) => now - t.t < 1000 && Math.hypot(t.x - e.clientX, t.y - e.clientY) < 30);
-    taps.push({ t: now, x: e.clientX, y: e.clientY });
+    // Same spot and the same element: a tap that opened a sheet, then taps
+    // landing on that sheet, is a reader, not frustration.
+    taps = taps.filter((t) => now - t.t < 1000 && Math.hypot(t.x - e.clientX, t.y - e.clientY) < 30 && t.el === e.target);
+    taps.push({ t: now, x: e.clientX, y: e.clientY, el: e.target });
     if (taps.length >= 3 && now - rageAt > 3000) { rageAt = now; taps = []; track("rage", { event: true, d: label(e.target) }); }
   }, { capture: true, passive: true });
   // A dead tap is a click (a finger that starts a scroll never clicks), and
@@ -10284,9 +12252,13 @@ renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
     // the whole sheet reads as a pointer and the league filter skips it.
     const popup = loadMe() === "Jake" && el.closest("[role=dialog], .modal-overlay, .wpx-overlay");
     if (popup) {
+      // The chat log is reading: answer text and the gaps between bubbles.
+      if (el.closest(".ask-log") && !el.closest("[data-reask]")) return;
       if (el === popup || el.closest("button, a, input, select, textarea, label, summary, [role=button], [onclick], [data-past], [data-pot-row]")) return;
     } else {
       if (el.closest("[class^=ins-], [class*=' ins-']")) return;
+      // Explainer steps are reading, not controls.
+      if (el.closest(".wpx-steps")) return;
       if (interactive(el) || !(el.textContent || "").trim() && el.tagName !== "IMG") return;
       // Looks tappable: an image, a logo, a badge, a name, a number.
       if (!el.closest("img, [class*=logo], [class*=badge], [class*=chip], [class*=score], [class*=name], [class*=card], [class*=row]")) return;
@@ -10294,8 +12266,8 @@ renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
     // A tap in the gap of a container that holds buttons (a card's row, the
     // space between bets) is a near miss, not a dead control.
     if (el.querySelector?.("button, a, [role=button]")) return;
-    mutated = false;
-    setTimeout(() => { if (!mutated && Date.now() - deadAt > 5000) { deadAt = Date.now(); track("dead-tap", { event: true, d: label(el) }); } }, 700);
+    mutated = false; tapEl = el;
+    setTimeout(() => { if (tapEl === el) tapEl = null; if (!mutated && Date.now() - deadAt > 5000) { deadAt = Date.now(); track("dead-tap", { event: true, d: label(el) }); } }, 700);
   }, { capture: true, passive: true });
   // Sheets: time open, and closed almost at once.
   const opened = new Map();
@@ -10304,7 +12276,10 @@ renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
     if (open && !opened.has(m)) opened.set(m, Date.now());
     else if (!open && opened.has(m)) {
       const ms = Date.now() - opened.get(m); opened.delete(m);
-      if (ms < 2000) track("quick-exit", { event: true, d: m.id });
+      // A game sheet that had already drawn its score or line was a glance,
+      // not friction: count it only if it closed while still loading.
+      const glance = m.id === "insights-modal" && !m.querySelector(".ins-loading");
+      if (ms < 2000 && !glance) track("quick-exit", { event: true, d: m.id });
       else if (ms >= 3000) track("sheet-time", { event: true, d: `${m.id}:${Math.round(ms / 1000)}` });
     }
   }).observe(m, { attributes: true, attributeFilter: ["class"] });
@@ -10334,40 +12309,58 @@ renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
   addEventListener("unhandledrejection", (e) => err(e.reason?.message || e.reason));
 })();
 
-// Goalposts on the Gamecast field, drawn in screen space over the tilted
-// field: each back line carries a hidden anchor (.gp-bar) the field's tilt
-// slants like the line itself. From its two ends: a stem rises from the
-// middle, the crossbar runs parallel to the back line at the stem's top,
-// and the uprights stand straight up from the crossbar's ends.
-function drawGoalposts(stage) {
-  stage.querySelector(".gc-gpsvg")?.remove();
-  const sr = stage.getBoundingClientRect(); if (!sr.width) return;
-  const NS = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(NS, "svg");
-  svg.setAttribute("class", "gc-gpsvg"); svg.setAttribute("width", sr.width); svg.setAttribute("height", sr.height);
-  svg.setAttribute("aria-hidden", "true");
-  for (const ez of stage.querySelectorAll(".gc-ez")) {
-    const bar = ez.querySelector(".gp-bar"); if (!bar) continue;
-    const r = bar.getBoundingClientRect(), left = ez.classList.contains("l");
-    // The back line leans out at the bottom: on the left goal the top end is
-    // to the right, on the right goal to the left.
-    const top = { x: (left ? r.right : r.left) - sr.left, y: r.top - sr.top }, bot = { x: (left ? r.left : r.right) - sr.left, y: r.bottom - sr.top };
-    const mid = { x: (top.x + bot.x) / 2, y: (top.y + bot.y) / 2 };
-    const H = 16, U = 20; // stem height, uprights above the crossbar
-    const a = { x: top.x, y: top.y - H }, b = { x: bot.x, y: bot.y - H };
-    const d = `M${mid.x} ${mid.y} L${mid.x} ${mid.y - H} M${a.x} ${a.y} L${b.x} ${b.y} M${a.x} ${a.y} L${a.x} ${a.y - U} M${b.x} ${b.y} L${b.x} ${b.y - U}`;
-    const g = document.createElementNS(NS, "g");
-    g.setAttribute("class", "gp" + (ez.classList.contains("show") && ez.classList.contains("fg") ? (ez.classList.contains("miss") ? " miss" : " lit") : ""));
-    g.innerHTML = `<path class="gp-sh" d="${d}"/><path class="gp-ln" d="${d}"/><ellipse class="gp-base" cx="${mid.x}" cy="${mid.y}" rx="4" ry="1.6"/>`;
-    svg.appendChild(g);
-  }
-  stage.appendChild(svg);
+// SIM before the first kickoff: a terminal standing by, cursor blinking,
+// with the first game and when it kicks off. Tap anywhere to close.
+function openSimStandby() {
+  document.getElementById("sim-standby")?.remove();
+  const first = [...GAMES].sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff))[0];
+  const when = first ? new Date(first.kickoff).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }) : "";
+  const m = document.createElement("div");
+  m.id = "sim-standby"; m.className = "sim-sb"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Simulator standing by");
+  m.innerHTML = `<div class="sim-sb-term"><div class="sim-sb-bar"><i></i><i></i><i></i><span>BROCHIEFS SIM</span></div>
+    <pre>C:\\BROCHIEFS&gt; run sim.exe
+SIM ENGINE ........ READY
+GAMES LOADED ...... ${GAMES.length}
+${first ? `FIRST UP .......... ${escapeCd(first.awayShort)} @ ${escapeCd(first.homeShort)}
+KICKOFF ........... ${escapeCd(when.toUpperCase())}` : ""}
+
+C:\\BROCHIEFS&gt; Standing by for kickoff.exe<b class="sim-sb-cur">█</b></pre>
+    <p class="sim-sb-hint">The sim goes live at the first kickoff · tap to close</p></div>`;
+  m.addEventListener("click", () => m.remove());
+  document.body.appendChild(m);
 }
-new MutationObserver((muts) => {
-  for (const m of muts) for (const n of m.addedNodes) {
-    if (n.nodeType !== 1) continue;
-    const st = n.matches?.(".gc-stage") ? [n] : n.querySelectorAll?.(".gc-stage") || [];
-    for (const s of st) requestAnimationFrame(() => drawGoalposts(s));
+
+// SIM next to VS: the engine in a pop-up box, simulating every open game
+// on its own. Uses the board's current picks and finals.
+document.getElementById("sim-open")?.addEventListener("click", () => {
+  window.__wpCtx = window.__wpCtx || { rows: [], cloudPicks: lastGoodCloudPicks || {}, results: computeLiveResults(latestLive || {}) };
+  noteUse("sim-open");
+  // Nothing to simulate until a game is under way: a terminal on standby.
+  if (!GAMES.some((g) => isGameLocked(g))) return openSimStandby();
+  openEngineTerm();
+  const w = document.getElementById("eng-term");
+  if (w && !w.classList.contains("inline")) {
+    w.classList.add("pop");
+    let bd = document.getElementById("eng-bd");
+    if (!bd) { bd = document.createElement("div"); bd.id = "eng-bd"; bd.className = "eng-bd"; bd.addEventListener("click", () => stopEngineTerm()); document.body.appendChild(bd); }
+    bd.classList.add("on");
   }
-}).observe(document.documentElement, { childList: true, subtree: true });
-addEventListener("resize", () => document.querySelectorAll(".gc-stage").forEach(drawGoalposts));
+});
+
+// One-off announcement: shown once per phone, until it expires.
+(() => {
+  const A = { id: "fantasy-page-2026", until: Date.parse("2026-11-21T20:50:00Z"), kicker: "NEW FEATURE", title: "Fantasy page", body: "Track this week's fantasy matchups, gain insights, and make history.", cta: "Take me there", go: () => document.getElementById("nav-history-btn")?.click() };
+  const KEY = `brochiefs_announce_${A.id}`;
+  const show = () => {
+    try { if (window.NO_POPUPS || localStorage.getItem(KEY) || Date.now() > A.until || window.__liveView || window.__adminEntry) return; } catch { return; }
+    if (document.getElementById("theme-poll") || document.querySelector(".modal-overlay:not(.hidden)")) return setTimeout(show, 4000);
+    const m = document.createElement("div");
+    m.id = "announce"; m.className = "ann-ov"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", A.title);
+    m.innerHTML = `<div class="ann-card"><div class="ann-ic">${document.querySelector("#nav-history-btn svg")?.outerHTML || ""}</div><div class="ann-k">${A.kicker}</div><h2>${A.title}</h2><p>${A.body}</p><div class="ann-row"><button type="button" class="ann-b ann-later">Later</button><button type="button" class="ann-b ann-go">${A.cta}</button></div></div>`;
+    const close = () => { try { localStorage.setItem(KEY, String(Date.now())); } catch {} m.classList.add("out"); setTimeout(() => m.remove(), 250); };
+    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".ann-b")) { close(); if (e.target.closest(".ann-go")) { A.go(); try { noteUse("announce-go", A.id); } catch {} } } });
+    document.body.appendChild(m);
+    try { noteUse("announce-seen", A.id); } catch {}
+  };
+  setTimeout(show, 1500);
+})();

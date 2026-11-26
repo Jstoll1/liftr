@@ -19,6 +19,9 @@ on:
       - "attract-facts.js"
       - "scout.js"
       - "sport.js"
+      - "ask-ui.js"
+      - "fantasy-ui.js"
+      - "lightning-ui.js"
       - "icons/**"
 
 permissions:

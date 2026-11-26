@@ -1,0 +1,712 @@
+{
+  "about": "The Chief pressure test question set. Every Chief fix adds its regression test here (regression: true, note with date and what broke); every feature members will ask about adds a test (source: feature). checks: tools (a|b = either), must / mustNot (case-insensitive regex), noAsk (no which-league reply). The app syncs new ids to the worker on the next run.",
+  "tests": [
+    {
+      "source": "seed",
+      "id": "why-low",
+      "screen": "pickem",
+      "turns": [
+        "Why is my win % so low?"
+      ],
+      "checks": {
+        "tools": [
+          "edge"
+        ],
+        "mustNot": [
+          "ranked \\d",
+          "ceiling rank"
+        ],
+        "noAsk": true
+      },
+      "regression": true,
+      "note": "Nov 21: listed bare facts, called the ceiling rank a finish"
+    },
+    {
+      "source": "seed",
+      "id": "why-other",
+      "screen": "pickem",
+      "turns": [
+        "Why is the leader's path easier than mine?"
+      ],
+      "checks": {
+        "tools": [
+          "versus|edge"
+        ],
+        "noAsk": true
+      },
+      "regression": true,
+      "note": "Nov 21: asked which league on Scores"
+    },
+    {
+      "source": "seed",
+      "id": "why-fav",
+      "screen": "pickem",
+      "turns": [
+        "Why is the favourite the favourite this week?"
+      ],
+      "checks": {
+        "tools": [
+          "standings|edge"
+        ],
+        "must": [
+          "favou?rite",
+          "\\d+(\\.\\d+)?%"
+        ],
+        "noAsk": true
+      },
+      "regression": true,
+      "note": "Nov 21: named Robert (status out) the favourite; must read standings; run 4 (Nov 21): regressed, named Robert (2nd) as the favourite; edge now resolves 'favourite' itself; Nov 22: the check named last week's favourite (Connie); now any favourite with his chance"
+    },
+    {
+      "source": "seed",
+      "id": "pushback",
+      "screen": "pickem",
+      "turns": [
+        "Can I still win the week?",
+        "That's wrong. I have a path, explain it."
+      ],
+      "checks": {
+        "mustNot": [
+          "isn'?t the top",
+          "can'?t finish (first|1st)",
+          "You'?re right[^.]*\\. However"
+        ],
+        "noAsk": true
+      },
+      "regression": true,
+      "note": "Nov 21: agreed ('You're right') then said the opposite"
+    },
+    {
+      "source": "seed",
+      "id": "odds-cover",
+      "screen": "pickem",
+      "turns": [
+        "What are the odds the favourite in G8 covers?"
+      ],
+      "checks": {
+        "tools": [
+          "gameOdds"
+        ],
+        "must": [
+          "\\d+(\\.\\d+)?%|final"
+        ],
+        "mustNot": [
+          "not available",
+          "can.?t access"
+        ]
+      },
+      "regression": true,
+      "note": "Nov 21: gameOdds found no pick to read from; now plays the game model itself; Nov 22: G8 went final mid-run and the Chief rightly said so; a final game now passes"
+    },
+    {
+      "source": "seed",
+      "id": "odds-win",
+      "screen": "pickem",
+      "turns": [
+        "Will the G10 favourite win outright?"
+      ],
+      "checks": {
+        "tools": [
+          "gameOdds"
+        ],
+        "must": [
+          "%"
+        ],
+        "mustNot": [
+          "not available",
+          "can.?t access"
+        ]
+      },
+      "regression": true,
+      "note": "Nov 21: same as odds-cover"
+    },
+    {
+      "source": "seed",
+      "id": "whatif-out",
+      "screen": "pickem",
+      "turns": [
+        "If my lock misses am I out?"
+      ],
+      "checks": {
+        "tools": [
+          "chance|needs|scenarios"
+        ],
+        "mustNot": [
+          "^Yes, if your lock misses"
+        ]
+      },
+      "regression": true,
+      "note": "Nov 21: answered a what-if as if Jake were alive while he was already out"
+    },
+    {
+      "source": "seed",
+      "id": "needs",
+      "screen": "pickem",
+      "turns": [
+        "What do I need to win?"
+      ],
+      "checks": {
+        "must": [
+          "fantasy|pick.?em"
+        ]
+      },
+      "note": "scenarios answers this well too (Nov 21 run); Nov 22: could be either league, so the Chief asks which"
+    },
+    {
+      "source": "seed",
+      "id": "versus",
+      "screen": "pickem",
+      "turns": [
+        "Can I beat Curt this week?"
+      ],
+      "checks": {
+        "tools": [
+          "versus"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "route-scores",
+      "screen": "pickem",
+      "turns": [
+        "Who is leading?"
+      ],
+      "checks": {
+        "must": [
+          "fantasy|pick.?em"
+        ],
+        "mustNot": [
+          "all-play|luck number"
+        ]
+      },
+      "regression": true,
+      "note": "Nov 22: no league word and could be either league, so the Chief asks fantasy or pick'em (the page no longer decides)"
+    },
+    {
+      "source": "seed",
+      "id": "route-fantasy",
+      "screen": "fantasy",
+      "turns": [
+        "Who is leading?"
+      ],
+      "checks": {
+        "must": [
+          "fantasy|pick.?em"
+        ],
+        "mustNot": [
+          "all-play|luck number"
+        ]
+      },
+      "regression": true,
+      "note": "Nov 22: no league word and could be either league, so the Chief asks fantasy or pick'em (the page no longer decides)"
+    },
+    {
+      "source": "seed",
+      "id": "route-followup",
+      "screen": "pickem",
+      "turns": [
+        "How is Curt doing in the pick'em?",
+        "And Logan?"
+      ],
+      "checks": {
+        "noAsk": true
+      },
+      "regression": true,
+      "note": "Nov 21: a follow-up asked which league"
+    },
+    {
+      "source": "seed",
+      "id": "season",
+      "screen": "pickem",
+      "turns": [
+        "Who has won the most weeks this season?"
+      ],
+      "checks": {
+        "tools": [
+          "season"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "ever",
+      "screen": "pickem",
+      "turns": [
+        "Has anyone ever been knocked out before Saturday?"
+      ],
+      "checks": {
+        "tools": [
+          "eliminations|season"
+        ],
+        "mustNot": [
+          "fantasy"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "fantasy-path",
+      "screen": "fantasy",
+      "turns": [
+        "What is my playoff path?"
+      ],
+      "checks": {
+        "tools": [
+          "archive"
+        ],
+        "noAsk": true
+      }
+    },
+    {
+      "source": "seed",
+      "id": "fantasy-luck",
+      "screen": "fantasy",
+      "turns": [
+        "Who is the luckiest team and why?"
+      ],
+      "checks": {
+        "tools": [
+          "archive"
+        ],
+        "must": [
+          "Curt"
+        ]
+      },
+      "regression": true,
+      "note": "Nov 21 run 4: the archive named Jake (+1) luckiest over Curt (+1.6); it now gets a luckiest-first list"
+    },
+    {
+      "source": "seed",
+      "id": "fantasy-h2h",
+      "screen": "fantasy",
+      "turns": [
+        "What's my all-time record against Connie?"
+      ],
+      "checks": {
+        "tools": [
+          "archive"
+        ],
+        "mustNot": [
+          "don'?t have"
+        ],
+        "must": [
+          "\\d+-\\d+"
+        ]
+      },
+      "regression": true,
+      "note": "Nov 21: archive was asked about 'Conlan' and refused"
+    },
+    {
+      "source": "seed",
+      "id": "fantasy-bench",
+      "screen": "fantasy",
+      "turns": [
+        "Who left the most points on the bench?"
+      ],
+      "checks": {
+        "tools": [
+          "archive"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "hidden",
+      "screen": "pickem",
+      "turns": [
+        "Show me everyone's picks for the late games."
+      ],
+      "checks": {
+        "tools": [
+          "picks"
+        ],
+        "mustNot": [
+          "trouble accessing",
+          "try again"
+        ]
+      },
+      "regression": true,
+      "note": "Nov 21: picks tool got game_id and returned 'No game undefined'; Nov 21 run 2: still failed with gameId, now any spelling works and a tool error fails the test"
+    },
+    {
+      "source": "seed",
+      "id": "unknown-term",
+      "screen": "pickem",
+      "turns": [
+        "What's my zorp score this week?"
+      ],
+      "checks": {
+        "must": [
+          "UNKNOWN_TERM|don'?t know"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "snark",
+      "screen": "pickem",
+      "turns": [
+        "Rate Curt's card out of 10."
+      ],
+      "checks": {
+        "tools": [
+          "standings|needs|season|picks"
+        ],
+        "mustNot": [
+          "0 out of 10"
+        ]
+      },
+      "regression": true,
+      "note": "Nov 21: rated a card 0/10 before any game was final; Nov 21 run 2: said no games decided when one was final; run 3: still '0 out of 10'; standings now gives hits and decided per member"
+    },
+    {
+      "source": "seed",
+      "id": "beer",
+      "screen": "pickem",
+      "turns": [
+        "Who's buying the beer?"
+      ],
+      "checks": {
+        "tools": [
+          "standings|season"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "tiebreak",
+      "screen": "pickem",
+      "turns": [
+        "How does the tiebreaker work and where do I stand?"
+      ],
+      "checks": {
+        "tools": [
+          "tiebreaker"
+        ],
+        "mustNot": [
+          "0\\.0\\d+%"
+        ]
+      },
+      "regression": true,
+      "note": "Nov 21 run 3: said 0.061% for a 6.1% chance"
+    },
+    {
+      "source": "seed",
+      "id": "ended-now",
+      "screen": "pickem",
+      "turns": [
+        "If it ended right now, who wins?"
+      ],
+      "checks": {
+        "tools": [
+          "endedNow|standings"
+        ]
+      }
+    },
+    {
+      "source": "seed",
+      "id": "vague",
+      "screen": "pickem",
+      "turns": [
+        "Am I cooked?"
+      ],
+      "checks": {
+        "tools": [
+          "edge|needs|standings"
+        ],
+        "noAsk": true
+      },
+      "regression": true,
+      "note": "Nov 21 run 2: answered from eliminations only, no chance or swing"
+    },
+    {
+      "id": "why-out",
+      "screen": "pickem",
+      "turns": [
+        "Why am I out already when no games have started?"
+      ],
+      "checks": {
+        "tools": [
+          "edge|needs|scenarios|standings"
+        ],
+        "noAsk": true
+      },
+      "source": "fix",
+      "regression": true,
+      "note": "Nov 21 run 2: answered from eliminations only, no chance or swing; run 3: still chose eliminations (its description now points to needs)"
+    },
+    {
+      "id": "hey-chief-curt-here-what-kinda-o",
+      "screen": "pickem",
+      "turns": [
+        "Hey Chief - Curt here.  What kinda odds you got for a guy like me winning the ship this year (emphasis on a Boston accent)?",
+        "Quality"
+      ],
+      "checks": {
+        "tools": [
+          "archive"
+        ],
+        "mustNot": [
+          "clarify",
+          "what you mean"
+        ],
+        "must": [
+          "%"
+        ]
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "flagged Nov 21: 'Quality' after an answer got 'could you clarify'; a reaction now gets a short in-voice reply"
+    },
+    {
+      "id": "what-kinda-odds",
+      "screen": "pickem",
+      "turns": [
+        "What kinda odds?",
+        "Odds"
+      ],
+      "checks": {
+        "tools": [
+          "standings|needs|edge"
+        ],
+        "mustNot": [
+          "clarify",
+          "specify"
+        ],
+        "must": [
+          "%"
+        ]
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "flagged Nov 21: asked which odds twice; bare 'odds' now means the asker's chance this week"
+    },
+    {
+      "id": "highest-week-both",
+      "screen": "pickem",
+      "turns": [
+        "what is Robert's highest scoring week"
+      ],
+      "checks": {
+        "tools": [
+          "season"
+        ],
+        "must": [
+          "pick.?em"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 21 (Dewitt): answered fantasy only for a question with no league words; now one line per league"
+    },
+    {
+      "id": "fantasy-seeding-division",
+      "screen": "fantasy",
+      "turns": [
+        "why is Andrew the 2 seed at 5-5 ahead of Curt at 8-2"
+      ],
+      "checks": {
+        "must": [
+          "division"
+        ],
+        "mustNot": [
+          "mistake|error in the standings"
+        ],
+        "noAsk": true
+      },
+      "source": "feature",
+      "note": "Nov 21: fantasy seeding follows divisions (winners take seeds 1-2); the Chief should explain the division rule; Nov 22: archive ranked by record and said Andrew isn't the 2 seed; archive now gets the ESPN seeds with the division rule",
+      "regression": true
+    },
+    {
+      "id": "out-says-why",
+      "screen": "pickem",
+      "turns": [
+        "I am really out already ??"
+      ],
+      "checks": {
+        "tools": [
+          "needs|edge"
+        ],
+        "must": [
+          "because|mirror|match|every|ceiling|at most|can't|cannot|not out"
+        ],
+        "mustNot": [
+          "^Yes, you're out this week\\.[^.]*\\.$"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 21 (Jake): said out with only 'every game leaves you at 0%', no reason; needs now carries outBecause (who mirrors or beats every result left, or the point ceiling); Nov 25 run: Jake wasn't out (6.9%) and the answer said so correctly, so 'not out' now passes; the why is still required when he is out"
+    },
+    {
+      "id": "out-names-blocker",
+      "screen": "pickem",
+      "turns": [
+        "Is Jordan really out why all the sudden"
+      ],
+      "checks": {
+        "tools": [
+          "needs|edge"
+        ],
+        "must": [
+          "even if|at least|same (side|pick)|would still"
+        ],
+        "mustNot": [
+          "lifts someone else",
+          "−1 with|-1 with"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 21 (Jake): out reason was generic ('every path that lifts Jordan lifts someone else') and quoted '-1 with a maximum of 13'; now names who still beats his best case and on which games"
+    },
+    {
+      "id": "beat-member-tonight",
+      "screen": "fantasy",
+      "turns": [
+        "Hey Chief - what needs to happen for me to beat Robert?"
+      ],
+      "checks": {
+        "must": [
+          "fantasy|pick.?em"
+        ],
+        "mustNot": [
+          "all-play|luck number"
+        ]
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 22 (Curt): Saturday night with pick'em games open, 'what needs to happen to beat Robert' went to the fantasy archive (all-play, luck); no-league-word race questions now route to this week's pick'em while games are open; Nov 22: no league word and could be either league, so the Chief asks fantasy or pick'em (the page no longer decides)"
+    },
+    {
+      "id": "versus-root-for",
+      "screen": "pickem",
+      "turns": [
+        "What needs to happen for me to beat Robert in the pick'em?"
+      ],
+      "checks": {
+        "tools": [
+          "versus"
+        ],
+        "must": [
+          "root|need .* to (cover|miss|win|lose)|want"
+        ],
+        "mustNot": [
+          "his edge|your edge|\\bswing\\b"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 22 (Curt): versus answer listed 'swings by 7 points, his edge' for a shared Utah pick that was Robert's lock; versus now returns rootFor and why, and the Chief says what to root for"
+    },
+    {
+      "id": "cover-vs-outright",
+      "screen": "pickem",
+      "turns": [
+        "Utah has to lose straight up or just lose the cover for me to win?"
+      ],
+      "checks": {
+        "tools": [
+          "window|scenarios|stakes|none"
+        ],
+        "must": [
+          "(?:cover)|(?:not (on|in) (this week|the slate|this week's))",
+          "(?:(straight up|outright|loses))|(?:not (on|in) (this week|the slate|this week's))"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 22 (Curt): said a missed cover is enough, then 'your chance jumps to 67.4%' without saying why it isn't 100% or whether an outright loss differs; now answers each way the game can finish; Nov 25 run: Utah isn't on the week 13 slate, so an answer saying that now passes; the Chief went to G9's hidden picks instead"
+    },
+    {
+      "id": "last-game-finish",
+      "screen": "pickem",
+      "turns": [
+        "Utah has to lose straight up or just lose the cover for me to win?"
+      ],
+      "checks": {
+        "tools": [
+          "window|stakes|none"
+        ],
+        "must": [
+          "(?:^\\s*1\\.)|(?:not (on|in) (this week|the slate|this week's))",
+          "(?:need)|(?:not (on|in) (this week|the slate|this week's))"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 23 (Curt): window answer named only the push and cover cases (2nd, 4th) and skipped the outcomes where he wins; now one block per outcome with the projected finish as a numbered list and what he needs; Nov 25 run: Utah isn't on the week 13 slate, so an answer saying that now passes; the Chief went to G9's hidden picks instead"
+    },
+    {
+      "id": "cfp-stakes",
+      "screen": "pickem",
+      "turns": [
+        "I'm talking about the cfp - what teams playing really have something to play for, whether that's a cfp birth or conference title"
+      ],
+      "checks": {
+        "tools": [
+          "stakes"
+        ],
+        "must": [
+          "#\\d+|No\\. ?\\d+|[Rr]ank(ed)? \\d+",
+          "\\d+-\\d+"
+        ],
+        "mustNot": [
+          "keep an eye on"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 25 (Curt): no rankings tool, so the Chief named only Michigan vs Ohio State from general knowledge with no ranks or records; now stakes gives the CFP poll and every ranked game with records and conference records; Nov 25 run: answer was right but wrote 'Rank 1', so the rank check now accepts that form"
+    },
+    {
+      "id": "500-seasons",
+      "screen": "fantasy",
+      "turns": [
+        "Compootah, does any other fantasy team have more seasons with a .500 reagular season win pct than me?"
+      ],
+      "checks": {
+        "tools": [
+          "archive"
+        ],
+        "must": [
+          "10",
+          "Dewitt"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 25 (Skills): read '.500 seasons' as exactly 6-6 (5) and said nobody had more without checking anyone else; at or above .500 Skills has 10, tied with Dewitt (10), and Dewitt has 9 over .500 to Skills' 5"
+    },
+    {
+      "id": "misquote-check",
+      "screen": "fantasy",
+      "turns": [
+        "Compootah, does any other fantasy team have more seasons with a .500 reagular season win pct than me?",
+        "Compootah, you just told me I had 10 of seasons over .500"
+      ],
+      "checks": {
+        "must": [
+          "\\b5\\b"
+        ],
+        "mustNot": [
+          "^\\s*You're right"
+        ],
+        "noAsk": true
+      },
+      "source": "miss",
+      "regression": true,
+      "note": "Nov 25 (Skills): the Chief agreed it had said 10 seasons over .500 when it never had; 10 is .500 or better, over .500 is 5. Check earlier answers and correct the misquote"
+    }
+  ]
+}

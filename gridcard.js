@@ -1,5 +1,5 @@
-// Grid card: the starting grid as a shareable picture. Ten pixel IndyCars
-// in each manager's colour, name above, picks and tiebreaker below, and a
+// Grid card: the week's starting grid as a shareable picture, on the rodeo
+// art: each manager's name on a panel, picks and tiebreaker below, and a
 // green, yellow or red pixel flag for full, partial or nothing in.
 // Opens by tapping the four nav buttons left to right within a few seconds.
 // Exports a PNG through the share sheet, or shows it for a long press.
@@ -52,66 +52,11 @@
   // columns, measured from the art. Everything drawn is relative to a
   // panel's name-bar corner.
   const PANELS = [[265, 410], [263, 614], [259, 825], [256, 1047], [251, 1276], [697, 410], [705, 614], [715, 825], [724, 1047], [737, 1277]]; // measured from the art
-  const BG = "assets/fight-bg.webp";
-  const bgCache = {};
-  const loadBg = (src = BG) => new Promise((res) => { if (bgCache[src]) return res(bgCache[src]); const im = new Image(); im.onload = () => { bgCache[src] = im; res(im); }; im.onerror = () => res(null); im.src = src; });
-
-  // NFL league of up to three: the "$100 Triple Threat" art (1024x1536),
-  // three panels, first place on the centre plinth. Rectangles measured
-  // from the picture: the name bar, the "0 / 10" count, the row of cells,
-  // the flag box and the tiebreaker value, each [x, y, w, h].
-  const TRIPLE_BG = "assets/fight-bg-nfl.webp";
-  const TRIPLE = [
-    { bar: [405, 688, 283, 42], sel: [530, 748, 76, 30], cells: [350, 781, 254, 34], flag: [606, 772, 92, 92], tb: [503, 829, 100, 30], ink: "#ffd23f" },
-    { bar: [107, 1191, 290, 42], sel: [232, 1252, 76, 30], cells: [52, 1285, 252, 39], flag: [312, 1278, 88, 94], tb: [206, 1332, 100, 28], ink: "#5cc2ff" },
-    { bar: [705, 1192, 290, 42], sel: [828, 1252, 76, 30], cells: [648, 1285, 254, 39], flag: [906, 1278, 90, 94], tb: [802, 1332, 100, 28], ink: "#ff4a4a" },
-  ];
-  const triple = () => window.LEAGUE?.sport === "nfl" && MANAGERS.length >= 1 && MANAGERS.length <= 3;
-  function drawTriple(ctx, rows, total, banner) {
-    const at = (x, y) => { const p = ctx.getImageData(x, y, 1, 1).data; return `rgb(${p[0]},${p[1]},${p[2]})`; };
-    rows.slice(0, 3).forEach((r, i) => {
-      const P = TRIPLE[i];
-      const fc = r.state === "go" ? "#39ff88" : r.state === "warn" ? "#ffe45e" : "#e0102a";
-      const body = at(P.sel[0] - 26, P.sel[1] + 14);
-      // Name over "USER N".
-      const [bx, by, bw, bh] = P.bar;
-      ctx.fillStyle = at(bx + 10, by + bh / 2); ctx.fillRect(bx, by, bw, bh);
-      ctx.font = "900 26px Orbitron, system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillStyle = P.ink; ctx.fillText(shown(r.name).toUpperCase(), bx + bw / 2, by + bh / 2 + 1, bw - 16);
-      // Selections count.
-      const [sx, sy, sw, sh] = P.sel;
-      ctx.fillStyle = body; ctx.fillRect(sx, sy, sw, sh);
-      ctx.font = "800 22px Orbitron, system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = "#fff";
-      ctx.fillText(`${r.n} / ${total}`, sx + sw - 2, sy + sh / 2 + 1);
-      // One cell per game.
-      const [cx0, cy, cwAll, chh] = P.cells;
-      ctx.fillStyle = body; ctx.fillRect(cx0, cy, cwAll, chh);
-      const step = cwAll / Math.max(total, 1), cw = Math.max(3, step - 3);
-      for (let k = 0; k < total; k++) {
-        const cx = cx0 + 2 + k * step;
-        ctx.fillStyle = k < r.n ? fc : "#5a6478"; ctx.fillRect(cx, cy + 3, cw, chh - 6);
-        ctx.fillStyle = k < r.n ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.14)"; ctx.fillRect(cx, cy + 3, cw, 5);
-      }
-      // Tiebreaker in or not; the number stays private until kickoff.
-      const [tx, ty, tw, th] = P.tb;
-      ctx.fillStyle = body; ctx.fillRect(tx, ty, tw, th);
-      ctx.font = "900 19px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = r.tb ? "#39ff88" : "#ff4a4a";
-      ctx.fillText(r.tb ? "✓ SET" : "✗ NONE", tx + 4, ty + th / 2 + 1);
-      // Flag in the state colour.
-      const [fx, fy, fw, fh] = P.flag;
-      ctx.fillStyle = body; ctx.fillRect(fx, fy, fw, fh);
-      ctx.strokeStyle = fc; ctx.lineWidth = 6; ctx.strokeRect(fx + 6, fy + 6, fw - 12, fh - 12);
-      const s = Math.floor((fw - 28) / 9), ox = fx + Math.round((fw - 9 * s) / 2), oy = fy + Math.round((fh - 9 * s) / 2);
-      px_(ctx, SMALL_FLAG, ox, oy, s, { F: fc, P: "#ddd" });
-      if (r.state === "go") for (let yy = 0; yy < 6; yy++) for (let xx = 0; xx < 8; xx++) if ((xx + yy) % 2) { ctx.fillStyle = "#052010"; ctx.fillRect(ox + xx * s, oy + yy * s, s, s); }
-    });
-    // Week, readiness and the next lock on a plate over the floor medallion.
-    ctx.font = "700 17px 'Press Start 2P', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    const w = Math.min(980, ctx.measureText(banner).width + 36);
-    ctx.fillStyle = "rgba(0,0,0,.86)"; ctx.fillRect(512 - w / 2, 1470, w, 44);
-    ctx.strokeStyle = "#ffd23f"; ctx.lineWidth = 2; ctx.strokeRect(512 - w / 2, 1470, w, 44);
-    ctx.fillStyle = "#ffe45e"; ctx.fillText(banner, 512, 1493, 960);
-  }
+  // Rodeo art (week 14 on). The pool hall art before it was
+  // assets/grid-bg-pool-v1.webp, with bars at the old coordinates in git.
+  const BG = "assets/grid-bg-rodeo-v1.webp";
+  let bgImg = null;
+  const loadBg = () => new Promise((res) => { if (bgImg) return res(bgImg); const im = new Image(); im.onload = () => { bgImg = im; res(im); }; im.onerror = () => res(null); im.src = BG; });
   const SMALL_FLAG = ["FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "P.......", "P.......", "P......."];
 
   // The art's panels drift a few pixels off a true grid, so each one's
@@ -133,10 +78,10 @@
     return [x, y, `rgb(${p[0]},${p[1]},${p[2]})`];
   }
 
-  // The card as a canvas, for the share sheet here and the console's Grid
-  // tab. `picksIn` lets the console pass the admin's full view.
-  async function buildGridCard(picksIn = null) {
-    const picks = picksIn || (typeof fetchAllPicks === "function" ? await fetchAllPicks() : null) || lastGoodCloudPicks || {};
+  window.openGridCard = (...a) => openGridCard(...a);
+  async function openGridCard() {
+    try { window.noteUse?.("grid-card"); } catch {}
+    const picks = (typeof fetchAllPicks === "function" ? await fetchAllPicks() : null) || lastGoodCloudPicks || {};
     // Trophies: one per sealed week won this season, and who took last week.
     if (typeof loadWeekSummaries === "function" && !Object.keys(weekSummaries || {}).length) { try { await loadWeekSummaries(); } catch {} }
     const sealedWeeks = Object.entries(weekSummaries || {}).filter(([, v]) => v && v.complete).map(([k, v]) => ({ week: Number(k), winners: v.winners || [] })).sort((a, b) => a.week - b.week);
@@ -157,87 +102,76 @@
     }).sort((a, b) => (b.n + (b.tb ? 1 : 0)) - (a.n + (a.tb ? 1 : 0)) || a.name.localeCompare(b.name));
     const ready = rows.filter((r) => r.state === "go").length;
 
-    const isTriple = triple();
-    const bg = await loadBg(isTriple ? TRIPLE_BG : BG);
+    const bg = await loadBg();
     const W = 1024, H = 1536;
     const c = document.createElement("canvas"); c.width = W; c.height = H;
     const ctx = c.getContext("2d");
     if (bg) ctx.drawImage(bg, 0, 0, W, H); else { ctx.fillStyle = "#0a0014"; ctx.fillRect(0, 0, W, H); }
-    if (isTriple) {
-      // NFL games lock one by one, so the clock is to the next lock.
-      const next = GAMES.map((g) => new Date(g.kickoff).getTime()).filter((t) => t > Date.now()).sort((a, b) => a - b)[0];
-      const nm = next ? next - Date.now() : 0;
-      const nd = Math.floor(nm / 86400000), nh = Math.floor((nm % 86400000) / 3600000), nmin = Math.floor((nm % 3600000) / 60000);
-      const clock = !next ? "ALL LOCKED" : `NEXT LOCK ${nd ? `${nd}D ${nh}H` : nh ? `${nh}H ${nmin}M` : `${nmin}M`}`;
-      drawTriple(ctx, rows, total, `${WEEK_LABEL.toUpperCase()} · ${ready}/${rows.length} READY · ${clock}`);
-    } else {
-    // Name-bar top-left corners on the fighting-game art (1024x1536), left
-    // column then right, measured from the picture.
-    const BARS = [[244, 460, 241], [245, 664, 239], [247, 876, 237], [248, 1080, 238], [247, 1295, 238], [763, 459, 238], [765, 663, 236], [771, 877, 231], [769, 1080, 234], [773, 1295, 231]];
-    const BODY = "rgb(17,21,38)";
-    // "ROUND 1" plate becomes the week, the ready count rides under it.
-    ctx.fillStyle = "rgb(2,22,60)"; ctx.fillRect(392, 302, 248, 36);
+    // Name-bar top-left corners and widths on the $100 race-grid art
+    // (1024x1536), left column then right. Every other part of a panel sits
+    // at a fixed offset from its name bar (measured from panel 1).
+    // Measured on the rodeo art: the red USER bars, users 1 to 5 down the
+    // left, 6 to 10 down the right (each bar's top-left corner and width).
+    const BARS = [[270, 267, 225], [270, 485, 225], [270, 709, 225], [270, 933, 225], [270, 1186, 225], [782, 267, 228], [782, 485, 228], [782, 709, 228], [782, 933, 228], [782, 1186, 228]];
+    const O = { nameH: 42, cntY: 66, cntR: 215, cellX: 27, cellY: 86, cellW: 131, cellH: 26, tbX: 123, tbY: 140, flagX: 168, flagY: 88, flagW: 60, flagH: 63 };
+    // The week and the ready count ride in one plate under the title.
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.font = "900 28px Orbitron, system-ui, sans-serif"; ctx.fillStyle = "#e8eefc";
-    ctx.fillText(WEEK_LABEL.toUpperCase(), 516, 321);
-    const sub = `${left} · ${ready}/${rows.length} READY TO FIGHT`;
+    const sub = `${WEEK_LABEL.toUpperCase()} · ${left} · ${ready}/${rows.length} READY`;
     ctx.font = "700 15px 'Press Start 2P', monospace";
-    const sw = ctx.measureText(sub).width + 28;
-    ctx.fillStyle = "rgba(0,0,0,.85)"; ctx.fillRect(512 - sw / 2, 418, sw, 30);
-    ctx.fillStyle = "#ffe45e"; ctx.fillText(sub, 512, 434);
+    const sw = ctx.measureText(sub).width + 30;
+    // In the gap between the $100 title and the first row of panels.
+    const PY = 212;
+    ctx.fillStyle = "rgba(14,8,34,.9)"; ctx.fillRect(512 - sw / 2, PY, sw, 32);
+    ctx.strokeStyle = "#ffd21f"; ctx.lineWidth = 3; ctx.strokeRect(512 - sw / 2, PY, sw, 32);
+    ctx.fillStyle = "#ffe45e"; ctx.fillText(sub, 512, PY + 17);
 
+    const BODY = "rgb(18,20,34)";
     rows.forEach((r, i) => {
       const [bx, by, bw] = BARS[i];
-      const fx = bx + bw - 62; // flag box left edge, tucked inside this panel
-      const p = ctx.getImageData(bx + 6, by + 6, 1, 1).data;
+      // The right column's panels are narrower: every across-offset scales
+      // with the panel's own bar width (measured on panel 1, 236 wide).
+      // The right column's cards start their cells further left.
+      const o = i < 5 ? O : { ...O, cntR: 218, cellX: 11, cellW: 144 };
+      const p = ctx.getImageData(bx + bw - 30, by + 30, 1, 1).data; // right of the art's USER text
       const colour = `rgb(${p[0]},${p[1]},${p[2]})`;
       const dark = (p[0] * 0.299 + p[1] * 0.587 + p[2] * 0.114) > 170;
       const fc = r.state === "go" ? "#39ff88" : r.state === "warn" ? "#ffe45e" : "#e0102a";
       // Name over the "USER N" bar.
-      ctx.fillStyle = colour; ctx.fillRect(bx + 6, by + 4, 226, 30);
-      ctx.font = "900 22px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.fillStyle = colour; ctx.fillRect(bx + 8, by + 3, bw - 22, o.nameH - 4);
+      ctx.font = "italic 900 22px \"Chakra Petch\", system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
       ctx.fillStyle = dark ? "#111" : "#fff";
-      ctx.fillText(shown(r.name).toUpperCase(), bx + 16, by + 20);
-      // One trophy on the card: last week's winner only, not a season tally.
-      if (r.last) { ctx.font = "18px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif"; ctx.textAlign = "right"; ctx.fillText("🏆", bx + bw - 10, by + 20); }
+      ctx.fillText(shown(r.name).toUpperCase(), bx + 18, by + o.nameH / 2 + 1);
       if (r.last) {
-        const tag = lastWeek ? `WEEK ${lastWeek.week} CHAMP` : "LAST WEEK'S CHAMP";
-        ctx.font = "900 11px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left";
+        const tag = lastWeek ? `WEEK ${lastWeek.week} CHAMP 🏆` : "LAST WEEK'S CHAMP 🏆";
+        ctx.font = "900 11px \"Chakra Petch\", system-ui, sans-serif"; ctx.textAlign = "left";
         const tw = ctx.measureText(tag).width + 12;
-        ctx.fillStyle = "#ffe45e"; ctx.fillRect(bx + 6, by - 14, tw, 16);
-        ctx.fillStyle = "#2a1e00"; ctx.fillText(tag, bx + 12, by - 6);
+        ctx.fillStyle = "#ffe45e"; ctx.fillRect(bx + 8, by - 16, tw, 16);
+        ctx.fillStyle = "#2a1e00"; ctx.fillText(tag, bx + 14, by - 8);
       }
       // Selections count.
-      ctx.fillStyle = BODY; ctx.fillRect(bx + bw - 90, by + 46, 80, 26);
-      ctx.font = "700 20px Orbitron, system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = "#fff";
-      ctx.fillText(`${r.n} / ${total}`, bx + bw - 14, by + 59);
+      ctx.fillStyle = BODY; ctx.fillRect(bx + o.cntR - 62, by + o.cntY - 14, 68, 28);
+      ctx.font = "700 20px \"Chakra Petch\", system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = "#fff";
+      ctx.fillText(`${r.n} / ${total}`, bx + o.cntR, by + o.cntY);
       // Ten cells.
-      ctx.fillStyle = BODY; ctx.fillRect(bx + 10, by + 73, fx - bx - 16, 32);
-      const step = (fx - 10 - (bx + 13)) / total, cw = step - 2.4;
+      ctx.fillStyle = BODY; ctx.fillRect(bx + o.cellX - 4, by + o.cellY - 8, o.cellW + 8, o.cellH + 12);
+      const step = o.cellW / total, cw = step - 2.4;
       for (let k = 0; k < total; k++) {
-        const cx = bx + 13 + k * step;
-        ctx.fillStyle = k < r.n ? fc : "#4a5468"; ctx.fillRect(cx, by + 76, cw, 26);
-        ctx.fillStyle = k < r.n ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.12)"; ctx.fillRect(cx, by + 76, cw, 5);
+        const cx = bx + o.cellX + k * step;
+        ctx.fillStyle = k < r.n ? fc : "#4a5468"; ctx.fillRect(cx, by + o.cellY, cw, o.cellH);
+        ctx.fillStyle = k < r.n ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.12)"; ctx.fillRect(cx, by + o.cellY, cw, 5);
       }
       // Tiebreaker in or not; the number stays private until kickoff.
-      ctx.fillStyle = BODY; ctx.fillRect(bx + 112, by + 112, 60, 26);
-      ctx.font = "900 20px Orbitron, system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = r.tb ? "#39ff88" : "#e0102a";
-      ctx.fillText(r.tb ? "✓" : "✗", bx + 160, by + 125);
+      ctx.fillStyle = BODY; ctx.fillRect(bx + o.tbX - 4, by + o.tbY - 13, o.flagX - o.tbX - 2, 26);
+      ctx.font = "900 17px \"Chakra Petch\", system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = r.tb ? "#39ff88" : "#e0102a";
+      ctx.fillText(r.tb ? "✓ IN" : "✗", bx + o.tbX, by + o.tbY);
       // Flag box in the state colour.
-      ctx.fillStyle = BODY; ctx.fillRect(fx - 6, by + 70, 72, 76);
-      ctx.strokeStyle = fc; ctx.lineWidth = 5; ctx.strokeRect(fx, by + 77, 58, 62);
-      px_(ctx, SMALL_FLAG, fx + 10, by + 86, 5, { F: fc, P: "#ddd" });
-      if (r.state === "go") for (let yy = 0; yy < 6; yy++) for (let xx = 0; xx < 8; xx++) if ((xx + yy) % 2) { ctx.fillStyle = "#052010"; ctx.fillRect(fx + 10 + xx * 5, by + 86 + yy * 5, 5, 5); }
+      const fx = bx + o.flagX, fy = by + o.flagY;
+      ctx.fillStyle = BODY; ctx.fillRect(fx - 3, fy - 3, o.flagW + 6, o.flagH + 6);
+      ctx.strokeStyle = fc; ctx.lineWidth = 5; ctx.strokeRect(fx + 2, fy + 2, o.flagW - 4, o.flagH - 4);
+      px_(ctx, SMALL_FLAG, fx + 12, fy + 18, 5, { F: fc, P: "#ddd" });
+      if (r.state === "go") for (let yy = 0; yy < 6; yy++) for (let xx = 0; xx < 8; xx++) if ((xx + yy) % 2) { ctx.fillStyle = "#052010"; ctx.fillRect(fx + 12 + xx * 5, fy + 18 + yy * 5, 5, 5); }
     });
 
-    }
-
-    return c;
-  }
-
-  async function openGridCard() {
-    try { window.noteUse?.("grid-card"); } catch {}
-    const c = await buildGridCard();
     // Modal with the picture and share/save.
     let modal = document.getElementById("gridcard-modal");
     if (!modal) {
@@ -258,5 +192,107 @@
     if (typeof track === "function") track("grid-card");
   }
   window.openGridCard = openGridCard;
-  window.buildGridCard = buildGridCard;
+})();
+
+// My picks: tap Picks in the bottom bar three times in a row (within a
+// second and a half) for a clean picture of your own picks this week:
+// each game in kickoff order, your side and terms, what it pays, your lock
+// and your tiebreaker. Only your own card; nobody else's picks.
+(() => {
+  let taps = [];
+  document.getElementById("nav-picks-btn")?.addEventListener("click", () => {
+    const now = Date.now();
+    taps = taps.filter((t) => now - t < 1500); taps.push(now);
+    if (taps.length >= 3) { taps = []; openMyPicks(); }
+  });
+  const loadImg = (src) => new Promise((res) => { const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => res(im); im.onerror = () => res(null); im.src = src; setTimeout(() => res(null), 4000); });
+  async function openMyPicks() {
+    const me = typeof currentManager === "string" ? currentManager : null;
+    if (!me) return;
+    try { window.noteUse?.("my-picks-card"); } catch {}
+    const st = getManagerState(me) || { picks: {} };
+    const games = (typeof gamesByKickoff === "function" ? gamesByKickoff() : GAMES.slice());
+    const W = 1080, PAD = 56, ROW = 132, TOP = 250, FOOT = 170, H = TOP + games.length * ROW + FOOT;
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const ctx = c.getContext("2d");
+    const lr = typeof lockRule === "function" ? lockRule() : null;
+    // Logos: drawn when ESPN allows it on a canvas, a coloured initial if not.
+    const ids = [...new Set(games.flatMap((g) => { const p = st.picks?.[g.id]; return p?.team ? [p.team === g.home ? g.homeId : g.awayId] : []; }))];
+    const logos = Object.fromEntries(await Promise.all(ids.map(async (id) => [id, await loadImg(logoUrl(id))])));
+    // Background and header.
+    const bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, "#160428"); bg.addColorStop(1, "#07020f");
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#ff2079"; ctx.fillRect(0, 0, W, 8);
+    ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+    ctx.font = "26px 'Press Start 2P', monospace"; ctx.fillStyle = "#05d9e8";
+    ctx.fillText(`${WEEK_LABEL.toUpperCase()} PICKS`, PAD, 104);
+    ctx.font = "800 64px \"Chakra Petch\", system-ui, sans-serif"; ctx.fillStyle = "#fff";
+    ctx.fillText(shown(me).toUpperCase(), PAD, 184);
+    const n = games.filter((g) => st.picks?.[g.id]?.team).length;
+    ctx.textAlign = "right"; ctx.font = "700 30px \"Chakra Petch\", system-ui, sans-serif"; ctx.fillStyle = n === games.length ? "#39ff88" : "#ffe45e";
+    ctx.fillText(`${n}/${games.length} IN`, W - PAD, 184);
+    ctx.fillStyle = "rgba(255,255,255,.12)"; ctx.fillRect(PAD, TOP - 26, W - PAD * 2, 2);
+    // One row per game.
+    games.forEach((g, i) => {
+      const y = TOP + i * ROW, p = st.picks?.[g.id];
+      if (i % 2) { ctx.fillStyle = "rgba(255,255,255,.035)"; ctx.fillRect(PAD - 16, y - 8, W - PAD * 2 + 32, ROW - 12); }
+      const ko = new Date(g.kickoff);
+      ctx.textAlign = "left"; ctx.font = "16px 'Press Start 2P', monospace"; ctx.fillStyle = "#9a8bb8";
+      ctx.fillText(`G${g.id} · ${ko.toLocaleDateString([], { weekday: "short" }).toUpperCase()} ${ko.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`, PAD, y + 26);
+      ctx.font = "500 26px system-ui, sans-serif"; ctx.fillStyle = "#b4a7cd";
+      ctx.fillText(`${g.awayShort} @ ${g.homeShort}`, PAD, y + 66);
+      const rx = W - PAD;
+      if (!p?.team) {
+        ctx.textAlign = "right"; ctx.font = "800 36px \"Chakra Petch\", system-ui, sans-serif"; ctx.fillStyle = "#ff4f6d";
+        ctx.fillText("NO PICK", rx, y + 62);
+        return;
+      }
+      const home = p.team === g.home, id = home ? g.homeId : g.awayId, short = home ? g.homeShort : g.awayShort;
+      const terms = p.mode === "SU" ? "TO WIN" : `${p.team === g.favorite ? "-" : "+"}${g.spread}`;
+      const pts = pointValue(g, p.team, p.mode === "SU" ? "SU" : "ATS") + (p.lock && p.mode === "ATS" && lr ? lr.hit : 0);
+      // Right block: logo, side and terms, then what it pays under it.
+      ctx.textAlign = "right"; ctx.font = "800 40px \"Chakra Petch\", system-ui, sans-serif"; ctx.fillStyle = "#fff";
+      const main = `${short} ${terms}`; ctx.fillText(main, rx, y + 58);
+      const mw = ctx.measureText(main).width;
+      const lx = rx - mw - 64;
+      if (logos[id]) ctx.drawImage(logos[id], lx, y + 16, 52, 52);
+      else { ctx.fillStyle = "#c13cff"; ctx.beginPath(); ctx.arc(lx + 26, y + 42, 24, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "800 24px \"Chakra Petch\", system-ui, sans-serif"; ctx.fillText(short[0], lx + 26, y + 51); ctx.textAlign = "right"; }
+      ctx.font = "700 22px system-ui, sans-serif"; ctx.fillStyle = "#05d9e8";
+      ctx.fillText(`${p.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${pts} PT${pts === 1 ? "" : "S"}`, rx, y + 96);
+      if (p.lock && p.mode === "ATS" && lr) { const lw = ctx.measureText(`${p.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${pts} PT${pts === 1 ? "" : "S"}`).width; ctx.fillStyle = "#ffe45e"; ctx.fillText("🔒 LOCK  ", rx - lw, y + 96); }
+    });
+    // Footer: the tiebreaker and when it was made.
+    const fy = TOP + games.length * ROW + 10;
+    ctx.fillStyle = "rgba(255,255,255,.12)"; ctx.fillRect(PAD, fy, W - PAD * 2, 2);
+    const tbg = typeof tiebreakerGameOf === "function" ? tiebreakerGameOf() : null;
+    ctx.textAlign = "left"; ctx.font = "16px 'Press Start 2P', monospace"; ctx.fillStyle = "#9a8bb8";
+    ctx.fillText(`TIEBREAKER${tbg ? ` · ${tbg.awayShort} @ ${tbg.homeShort} TOTAL` : ""}`, PAD, fy + 56);
+    const tb = String(st.tiebreaker ?? "").trim();
+    ctx.textAlign = "right"; ctx.font = "800 40px \"Chakra Petch\", system-ui, sans-serif"; ctx.fillStyle = tb ? "#fff" : "#ff4f6d";
+    ctx.fillText(tb || "NOT SET", W - PAD, fy + 62);
+    ctx.textAlign = "center"; ctx.font = "14px 'Press Start 2P', monospace"; ctx.fillStyle = "rgba(255,255,255,.35)";
+    ctx.fillText(`BROCHIEFS · ${new Date().toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).toUpperCase()}`, W / 2, H - 40);
+    showExport(c, `my-picks-${String(WEEK_LABEL).toLowerCase().replace(/\s+/g, "-")}.png`, `My picks · ${WEEK_LABEL}`);
+    if (typeof track === "function") track("my-picks-card");
+  }
+  // The same picture pop up as the grid check: share, save, or long-press.
+  function showExport(c, file, text) {
+    let modal = document.getElementById("mypicks-modal");
+    if (!modal) {
+      modal = document.createElement("div"); modal.id = "mypicks-modal"; modal.className = "gridcard-modal";
+      modal.innerHTML = `<div class="gridcard-box"><img alt="My picks"><div class="gridcard-row"><button type="button" class="admin-btn primary" data-act="share">Share</button><a class="admin-btn" data-act="save">Save</a><button type="button" class="admin-btn" data-act="close" aria-label="Close">Close</button></div><p class="gridcard-hint">Or press and hold the picture to save it.</p></div>`;
+      document.body.appendChild(modal);
+      modal.addEventListener("click", (e) => { if (e.target === modal || e.target.dataset.act === "close") modal.classList.add("hidden"); });
+    }
+    let url = ""; try { url = c.toDataURL("image/png"); } catch {}
+    modal.querySelector("img").src = url;
+    const save = modal.querySelector('[data-act="save"]'); save.href = url; save.download = file;
+    modal.classList.remove("hidden");
+    modal.querySelector('[data-act="share"]').onclick = () => c.toBlob(async (blob) => {
+      const f = new File([blob], file, { type: "image/png" });
+      if (navigator.canShare?.({ files: [f] })) { try { await navigator.share({ files: [f], text }); } catch {} }
+      else modal.querySelector(".gridcard-hint").textContent = "Sharing is not available here. Save or press and hold the picture.";
+    });
+  }
+  window.openMyPicks = openMyPicks;
 })();
