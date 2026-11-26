@@ -1519,13 +1519,13 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
   function forget() { device = ""; key = ""; store.del(DEVICE_STORE); store.del(KEY_STORE); store.del(SNAP_STORE); session.del(KEY_STORE); }
 
   // room: the Worker's answer. names, seen, games: the once-a-minute extras.
-  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: ["3h", "24h"].includes(store.get("brochiefs_live_range")) ? store.get("brochiefs_live_range") : "7d", wk: null, sec: "sec-now", recPeriod: store.get("brochiefs_live_recp") === "week" ? "week" : "day", page: ["home", "issues", "bi", "stats"].includes(store.get("brochiefs_live_page")) ? store.get("brochiefs_live_page") : "home", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
+  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: ["3h", "24h"].includes(store.get("brochiefs_live_range")) ? store.get("brochiefs_live_range") : "7d", wk: null, sec: "sec-now", recPeriod: store.get("brochiefs_live_recp") === "week" ? "week" : "day", page: ["home", "issues", "bi", "stats"].includes(store.get(`brochiefs_live_page${SFX}`)) ? store.get(`brochiefs_live_page${SFX}`) : "home", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
   // What's new since this device last looked: a baseline saved when the
   // page is put away, compared with what arrives. ✓ Seen resets it now.
   const SEEN_KEY = `brochiefs_live_seen_${LEAGUE}`;
   // "Last in" as it stood on the previous visit to Live: a change since then
   // (someone new, or the same person again later) gets a colour pop.
-  const LASTIN_KEY = "brochiefs_live_lastin";
+  const LASTIN_KEY = `brochiefs_live_lastin${SFX}`;
   const lastInBase = (() => { try { return JSON.parse(store.get(LASTIN_KEY) || "null"); } catch { return null; } })();
   let seenBase = (() => { try { return JSON.parse(store.get(SEEN_KEY) || "null"); } catch { return null; } })() || { at: Date.now(), votes: null, notes: null };
   const snapSeen = () => ({ at: Date.now(), votes: st.poll?.votes || seenBase.votes || {}, notes: st.poll?.notes || seenBase.notes || {} });
@@ -1850,7 +1850,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       const msg = `Brochiefs Live render error (${LEAGUE}, page ${st.page}, range ${st.range}): ${err?.stack || err}`;
       app.innerHTML = `<div class="gate"><p>Live hit an error drawing this page.</p><pre style="white-space:pre-wrap;font-size:12px;max-width:100%;overflow:auto;color:var(--meta)">${String(msg).replace(/[&<]/g, (c) => (c === "&" ? "&amp;" : "&lt;"))}</pre><p><button type="button" class="rec-cp" id="err-copy">Copy error</button> <button type="button" class="rec-cp" id="err-home">Back to Overview</button></p></div>`;
       document.getElementById("err-copy")?.addEventListener("click", (e) => { navigator.clipboard?.writeText(msg).then(() => { e.target.textContent = "✓ Copied"; }).catch(() => {}); });
-      document.getElementById("err-home")?.addEventListener("click", () => { st.page = "home"; st.vsort = null; st.vf = null; store.set("brochiefs_live_page", "home"); st.sig = ""; render(); });
+      document.getElementById("err-home")?.addEventListener("click", () => { st.page = "home"; st.vsort = null; st.vf = null; store.set(`brochiefs_live_page${SFX}`, "home"); st.sig = ""; render(); });
     }
   }
   function renderPage() {
@@ -2464,8 +2464,8 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     const fric24 = actions.filter((e) => FRICTION.test(e.k)).length;
     // Tab badges count what is new since that page was last opened, so
     // looking clears them (the cards on each page still show everything open).
-    let pseen = {}; try { pseen = JSON.parse(store.get("brochiefs_live_pseen") || "{}"); } catch {}
-    if (st.page === "issues" || st.page === "bi") { pseen[st.page] = Date.now(); store.set("brochiefs_live_pseen", JSON.stringify(pseen)); }
+    let pseen = {}; try { pseen = JSON.parse(store.get(`brochiefs_live_pseen${SFX}`) || "{}"); } catch {}
+    if (st.page === "issues" || st.page === "bi") { pseen[st.page] = Date.now(); store.set(`brochiefs_live_pseen${SFX}`, JSON.stringify(pseen)); }
     const since = (pg) => pseen[pg] || 0;
     const issuesNew = (st.afr || []).filter((r) => !afrFix(r) && r.at > since("issues")).length + opsDay.filter((r) => (OPS_KIND[r.k] || [])[1] === "err" && r.at > since("issues")).length;
     const biNew = biOthers.filter((r) => r.at > since("bi")).length;
@@ -3105,14 +3105,14 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       const rep = { at: Date.now(), passed: e.data.passed, total: e.data.total, text: e.data.text, brief: e.data.brief };
       // A failing-only rerun shows its result but keeps the last full report (and score).
       if (st.ctOnly) { st.ctOnlyRep = rep; st.ctOnly = null; st.ctRun.only = true; st.sig = ""; render(); return; }
-      store.set("brochiefs_live_ct_last", JSON.stringify(rep)); st.ctLast = rep;
+      store.set(`brochiefs_live_ct_last${SFX}`, JSON.stringify(rep)); st.ctLast = rep;
       fetch(`${WORKER}/chief-test?${auth()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "report", ...rep }) }).catch(() => {}); st.ct = { ...(st.ct || {}), runs: e.data.runs || st.ct?.runs || [] }; try { const x = await fetch(`${WORKER}/chief-test?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) st.ct = await x.json(); } catch {} }
     st.sig = ""; render();
   });
   document.addEventListener("change", (e) => { if (e.target?.dataset?.ctall) { st.ctAll = e.target.checked; } });
   async function loadChats() {
     try { const x = await fetch(`${WORKER}/week-chat?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.chats = Array.isArray(j.chats) ? j.chats : []; st.sig = ""; render(); } } catch {}
-    if (!st.ctLast) { try { st.ctLast = JSON.parse(store.get("brochiefs_live_ct_last") || "null"); } catch {} }
+    if (!st.ctLast) { try { st.ctLast = JSON.parse(store.get(`brochiefs_live_ct_last${SFX}`) || "null"); } catch {} }
     try { const x = await fetch(`${WORKER}/chief-test?${auth()}&report=1&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { st.ct = await x.json(); if (st.ct.report && (!st.ctLast || st.ct.report.at > st.ctLast.at)) st.ctLast = st.ct.report; st.sig = ""; render(); } } catch {}
     // No automatic runs: each run calls the Chief's model once per question,
     // so runs start only from the Run button (after a Chief change).
@@ -3706,14 +3706,14 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     // into the visits themselves; the tab jumps there.
     if (p === "activity") {
       const wasHome = st.page === "home";
-      st.page = "home"; st.menu = false; store.set("brochiefs_live_page", "home"); if (!wasHome) { st.sig = ""; render(); }
+      st.page = "home"; st.menu = false; store.set(`brochiefs_live_page${SFX}`, "home"); if (!wasHome) { st.sig = ""; render(); }
       const el = document.getElementById("sec-visits");
       if (el) scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + scrollY - (innerWidth >= 1024 ? 80 : 70)), behavior: wasHome ? "smooth" : "auto" });
       st.secLock = Date.now() + 900; document.querySelectorAll(".tabs button[data-page]").forEach((b) => b.classList.toggle("on", b.dataset.page === "activity"));
       return;
     }
     if (!PAGES.some(([id]) => id === p)) p = "home";
-    st.page = p; st.menu = false; store.set("brochiefs_live_page", p); st.sig = ""; render(); scrollTo({ top: 0 });
+    st.page = p; st.menu = false; store.set(`brochiefs_live_page${SFX}`, p); st.sig = ""; render(); scrollTo({ top: 0 });
   }
   function closeStudio(sec) {
     st.view = "live"; clearTimeout(studioLoad.t);
