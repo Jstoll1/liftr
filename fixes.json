@@ -343,6 +343,76 @@
       "at": 1795228600000,
       "commit": "15e579c",
       "note": "Sending a finished week's finals retries once quietly after a dropped call; logged only if both tries miss on screen; never blocks the screen"
+    },
+    {
+      "k": "quick-exit",
+      "match": "grid-modal",
+      "at": 1795635687000,
+      "commit": "c88f056",
+      "note": "The grid check no longer opens by itself on the college site; it only opens when asked"
+    },
+    {
+      "k": "quick-exit",
+      "match": "insights-modal",
+      "at": 1795662475000,
+      "commit": "d657c71",
+      "note": "A game sheet that had already drawn its score or line before a quick close is a glance, not friction; only closes while still loading count"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".fx-pc-n",
+      "at": 1795662475000,
+      "commit": "d657c71",
+      "note": "The news line on a player card now expands on tap to show the full note (More ▾)"
+    },
+    {
+      "k": "rage",
+      "match": ".fx-pc-n",
+      "at": 1795662475000,
+      "commit": "d657c71",
+      "note": "The news line on a player card now expands on tap to show the full note (More ▾)"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".fx-kb",
+      "at": 1795662475000,
+      "commit": "d657c71",
+      "note": "Most-points-left players now open their player card on tap"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".fx-mhp",
+      "at": 1795295852000,
+      "commit": "0135c52",
+      "note": "The H2H header was replaced by the matchup page's head-to-head section"
+    },
+    {
+      "k": "rage",
+      "match": ".fx-mhp",
+      "at": 1795295852000,
+      "commit": "0135c52",
+      "note": "The H2H header was replaced by the matchup page's head-to-head section"
+    },
+    {
+      "k": "rage",
+      "match": ".fx-race",
+      "at": 1795310366000,
+      "commit": "e313fc3",
+      "note": "Playoff race block rebuilt as the tappable Playoff Races list"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".fx-chip",
+      "at": 1795216658000,
+      "commit": "7a94041",
+      "note": "Head-to-head chips became tappable (opens the meetings table)"
+    },
+    {
+      "k": "rage",
+      "match": ".hot",
+      "at": 1795293048000,
+      "commit": "3da4764",
+      "note": "The hot-streak line was rebuilt into the race card's facts"
     }
   ]
 }

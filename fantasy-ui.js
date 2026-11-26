@@ -104,7 +104,7 @@
   // Biggest swing left: each side's starter with the most projected
   // points still to come (any slot); the net says which way it leans.
   const keyBattle = (L, Rt) => { const top = (t) => (t?.starters || []).filter((p) => remaining(p) > 0).sort((x, y) => remaining(y) - remaining(x))[0]; const p = top(L), q = top(Rt); if (!p && !q) return ""; const rp = p ? remaining(p) : 0, rq = q ? remaining(q) : 0, net = rp - rq;
-    const one = (x, k, r) => x ? `<span class="fx-kb-p ${k}">${k === "b" ? `<em>+${pts(r)}</em>` : nflLogo(x.nfl)}<b>${esc(short(x.name))}</b>${k === "b" ? nflLogo(x.nfl) : `<em>+${pts(r)}</em>`}</span>` : `<span class="fx-kb-p ${k}"><small>all played</small></span>`;
+    const one = (x, k, r) => x ? `<span class="fx-kb-p ${k}" role="button" tabindex="0" data-fxkbi="${k === "a" ? "l" : "r"}:${((k === "a" ? L : Rt)?.starters || []).indexOf(x)}">${k === "b" ? `<em>+${pts(r)}</em>` : nflLogo(x.nfl)}<b>${esc(short(x.name))}</b>${k === "b" ? nflLogo(x.nfl) : `<em>+${pts(r)}</em>`}</span>` : `<span class="fx-kb-p ${k}"><small>all played</small></span>`;
     return `<div class="fx-kb"><span class="fx-kb-k">MOST POINTS LEFT<em>${Math.abs(net) < 0.5 ? "even" : `edge ${esc((net > 0 ? L : Rt)?.owner || "")} +${pts(Math.abs(net))}`}</em></span><div class="fx-kb-r">${one(p, "a", rp)}<i>VS</i>${one(q, "b", rq)}</div></div>`; };
   const mirror = (L, Rt, over) => { const a = L?.starters || [], b = Rt?.starters || [], n = Math.max(a.length, b.length); let rows = ""; const lw = (Number(L?.points) || 0) >= (Number(Rt?.points) || 0); let star = -1, sg = 0; if (over) for (let i = 0; i < n; i++) { const d = ((a[i]?.pts || 0) - (b[i]?.pts || 0)) * (lw ? 1 : -1); if (d > sg) { sg = d; star = i; } } for (let i = 0; i < n; i++) { const p = a[i], q = b[i], done = (x) => x && stOf(x) !== "pre"; const wa = done(p) && done(q) && (p.pts || 0) > (q.pts || 0), wb = done(p) && done(q) && (q.pts || 0) > (p.pts || 0); rows += `<div class="fx-mr" data-fxpi="${i}" data-fxl="${esc(L?.owner || "")}" data-fxr="${esc(Rt?.owner || "")}">${cell(p, "l", wa, star === i && lw)}<i class="fx-ms">${esc((p || q)?.slot || "")}</i>${cell(q, "r", wb, star === i && !lw)}</div>`; } return `<div class="fx-mir">${rows}</div>`; };
   const sparkline = (o) => {
@@ -620,7 +620,7 @@
       ${(() => { const P = p.pts || 0, J = p.proj, d = J != null ? P - J : null, cls = st === "pre" || d == null ? "" : st === "done" ? (d >= 0 ? "up" : "dn") : "", fill = J ? Math.min(100, (P / J) * 100) : 0;
         return `<div class="fx-pc-hero"><div class="fx-pc-big ${cls}"><b>${st === "pre" ? (J != null ? pts(J) : "–") : pts(P)}</b><small>${st === "pre" ? "PROJECTED" : st === "live" ? "PTS SO FAR" : "PTS"}</small></div>
         <div class="fx-pc-mid">${st === "pre" ? (J != null && r.avg ? `<span class="fx-pc-bar"><i style="width:${Math.min(100, (J / Math.max(J, r.avg)) * 100).toFixed(0)}%"></i></span><span class="fx-pc-vs">avg ${pts(r.avg)} · proj <em class="${J >= r.avg ? "up" : "dn"}">${J >= r.avg ? "above" : "below"} avg</em></span>` : "") : `<span class="fx-pc-bar"><i class="${cls}" style="width:${fill.toFixed(0)}%"></i></span><span class="fx-pc-vs">${J != null ? `proj ${pts(J)}` : "no proj"}${d == null ? "" : st === "done" ? ` <em class="${cls}">${d >= 0 ? "+" : "−"}${pts(Math.abs(d))}</em>` : ` <em>+${pts(left)} left</em>`}</span>`}</div></div>${st === "done" && p.line ? `<div class="fx-pc-bx">${p.line.split(" · ").map((x) => `<span>${esc(x)}</span>`).join("")}</div>` : ""}`; })()}
-      ${n ? `<p class="fx-pc-n">${kindPill(`${n.headline} ${n.note || ""}`)}${esc(n.headline)}</p>` : ""}`;
+      ${n ? `<p class="fx-pc-n${n.note ? " tap" : ""}"${n.note ? ' role="button" tabindex="0" data-fxpcn="1"' : ""}>${kindPill(`${n.headline} ${n.note || ""}`)}${esc(n.headline)}${n.note ? `<span class="fx-pc-nm">${esc(n.note)}</span><u>More ▾</u>` : ""}</p>` : ""}`;
     document.getElementById("fx-plpop")?.remove();
     const m = document.createElement("div");
     m.id = "fx-plpop"; m.className = "fx-team fx-plpop"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", p.name);
@@ -631,7 +631,7 @@
     m.addEventListener("touchstart", (e) => { e.stopPropagation(); if (e.touches.length === 1) { sy = e.touches[0].clientY; sx = e.touches[0].clientX; } }, { passive: true });
     m.addEventListener("touchmove", (e) => { if (sy == null) return; const dy = e.touches[0].clientY - sy; if (dy > 0) { card.style.transition = "none"; card.style.transform = `translateY(${dy}px)`; } }, { passive: true });
     m.addEventListener("touchend", (e) => { e.stopPropagation(); if (sy == null) return; const t2 = e.changedTouches[0], dy = t2.clientY - sy, dx = t2.clientX - sx; sy = null; card.style.transition = ""; if (dy > 70 || Math.abs(dx) > 90) close(); else card.style.transform = ""; });
-    m.addEventListener("click", (e) => { e.stopPropagation(); if (e.target === m || e.target.closest("[data-fxx]")) close(); });
+    m.addEventListener("click", (e) => { e.stopPropagation(); if (e.target === m || e.target.closest("[data-fxx]")) close(); const nn = e.target.closest("[data-fxpcn]"); if (nn) nn.classList.toggle("open"); });
     m.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
     document.body.appendChild(m);
     try { window.noteUse?.("fantasy-player", p.name); } catch {}
@@ -700,6 +700,7 @@
     m.addEventListener("keydown", (e) => { if (e.key === "ArrowRight") go(1); else if (e.key === "ArrowLeft") go(-1); });
     m.addEventListener("click", (e) => {
       const dot = e.target.closest("[data-fxgo]"); if (dot) return openMu(Number(dot.dataset.fxgo));
+      const kb = e.target.closest("[data-fxkbi]"); if (kb) { const [sd, i] = kb.dataset.fxkbi.split(":"); let box = kb.parentElement; while (box && !box.querySelector(".fx-mr")) box = box.parentElement; const c = box?.querySelector(`.fx-mr[data-fxpi="${i}"] .fx-mc.${sd}:not(.empty)`); if (c) return playerCard(c); }
       const pc = e.target.closest(".fx-mr .fx-mc:not(.empty)"); if (pc) return playerCard(pc);
       if (e.target === m || e.target.closest("[data-fxx]")) { chipOpen = null; return m.remove(); }
       const ch = e.target.closest("[data-fxchip]");
@@ -801,6 +802,7 @@
     if (nw) { const id = nw.dataset.fxnp; newsOpen = newsOpen === id ? null : id; if (newsOpen) { try { window.noteUse?.("fantasy-news"); } catch {} } return paint(); }
     if (e.target.closest("[data-fxnewsall]")) { newsAll = !newsAll; return paint(); }
     if (e.target.closest(".fx-mine-pg")) {
+      const kb = e.target.closest("[data-fxkbi]"); if (kb) { const [sd, i] = kb.dataset.fxkbi.split(":"); let box = kb.parentElement; while (box && !box.querySelector(".fx-mr")) box = box.parentElement; const c = box?.querySelector(`.fx-mr[data-fxpi="${i}"] .fx-mc.${sd}:not(.empty)`); if (c) return playerCard(c); }
       const pc = e.target.closest(".fx-mr .fx-mc:not(.empty)"); if (pc) return playerCard(pc);
       const ch = e.target.closest("[data-fxchip]"); if (ch) { const k = ch.dataset.fxchip, mid = Number(ch.dataset.mid); chipOpen = chipOpen?.mid === mid && chipOpen.k === k ? null : { mid, k }; return paint(); }
       const tm = e.target.closest("[data-fxteam]"); if (tm) return openTeam(tm.dataset.fxteam);
