@@ -127,7 +127,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=858628939543", "pickboard.js?v=343540649553", "lightning-ui.js?v=906038752210", "attract-facts.js?v=621767480045", "history.js?v=174497337064", "fantasy-ui.js?v=444657960762", "sim.js?v=374204176553", "gridcard.js?v=867340868336"];
+const EXTRAS = ["ask-ui.js?v=858628939543", "pickboard.js?v=343540649553", "lightning-ui.js?v=906038752210", "attract-facts.js?v=621767480045", "history.js?v=174497337064", "fantasy-ui.js?v=807149169642", "sim.js?v=374204176553", "gridcard.js?v=867340868336"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -11906,7 +11906,10 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) setT
     if (open && !opened.has(m)) opened.set(m, Date.now());
     else if (!open && opened.has(m)) {
       const ms = Date.now() - opened.get(m); opened.delete(m);
-      if (ms < 2000) track("quick-exit", { event: true, d: m.id });
+      // A game sheet that had already drawn its score or line was a glance,
+      // not friction: count it only if it closed while still loading.
+      const glance = m.id === "insights-modal" && !m.querySelector(".ins-loading");
+      if (ms < 2000 && !glance) track("quick-exit", { event: true, d: m.id });
       else if (ms >= 3000) track("sheet-time", { event: true, d: `${m.id}:${Math.round(ms / 1000)}` });
     }
   }).observe(m, { attributes: true, attributeFilter: ["class"] });
