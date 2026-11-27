@@ -11066,7 +11066,9 @@ html[data-sport="nfl"] .scorebug .bug-head .bug-lk { position: static; flex: non
 .locked-result.v2 .lr-rows { display: flex; flex-direction: column; gap: 4px; }
 .locked-result.v2 .lr-row { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 7px 10px; border-radius: 8px; color: var(--text-dim); }
 .locked-result.v2 .lr-row .tm-logo { width: 26px; height: 26px; flex: none; object-fit: contain; }
-.locked-result.v2 .lr-nm { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.locked-result.v2 .lr-nm { flex: 1; min-width: 0; display: block; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.locked-result.v2 .lr-nm small { margin-left: 6px; }
+.locked-result.v2 .lr-rk { margin-right: 6px; }
 .locked-result.v2 .lr-nm small { font-size: 11px; font-weight: 500; color: var(--text-meta); }
 .locked-result.v2 .lr-rk { flex: none; font-size: 12px; color: var(--text-meta); }
 .locked-result.v2 .lr-score { flex: none; min-width: 2ch; text-align: right; font: 17px 'Press Start 2P', monospace; color: var(--text-dim); }
@@ -11092,7 +11094,17 @@ html[data-sport="nfl"] .scorebug .bug-head .bug-lk { position: static; flex: non
   html.phone .bug-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   html.phone .bug-grid > * { grid-column: span 2; }
   html.phone .bug-grid > :last-child:nth-child(odd) { grid-column: 2 / span 2; }
-  html.phone .screen > .wrap { max-width: 760px; margin-left: auto; margin-right: auto; }
   html.phone .ask-fab { left: calc(env(safe-area-inset-left) + 14px); bottom: 10px; padding: 3px; }
+  /* Two panes: games and everything else on the left, your score and the
+     leaderboard pinned on the right (moved there by deskLayout). */
+  html.phone.land .wrap.desk-on { display: block; max-width: none; }
+  html.phone.land .desk-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr); gap: 14px; align-items: start; }
+  html.phone.land .desk-main, html.phone.land .desk-rail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  html.phone.land .desk-rail { position: sticky; top: 34px; max-height: calc(100dvh - 44px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; border-radius: 12px; }
+  html.phone.land .desk-rail::-webkit-scrollbar { display: none; }
+  html.phone.land .screen { align-items: flex-start; }
+  html.phone.land .desk-main .bug-grid { grid-template-columns: minmax(0, 1fr); }
+  html.phone.land .desk-main .bug-grid > *, html.phone.land .desk-main .bug-grid > :last-child:nth-child(odd) { grid-column: auto; }
+  html.phone.land .desk-rail > * { margin-top: 0 !important; }
   html.phone .ask-fab { font-size: 0; gap: 0; }
 }
