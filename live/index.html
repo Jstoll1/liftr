@@ -981,6 +981,8 @@ html, body { overflow-x: hidden; }
   .gv-h time { flex: none; width: 62px; color: var(--muted, #8e88ad); }
   .gv-d { flex: none; width: 84px; white-space: nowrap; font-size: 12px; color: var(--muted, #8e88ad); }
   .gv-w { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gv-w .gv-chips { display: flex; flex-wrap: wrap; gap: 4px; white-space: normal; }
+  .gv-h:has(.gv-chips) { align-items: flex-start; padding-top: 7px; padding-bottom: 7px; }
   .gv-w .iss { font-weight: 600; color: #ffb347; }
   .gv.warn .gv-w { color: #ffd59a; }
   .gv-car { flex: none; font-style: normal; color: var(--muted, #8e88ad); }
@@ -2403,9 +2405,9 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       const id = `${s.n}|${s.start}`, open = st.open.has(id);
       const ms = Math.max(s.end - s.start, 1000);
       const issues = s.acts.filter((a) => /^⚠/.test(a.a));
-      const what = (() => { const sm = sumOf(s.acts); const t = sm.badges.replace(/<[^>]+>/g, " · ").replace(/( · )+/g, " · ").replace(/^ · | · $/g, ""); return t || sm.line; })();
+      const sm = sumOf(s.acts), chipsHtml = sm.badges && sm.badges.trim() ? sm.badges : "";
       return `<div class="gv${open ? " open" : ""}${issues.length ? " warn" : ""}" data-v="${esc(id)}">
-        <div class="gv-h" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}"><time class="num">${esc(hm(s.start))}</time><span class="gv-d num">${esc(dur(ms))}${s.app ? ` · ${s.app === "home" ? "app" : "web"}` : ""}</span><span class="gv-w">${esc(what || (issues[0] ? issues[0].a.replace(/^⚠\s*/, "") : `${s.acts.length} action${s.acts.length === 1 ? "" : "s"}`))}${issues.length ? ` <b class="iss">⚠ ${issues.length}</b>` : ""}</span>${open ? `<button type="button" class="gv-cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" title="Copy this visit">${st.copied === id ? "✓" : COPY_ICON}</button>` : ""}<i class="gv-car">${open ? "▴" : "▾"}</i></div>
+        <div class="gv-h" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}"><time class="num">${esc(hm(s.start))}</time><span class="gv-d num">${esc(dur(ms))}${s.app ? ` · ${s.app === "home" ? "app" : "web"}` : ""}</span><span class="gv-w">${chipsHtml ? `<span class="gv-chips">${chipsHtml}</span>` : esc(sm.line || (issues[0] ? issues[0].a.replace(/^⚠\s*/, "") : `${s.acts.length} action${s.acts.length === 1 ? "" : "s"}`))}${issues.length ? ` <b class="iss">⚠ ${issues.length}</b>` : ""}</span>${open ? `<button type="button" class="gv-cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" title="Copy this visit">${st.copied === id ? "✓" : COPY_ICON}</button>` : ""}<i class="gv-car">${open ? "▴" : "▾"}</i></div>
         ${open ? `<ul class="acts">${(s.acts.some((a) => !PASSIVE.test(a.a) && !/^Tapped\b/.test(a.a)) ? s.acts.filter((a) => !PASSIVE.test(a.a) && !/^Tapped\b/.test(a.a)) : s.acts).map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${/^⚠/.test(a.a) ? "iss" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}</span>${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</li>`; }).join("")}</ul>` : ""}
       </div>`;
     };
@@ -2442,7 +2444,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       if (g.list.every(peek)) { const pg = [...new Set(g.list.map((v) => v.screen || v.page || "").filter(Boolean))]; const where = (sumOf(g.list.flatMap((v) => v.acts)).line || "").replace(/^on /, ""); return `${head}<div class="sess grp peek shut" data-v="${esc(gid)}"><div class="sh">${av(g.n, "lg")}<div class="who"><div class="nm">${esc(name(g.n))}${isNew ? `<i class="newb">NEW</i>` : ""}</div><div class="meta num">${g.list.length} quick looks · ${esc(hm(first.start))}${hm(first.start) !== hm(last.end) ? `–${esc(hm(last.end))}` : ""}${where || pg[0] ? ` · ${esc(where || pg[0])} page` : ""}</div></div><div class="sh-r"><span class="tia num"><b>${esc(dur(total))}</b><small>in app</small></span></div></div></div>`; }
       return `${head}<div class="sess grp${gopen ? " open" : " shut"}${nIss ? nErr ? " bad" : " warn" : ""}" data-v="${esc(gid)}">
         <div class="sh" data-open="${esc(gid)}" role="button" tabindex="0" aria-expanded="${gopen}">${av(g.n, "lg")}<div class="who"><div class="nm">${esc(name(g.n))}${isNew ? `<i class="newb">NEW</i>` : ""}<span class="vd num">${g.list.length} opens</span></div><div class="meta num">${esc(hm(first.start))} to ${esc(hm(last.end))}</div>${(() => { const sm = sumOf(g.list.flatMap((v) => v.acts)); return `${sm.line ? `<div class="vline">${esc(sm.line)}</div>` : ""}${sm.badges ? `<div class="vbs">${sm.badges}</div>` : ""}`; })()}</div><div class="sh-r"><span class="tia num"><b>${esc(dur(total))}</b><small>in app</small></span><i class="vcar">${gopen ? "Close ▴" : "Open ▾"}</i></div></div>
-        ${gopen ? `<div class="grp-in">${rowsOf(g.list)}</div>` : ""}
+        ${gopen ? `<div class="grp-in">${rowsOf(g.list.slice().reverse())}</div>` : ""}
       </div>`;
     }).join("");
     const shownN = Math.min(all.length, st.shown);
