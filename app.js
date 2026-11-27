@@ -11937,6 +11937,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) setT
   let screen = null, deepest = 0;
   const flush = () => {
     if (screen && deepest > 0) track("depth", { event: true, d: `${screen}:${deepest}` });
+    try { vDeep = Math.max(vDeep, deepest); } catch {}
     deepest = 0;
   };
   const measure = () => {
@@ -11950,6 +11951,34 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) setT
   const setNav = window.setActiveNav;
   if (typeof setNav === "function") window.setActiveNav = function (t) { onScreen(t); return setNav.apply(this, arguments); };
   document.addEventListener("visibilitychange", () => { if (document.hidden) { measure(); flush(); } else if (screen) setTimeout(measure, 400); });
+  // How each visit ended, one event as the app is put away: the screen,
+  // seconds, deepest scroll, what was seen (the LIVE NOW box, your own
+  // leaderboard row), stale data, taps, and the first screen's load time.
+  // Watching is one IntersectionObserver; nothing runs while scrolling.
+  let vStart = document.hidden ? 0 : Date.now(), vTaps = 0, vSaw = new Set(), vDeep = 0;
+  const io = "IntersectionObserver" in window ? new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting) vSaw.add(e.target.dataset.vw); }, { threshold: 0.5 }) : null;
+  const watchEls = () => {
+    if (!io) return;
+    const live = document.getElementById("since-line"), me = document.querySelector("#rankings-list .me, #rankings-list .is-me");
+    for (const [el, k] of [[live, "L"], [me, "R"]]) if (el && el.dataset.vw !== k && !el.classList.contains("hidden")) { el.dataset.vw = k; io.observe(el); }
+  };
+  setInterval(() => { if (!document.hidden) watchEls(); }, 3000);
+  addEventListener("pointerdown", () => { vTaps++; }, { capture: true, passive: true });
+  const visitEnd = () => {
+    const scr = screen || (typeof activeScreenName !== "undefined" ? activeScreenName : null);
+    if (!vStart || !scr) return;
+    const secs = Math.round((Date.now() - vStart) / 1000);
+    const stale = (typeof cloudPicksStale !== "undefined" && cloudPicksStale) || (typeof latestLive !== "undefined" && GAMES.some((g) => isGameLocked(g)) && !Object.keys(latestLive || {}).length);
+    const flags = [...vSaw].sort().join("") + (stale ? "S" : "");
+    track("visit-end", { event: true, d: `${scr}|${secs}|${Math.max(vDeep, deepest)}|${flags}|${vTaps}|${appHealth?.ld ?? ""}` });
+    vStart = 0; vTaps = 0; vSaw = new Set(); vDeep = 0;
+    // The goodbye send already went out before this ran: send again now,
+    // so the visit's ending lands with it, not on the next open.
+    try { presenceSend(true); } catch {}
+  };
+  document.addEventListener("visibilitychange", () => { if (document.hidden) { vDeep = Math.max(vDeep, deepest); visitEnd(); } else { vStart = Date.now(); setTimeout(watchEls, 800); } });
+  addEventListener("pagehide", visitEnd);
+  setTimeout(watchEls, 1500);
   // Errors they actually hit, once each per visit.
   const seenErr = new Set();
   const err = (m) => { const k = String(m || "error").slice(0, 40); if (seenErr.has(k) || seenErr.size > 5) return; seenErr.add(k); track("js-error", { event: true, d: k }); };
