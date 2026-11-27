@@ -2328,7 +2328,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     };
     const maxH = Math.max(1, ...hours.map((h) => h.n));
     const counts = new Map();
-    for (const e of actions) { if (SCREENS[e.k] || FRICTION.test(e.k) || /^(depth|sheet-time)$/.test(e.k)) continue; const [a] = says(e, feed); counts.set(a, (counts.get(a) || 0) + 1); }
+    for (const e of actions) { if (SCREENS[e.k] || FRICTION.test(e.k) || /^(depth|sheet-time|visit-end)$/.test(e.k)) continue; const [a] = says(e, feed); counts.set(a, (counts.get(a) || 0) + 1); }
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), maxF = top[0]?.[1] || 1;
     const home = vs.filter((v) => v.app === "home").length, web = vs.filter((v) => v.app === "browser").length;
     // The day's charts live on Overview; Stats keeps what goes deeper.
