@@ -3195,7 +3195,8 @@ async function liveGames(env, week = null) {
           eventId: event.id || null,
           odds: parseOdds(comp),
           possession,
-          redZone: possession ? !!comp.situation?.isRedZone : false,
+          // Not after a score or a kick: ESPN keeps the flag until the next snap.
+          redZone: possession ? !!comp.situation?.isRedZone && Number(comp.situation?.down) > 0 && !/field goal|extra point|touchdown|kickoff|kicks? off|punts?\b|two-point|\bsafety\b|end of (the )?(quarter|half|game)/i.test(comp.situation?.lastPlay?.text || "") : false,
           possSrc,
           awayRank: rankOf(away),
           homeRank: rankOf(home),
