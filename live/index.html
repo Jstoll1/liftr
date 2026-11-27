@@ -1058,6 +1058,13 @@ html, body { overflow-x: hidden; }
 .att-c span { font-size: 13px; font-weight: 600; }
 .att-c small { font-size: 11px; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .att-c.ok b, .att-c.calm b { color: #8b93a7; }
+/* All clear: the four zeros sit on one quiet strip instead of four big tiles. */
+.att.clear { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.att.clear .att-c { align-items: center; text-align: center; padding: 9px 4px; border: 0 !important; border-radius: 0; background: none !important; }
+.att.clear .att-c + .att-c { border-left: 1px solid var(--line) !important; }
+.att.clear .att-c b { font-size: 18px; }
+.att.clear .att-c span { font-size: 11px; line-height: 1.25; }
+.att.clear .att-c small { display: none; }
 .att-c.warn { border-color: rgba(255, 196, 0, .35); } .att-c.warn b { color: #ffc400; }
 .att-c.bad { border-color: rgba(255, 92, 138, .45); background: rgba(255, 92, 138, .06); } .att-c.bad b { color: #ff5c8a; }
 .att-c.info { border-color: rgba(5, 217, 232, .4); background: rgba(5, 217, 232, .05); } .att-c.info b { color: #05d9e8; }
@@ -1821,14 +1828,20 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
         for (const [n, p] of Object.entries(r.people)) if (p.in && !st.room?.people?.[n]?.in) notify(n);
       }
       st.known = ids; st.room = r; st.at = Date.now(); st.ok = true; st.cached = false;
-      store.set(SNAP_STORE, JSON.stringify({ room: r, names: st.names, seen: st.seen, games: st.games, asks: st.asks }));
+      // The snapshot only seeds the next open: save it once a minute, and on leaving.
+      if (!saveSnap.at || Date.now() - saveSnap.at > 60000) saveSnap();
       setTimeout(() => { st.fresh.clear(); }, 2600);
     } catch { st.ok = false; }
     if (st.gated) return;
     render();
     poll.n = (poll.n || 0) + 1;
-    poll.t = setTimeout(() => poll(poll.n % 20 === 0), document.hidden ? 30000 : 3000);
+    // Every 3s while someone is in the app; every 15s when the room is empty.
+    const busy = Object.values(st.room?.people || {}).some((p) => p.in);
+    poll.t = setTimeout(() => poll(poll.n % 20 === 0), document.hidden ? 30000 : busy ? 3000 : 15000);
   }
+  function saveSnap() { if (!st.room) return; saveSnap.at = Date.now(); store.set(SNAP_STORE, JSON.stringify({ room: st.room, names: st.names, seen: st.seen, games: st.games, asks: st.asks })); }
+  addEventListener("pagehide", saveSnap);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) saveSnap(); });
   const lastSeen = (n) => Math.max(st.seen[n] || 0, st.room?.people?.[n]?.last || 0);
 
   function notify(n) {
@@ -1862,7 +1875,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([st.recPeriod, JSON.stringify(st.rec?.best || {}), st.page, st.biFilter, st.vf, st.vsort, (st.uc || []).length, st.uc?.[0]?.at, seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([st.recPeriod, JSON.stringify(st.rec?.best || {}), st.page, st.biFilter, st.vf, st.vsort, (st.uc || []).length, st.uc?.[0]?.at, seenBase.at, room.feed.length, room.feed[0], Object.entries(room.people || {}).map(([n, p]) => [n, p.in ? p.since : 0]), st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -2298,22 +2311,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       for (const v of wv) for (const l of new Set(v.f.map(featLab).filter(Boolean))) used.set(l, (used.get(l) || 0) + 1);
       const tp = [...used.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), mf = tp[0]?.[1] || 1;
       const lab = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
-      // Pro trial: the same week split by the style each visit ran in.
-      // Quick exit = a visit under 30s; issues = friction in the visit.
-      const styleRow = (k) => {
-        const l = wv.filter((v) => (v.st || "classic") === k), n = l.length;
-        const ms = l.reduce((a, v) => a + (v.end - v.start), 0), qe = l.filter((v) => v.end - v.start < 30000).length;
-        const iss = l.reduce((a, v) => a + (wk.feed || []).filter((e) => e.n === v.n && e.at >= v.start && e.at <= v.end + 2000 && FRICTION.test(e.k)).length, 0);
-        return { k, n, who: new Set(l.map((v) => v.n)).size, avg: n ? ms / n / 60000 : 0, qe, iss };
-      };
-      const sr = ["pro", "classic"].map(styleRow);
-      const stylePanel = sr[0].n ? `<section class="panel"><div class="ph"><h2>Pro vs Classic</h2><span class="sub">style trial, last 7 days</span></div>
-        <div class="styt"><div><span></span><b>Visits</b><b>People</b><b>Avg min</b><b>Exits</b><b>Issues</b></div>
-        ${sr.map((r) => `<div><span>${r.k === "pro" ? "Pro" : "Classic"}</span><b>${r.n}</b><b>${r.who}</b><b>${r.avg.toFixed(1)}</b><b>${r.n >= 10 ? Math.round((r.qe / r.n) * 100) + "%" : r.qe}</b><b>${r.n >= 10 ? (r.iss / r.n).toFixed(2) : r.iss}</b></div>`).join("")}</div>
-        <div class="note">Exits: visits under 30s. Issues: rage, dead taps and errors per visit. Counts under 10 visits.</div>
-      </section>` : "";
       return `<aside class="rail" id="sec-stats">
-      ${stylePanel}
       <section class="panel"><div class="ph"><h2>Visits by hour</h2><span class="sub">time of day, last 7 days</span></div>
         <div class="bars">${byH.map((x) => `<i class="${x.n ? "" : "zero"}${x.h === curH ? " cur" : ""}" data-tip="${esc(`<b>${lab(x.h)}</b>${x.n} visit${x.n === 1 ? "" : "s"}${x.who.size ? ` · ${[...x.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((x.n / mx) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
         <div class="bars-ax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div>
@@ -2500,7 +2498,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     const who = [...whoMs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
     const wMax = Math.max(1, ...who.map(([, ms]) => ms));
     const rankRows = (rows) => `<div class="rank">${rows.join("")}</div>`;
-    const overview = `<section class="att">${attCards}</section>
+    const overview = `<section class="att${/att-c (warn|bad|info)/.test(attCards) ? "" : " clear"}">${attCards}</section>
       <div class="ov-duo">
         <section class="panel ov"><div class="ph"><h2>Most used</h2><span class="sub">people · 24h</span></div>${feats.length ? rankRows(feats.map(([l, x]) => `<div><span>${esc(l)} <small>${x.n} taps</small></span><b>${x.who.size}</b><i><s style="width:${((x.who.size / fMax) * 100).toFixed(1)}%"></s></i></div>`)) : `<div class="note">Nothing used yet today.</div>`}</section>
         <section class="panel ov"><div class="ph"><h2>Who's been in</h2><span class="sub">time in app · 24h</span></div>${who.length ? rankRows(who.map(([n, ms]) => `<div><span>${esc(name(n))} <small>${vs.filter((v) => v.n === n).length} visits</small></span><b>${mins(ms) || "<1m"}</b><i><s style="width:${((ms / wMax) * 100).toFixed(1)}%;background:#05d9e8"></s></i></div>`)) : `<div class="note">Nobody in yet.</div>`}</section>
