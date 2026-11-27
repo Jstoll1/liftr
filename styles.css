@@ -8381,6 +8381,9 @@ button.lt-rc { cursor: pointer; }
 /* Lock of the week, everywhere a name sits on a pick: a small 🔒 on the
    name's top left corner. Tap any lock for everyone's. */
 .has-lk { position: relative; }
+/* The room: the lock sits after the name, not over the avatar. */
+.gc-rc > .nm-lk, .gc-rc > i.lk.nm-lk { position: static; order: 1; flex: none; margin: 0 -1px; }
+.gc-rc > .gc-rt, .gc-rc > .gc-rpts { order: 2; }
 .nm-lk { position: absolute; top: -6px; left: -5px; z-index: 1; display: grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; background: var(--arcade-gold); font-style: normal; font-size: 8px; line-height: 1; box-shadow: 0 0 0 1.5px var(--bg, #0b0718); cursor: pointer; }
 .scorebug .bug-lk[data-locks] { cursor: pointer; }
 .rank-lk[data-locks] { cursor: pointer; }
