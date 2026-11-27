@@ -1890,7 +1890,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       ...vs.filter((v) => !v.live && !(wk.sessions[v.n] || []).some(([at, ms]) => Math.abs(at - v.start) < 90000 || (v.start >= at && v.start <= at + ms))).map((v) => ({ n: v.n, start: v.start, end: Math.max(v.end, v.start + 1000), f: [] })),
     ].filter((v) => v.end >= wFrom).sort((a, b) => b.start - a.start) : [];
     const wTime = (v, a = wFrom, b = now) => Math.max(0, Math.min(v.end, b) - Math.max(v.start, a));
-    const featLab = (k) => { k = String(k).replace(/-g\d+$/, ""); return SCREENS[k] || /^(path-of-|splash$|depth$|sheet-time$|rage$|dead-tap$|quick-exit$|js-error$|pick-saved$|pick-updated$)/.test(k) ? null : says({ k, n: "", d: "" }, [])[0]; };
+    const featLab = (k) => { k = String(k).replace(/-g\d+$/, ""); return SCREENS[k] || /^(path-of-|splash$|depth$|sheet-time$|visit-end$|rage$|dead-tap$|quick-exit$|js-error$|pick-saved$|pick-updated$)/.test(k) ? null : says({ k, n: "", d: "" }, [])[0]; };
     const dayList = Array.from({ length: 7 }, (_, i) => dayOf(wFrom + i * DAY + 3 * HOUR));
     const dShort = (d) => (d === today0 ? "Today" : new Date(d).toLocaleDateString([], { weekday: "short" }));
     const dLong = (d) => (d === today0 ? "Today" : d === today0 - DAY ? "Yesterday" : new Date(d).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }));
