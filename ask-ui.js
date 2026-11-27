@@ -707,6 +707,21 @@
     q = String(q || "").trim(); if (q.length < 2 || busy) return;
     busy = true; const item = { q, a: null, tools: [] }; log.push(item); sheet();
     convo.push({ role: "user", content: q });
+    // Path questions ('what do I need', 'how do I win', 'which games do I have
+    // to get right'): the path to win card already answers them, so skip the
+    // round trip and hand over the chance and the button at once.
+    const fast = (() => {
+      if (typeof openPathCard !== "function" || typeof winChanceMemo === "undefined" || !winChanceMemo.out) return null;
+      if (/fantasy|playoff|season|beat|\bvs\b|versus|ahead of|pass\b|stop|if\b/i.test(q)) return null;
+      if (!/(path|what (games? )?(do|does) \w+ (need|have to)|need to (win|hit|happen)|have to (get|hit|win)|how (do|does|can) \w+ win|what has to happen)/i.test(q)) return null;
+      const named = (typeof MANAGERS !== "undefined" ? MANAGERS : []).filter((n) => new RegExp(`\\b${n}\\b`, "i").test(q.replace(/compootah/ig, "")));
+      const who = named.length === 1 ? named[0] : named.length ? null : currentManager;
+      const p = who && winChanceMemo.out[who];
+      if (!who || p == null) return null;
+      const pctTxt = p >= 0.995 ? "over 99%" : p > 0 && p < 0.001 ? "under 0.1%" : `${(p * 100).toFixed(p < 0.1 ? 1 : 0)}%`;
+      return p <= 0 ? null : `${who === currentManager ? "You're" : `${shown(who)} is`} at ${pctTxt} to win the week.\n[[PATH:${who}]]`;
+    })();
+    if (fast) { item.a = fast; convo.push({ role: "assistant", content: fast }); busy = false; sheet(); if (typeof track === "function") track("ask-path-fast", { event: true }); return; }
     let logId = null;
     const giveUp = (reason) => { if (logId) fetch(`${WORKER_URL}/week-chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "giveup", logId, reason }) }).catch(() => {}); };
     try {

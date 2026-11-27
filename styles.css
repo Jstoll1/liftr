@@ -1504,6 +1504,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   letter-spacing: 0;
   vertical-align: 2px;
 }
+.scoreboard-table .ap-who { cursor: pointer; text-decoration: underline dotted rgba(var(--neon-cyan-rgb), .45); text-underline-offset: 3px; }
 .scoreboard-table tr.is-me .ap-who { color: var(--neon-cyan); }
 
 .pick-cell-logo {

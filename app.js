@@ -127,7 +127,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=388771042987", "lightning-ui.js?v=906038752210", "attract-facts.js?v=621767480045", "history.js?v=174497337064", "fantasy-ui.js?v=975908242274", "sim.js?v=374204176553", "gridcard.js?v=604833626597"];
+const EXTRAS = ["ask-ui.js?v=175934890562", "lightning-ui.js?v=906038752210", "attract-facts.js?v=621767480045", "history.js?v=174497337064", "fantasy-ui.js?v=975908242274", "sim.js?v=374204176553", "gridcard.js?v=604833626597"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -1319,6 +1319,8 @@ const picksProgress = document.getElementById("picks-progress");
 const liveScoresList = document.getElementById("live-scores-list");
 const rankingsList = document.getElementById("rankings-list");
 const scoreboardTable = document.getElementById("scoreboard-table");
+// A name in the All Picks grid opens that player's card, like a name anywhere else.
+scoreboardTable?.addEventListener("click", (e) => { const w = e.target.closest("[data-apwho]"); if (w) openRankSheet(w.dataset.apwho); });
 const rulesModal = document.getElementById("rules-modal");
 const rulesOpenBtn = document.getElementById("rules-open-btn");
 const rulesCloseBtn = document.getElementById("rules-close-btn");
@@ -4923,7 +4925,7 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
     // beside it, a missing one already shows as a red cross, and the
     // leaderboard above states the count outright, so it was a second line
     // of cell saying what the first line was already showing.
-    html += `<tr class="${name === currentManager ? "is-me" : ""}"><td class="manager-col"><span class="ap-who">${shown(name)}</span>${rankTag}</td>${cells}<td>${tbCell}</td><td><strong>${total}</strong></td></tr>`;
+    html += `<tr class="${name === currentManager ? "is-me" : ""}"><td class="manager-col"><span class="ap-who" role="button" tabindex="0" data-apwho="${escapeCd(name)}">${shown(name)}</span>${rankTag}</td>${cells}<td>${tbCell}</td><td><strong>${total}</strong></td></tr>`;
   });
 
   html += "</tbody>";
