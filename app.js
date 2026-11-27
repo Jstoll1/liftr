@@ -3023,14 +3023,24 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
       ${pill}
     </div>`;
   }
-  const mid = finalRes ? "FINAL" : liveG?.detail ? String(liveG.detail).replace(/\s*-\s*/, " ").toUpperCase().slice(0, 12) : "LOCKED";
-  return `<div class="locked-result ${finalRes ? "final" : liveG ? "live" : ""}">
-    <div class="hz-row lr-hz">
-      ${team("away", game.awayShort, game.awayId)}
-      ${scoreCell("away", aS, hS)}
-      <div class="lr-mid">${mid}</div>
-      ${scoreCell("home", hS, aS)}
-      ${team("home", game.homeShort, game.homeId)}
+  // Locked: a plain scoreboard. Two rows (logo, rank, team, record,
+  // score); the side you took is lit and tagged with its terms, and one
+  // line under it says how it went.
+  const terms = pick ? (pick.mode === "ATS" ? `${pick.team === game.favorite ? "−" : "+"}${game.spread}` : "WIN") : "";
+  const row = (side, name, id, score, other) => {
+    const rec = side === "away" ? liveG?.awayRecord : liveG?.homeRecord, rank = side === "away" ? liveG?.awayRank : liveG?.homeRank;
+    const won = finalRes && score !== null && other !== null && score > other;
+    return `<div class="lr-row${pickedSide === side ? " picked" : ""}${won ? " won" : ""}">
+      <img class="tm-logo" src="${logoUrl(id)}" alt="" loading="lazy" onload="logoFit(this)" onerror="this.style.visibility='hidden'" />
+      <span class="lr-nm">${rank ? `<b class="lr-rk">#${rank}</b>` : ""}${name}${rec ? `<small>${String(rec).replace(/[^0-9-]/g, "")}</small>` : ""}</span>
+      ${pickedSide === side ? `<span class="lr-tag">YOU · ${terms} · ${pickWorth(game, pick)} PT</span>` : ""}
+      <span class="lr-score">${score === null ? "–" : score}</span>
+    </div>`;
+  };
+  return `<div class="locked-result v2 ${finalRes ? "final" : liveG ? "live" : ""}">
+    <div class="lr-rows">
+      ${row("away", game.awayShort, game.awayId, aS, hS)}
+      ${row("home", game.homeShort, game.homeId, hS, aS)}
     </div>
     ${foot}
   </div>`;
