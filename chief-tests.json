@@ -707,6 +707,29 @@
       "source": "miss",
       "regression": true,
       "note": "Nov 25 (Skills): the Chief agreed it had said 10 seasons over .500 when it never had; 10 is .500 or better, over .500 is 5. Check earlier answers and correct the misquote"
+    },
+    {
+      "source": "miss",
+      "id": "have-to-hit",
+      "screen": "picks",
+      "turns": [
+        "Compootah, what games in pick em do I have to get correct to win this week?"
+      ],
+      "checks": {
+        "tools": [
+          "needs"
+        ],
+        "must": [
+          "\\d+(\\.\\d)?%"
+        ],
+        "mustNot": [
+          "(?i)focus on",
+          "(?i)good luck"
+        ],
+        "noAsk": true
+      },
+      "regression": true,
+      "note": "Nov 27 (Skills): asked which games they had to get right; South Carolina −6 (lock) left them at 0.4% if it missed but the Chief never called it a must, and closed with 'Focus on these games'. Musts (under 1% if missed) come first and are named; the rest are helps"
     }
   ]
 }
