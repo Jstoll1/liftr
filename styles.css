@@ -4455,6 +4455,14 @@ body:has(#insights-modal.gc-full:not(.hidden)) .bottom-nav { display: none; }
 /* The room: everyone's pick on this game, split by the live score. */
 .gc-room { display: flex; flex-direction: column; gap: 6px; }
 .gc-rcols { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.gc-rcols.lop { grid-template-columns: minmax(0, 1fr); }
+.gc-rcols.lop-down > .up { order: 2; }
+.gc-rcols.lop > .gc-rcol > ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10px; }
+.gc-rcols.lop:not(.lop-down) > .up > ul > li:last-child:nth-child(odd), .gc-rcols.lop-down > .down > ul > li:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 5px); }
+.gc-rcols.lop:not(.lop-down) > .down, .gc-rcols.lop-down > .up { display: flex; align-items: center; gap: 12px; }
+.gc-rcols.lop:not(.lop-down) > .down > .gc-rh, .gc-rcols.lop-down > .up > .gc-rh { margin: 0; flex: none; }
+.gc-rcols.lop:not(.lop-down) > .down > ul, .gc-rcols.lop-down > .up > ul { display: flex; flex-wrap: wrap; gap: 4px 14px; flex: 1; min-width: 0; }
+.gc-rcols.lop:not(.lop-down) > .down > ul > li, .gc-rcols.lop-down > .up > ul > li { width: auto; grid-column: auto; flex: 1 1 auto; }
 .gc-rcol { border-radius: 8px; padding: 6px 6px 7px; border: 1px solid rgba(255, 255, 255, .08); background: rgba(255, 255, 255, .02); min-width: 0; }
 .gc-rcol.up { border-color: rgba(57, 255, 136, .45); background: linear-gradient(180deg, rgba(57, 255, 136, .09), rgba(57, 255, 136, .02)); }
 .gc-rcol.down { border-color: rgba(255, 32, 121, .4); background: linear-gradient(180deg, rgba(255, 32, 121, .08), rgba(255, 32, 121, .02)); }
