@@ -10987,3 +10987,24 @@ i.lk.rank-lk.lk-up, i.lk.rank-lk.lk-dn { display: inline-block; box-sizing: bord
 .locked-result.v2 .lr-row.picked .lr-nm { color: var(--text); }
 .locked-result.v2 .lr-tag { flex: none; padding: 3px 5px; border-radius: 4px; border: 1px solid rgba(var(--neon-cyan-rgb), .5); font: 7px/1 'Press Start 2P', monospace; color: var(--neon-cyan); white-space: nowrap; }
 @media (max-width: 360px) { .locked-result.v2 .lr-tag { font-size: 6px; padding: 2px 4px; } .locked-result.v2 .lr-nm small { display: none; } }
+
+/* ==== RETRO: phone landscape ====
+   A phone on its side (still the phone layout, never the desktop one):
+   the tab bar becomes a slim rail down the left so the board gets the
+   height back, the scoreboard stays two across with an odd last game
+   centred, and the Ask button shrinks to the Chief's face. */
+@media (orientation: landscape) and (max-height: 500px) {
+  html.phone { --rail-w: calc(72px + env(safe-area-inset-left)); --nav-h: 0px; }
+  html.phone .bottom-nav { top: 0; bottom: 0; right: auto; width: var(--rail-w); flex-direction: column; justify-content: center; gap: 2px; padding: 8px 6px 8px calc(6px + env(safe-area-inset-left)); border-top: 0; border-right: 1px solid rgba(var(--neon-purple-rgb), .45); box-shadow: 6px 0 18px rgba(10, 0, 20, .9); }
+  html.phone .bottom-nav .nav-btn { width: 100%; flex: none; padding: 7px 2px; gap: 3px; }
+  html.phone .bottom-nav .nav-btn-icon { width: 20px; height: 20px; }
+  html.phone .bottom-nav .nav-btn-label { font-size: 9px; }
+  html.phone .app-scroll { left: var(--rail-w); }
+  html.phone .screen { padding: 12px max(16px, env(safe-area-inset-right)) 24px 16px; }
+  html.phone .bug-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  html.phone .bug-grid > * { grid-column: span 2; }
+  html.phone .bug-grid > :last-child:nth-child(odd) { grid-column: 2 / span 2; }
+  html.phone .screen > .wrap { max-width: 760px; margin-left: auto; margin-right: auto; }
+  html.phone .ask-fab { left: calc(env(safe-area-inset-left) + 14px); bottom: 10px; padding: 3px; }
+  html.phone .ask-fab { font-size: 0; gap: 0; }
+}
