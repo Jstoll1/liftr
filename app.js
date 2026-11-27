@@ -813,7 +813,9 @@ function parseEspnEvents(events, games = GAMES) {
         possessionId: comp.situation.possession != null ? Number(comp.situation.possession) : possFromLastPlay(comp.situation.lastPlay, away?.team?.id, home?.team?.id, statusType),
         downDistance: comp.situation.downDistanceText || comp.situation.shortDownDistanceText || null,
         possessionText: comp.situation.possessionText || null,
-        isRedZone: !!comp.situation.isRedZone,
+        // ESPN leaves the red zone on after a field goal or touchdown until
+        // the next snap: only a live down that did not just end in a score or a kick.
+        isRedZone: !!comp.situation.isRedZone && Number(comp.situation.down) > 0 && !/field goal|extra point|touchdown|kickoff|kicks? off|punts?\b|two-point|\bsafety\b|end of (the )?(quarter|half|game)/i.test(comp.situation.lastPlay?.text || ""),
         awayTimeouts: Number.isFinite(comp.situation.awayTimeouts) ? comp.situation.awayTimeouts : null,
         homeTimeouts: Number.isFinite(comp.situation.homeTimeouts) ? comp.situation.homeTimeouts : null,
         lastPlay: comp.situation.lastPlay?.text || null,
