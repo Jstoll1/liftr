@@ -1642,8 +1642,14 @@ function paintSheet() {
 sheetMq.addEventListener?.("change", applySheet);
 document.documentElement.classList.toggle("sheet", sheetOn());
 const deskMq = matchMedia("(min-width: 1100px)");
-deskLayout(deskMq.matches && !IS_PHONE);
-deskMq.addEventListener?.("change", (e) => deskLayout(e.matches && !IS_PHONE));
+// A phone on its side splits too (html.land): games on the left, the
+// leaderboard pinned on the right. Still the phone's own styles.
+const landMq = matchMedia("(orientation: landscape) and (max-height: 500px)");
+const deskWanted = () => (deskMq.matches && !IS_PHONE) || (IS_PHONE && landMq.matches);
+const deskApply = () => { document.documentElement.classList.toggle("land", IS_PHONE && landMq.matches); deskLayout(deskWanted()); };
+deskApply();
+deskMq.addEventListener?.("change", deskApply);
+landMq.addEventListener?.("change", deskApply);
 appScroll.addEventListener("scroll", syncHeaderSize, { passive: true });
 requestAnimationFrame(() => { try { syncHeaderSize(); } catch {} });
 const savedScroll = {};
