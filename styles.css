@@ -4263,7 +4263,8 @@ button.cd-chip { appearance: none; line-height: inherit; font-weight: inherit; c
 .gc-num { position: absolute; bottom: 4px; transform: translateX(-50%); font-family: 'Press Start 2P', monospace; font-size: 6px; color: rgba(255, 255, 255, .6); }
 .gc-los { position: absolute; top: 0; bottom: 0; width: 2px; background: #5ab4ff; transform: translateX(-1px); box-shadow: 0 0 6px #5ab4ff; }
 .gc-first { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--neon-yellow); transform: translateX(-1.5px); box-shadow: 0 0 8px rgba(255, 228, 94, .8); }
-.gc-first .gc-ddtag { position: absolute; top: 3px; left: 50%; transform: translateX(-50%); padding: 2px 3px 1px; border-radius: 2px; background: var(--neon-yellow); color: var(--bg); font: 6px/1 'Press Start 2P', monospace; white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
+.gc-first .gc-ddtag { position: absolute; top: 7px; left: 50%; transform: translateX(-50%); padding: 3px 5px 2px; border-radius: 3px; border: 1px solid var(--neon-yellow); background: var(--bg); color: var(--neon-yellow); font: 7px/1 'Press Start 2P', monospace; letter-spacing: .04em; white-space: nowrap; box-shadow: 0 0 6px rgba(var(--neon-yellow-rgb), .45); animation: none; }
+.gc-first .gc-ddtag::after { content: ""; position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%); border: 4px solid transparent; border-bottom: 0; border-top-color: var(--neon-yellow); }
 .gc-drive { position: absolute; top: 44%; height: 12%; background: rgba(255, 228, 94, .18); }
 .gc-spot { position: absolute; top: 14px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; z-index: 2; }
 .gc-off { width: 28px; height: 28px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .6)); background: rgba(10, 0, 20, .55); border-radius: 50%; padding: 2px; }
