@@ -720,16 +720,18 @@
           "needs"
         ],
         "must": [
-          "\\d+(\\.\\d)?%"
+          "\\d+(\\.\\d)?%",
+          "\\[\\[PATH:"
         ],
         "mustNot": [
           "(?i)focus on",
-          "(?i)good luck"
+          "(?i)good luck",
+          "(?m)^\\s*\\d\\.\\s"
         ],
         "noAsk": true
       },
       "regression": true,
-      "note": "Nov 27 (Skills): asked which games they had to get right; South Carolina −6 (lock) left them at 0.4% if it missed but the Chief never called it a must, and closed with 'Focus on these games'. Musts (under 1% if missed) come first and are named; the rest are helps"
+      "note": "Nov 27 (Skills): asked which games they had to get right; South Carolina −6 (lock) left them at 0.4% if it missed but the Chief never called it a must, and closed with 'Focus on these games'. Musts (under 1% if missed) come first and are named; the rest are helps. Path answers are now one or two lines plus the path to win button ([[PATH:Name]]), no game list"
     }
   ]
 }
