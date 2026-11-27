@@ -8573,7 +8573,9 @@ async function openInsights(gameId) {
     if (x !== null) window.__gcSpot[gameId].spot = pct(x);
     if (toGo !== null) window.__gcSpot[gameId].first = pct(toGo);
     const ball = x === null ? "" : `<div class="gc-spot gc-slide" ${at("spot", pct(x))}>${possA || possH ? `<img class="gc-off" src="${logoUrl(possA ? game.awayId : game.homeId)}" alt="">` : ""}<i class="gc-ball"></i></div>${dir ? `<span class="gc-chev gc-slide ${dir > 0 ? "r" : "l"}" ${at("spot", pct(x))}>${dir > 0 ? "&gt;&gt;&gt;" : "&lt;&lt;&lt;"}</span>` : ""}<i class="gc-los gc-slide" ${at("spot", pct(x))}></i>`;
-    const gain = toGo === null ? "" : `<i class="gc-first gc-slide" ${at("first", pct(toGo))}></i>`;
+    // The down rides on the line to gain, as on TV: "1&10", "3&G".
+    const ddm = dd.match(/^\s*(\d)\w*\s*&\s*(\d+|goal)/i), ddTag = ddm ? `${ddm[1]}&${/goal/i.test(ddm[2]) ? "G" : ddm[2]}` : "";
+    const gain = toGo === null ? "" : `<i class="gc-first gc-slide" ${at("first", pct(toGo))}>${ddTag ? `<b class="gc-ddtag">${esc(ddTag)}</b>` : ""}</i>`;
     const drive = x !== null && toGo !== null ? `<i class="gc-drive" style="left:${pct(Math.min(x, toGo))}%;width:${(Math.abs(toGo - x) * 0.84).toFixed(2)}%"></i>` : "";
     // Midfield: the home team's logo painted on the turf, as at the stadium.
     const mid = `<img class="gc-mid" src="${logoUrl(game.homeId)}" alt="">`;
