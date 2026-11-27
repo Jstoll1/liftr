@@ -1855,7 +1855,7 @@ const deskWanted = () => (deskMq.matches && !IS_PHONE) || (IS_PHONE && landMq.ma
 const deskApply = () => { document.documentElement.classList.toggle("land", IS_PHONE && landMq.matches); deskLayout(deskWanted()); };
 deskApply();
 deskMq.addEventListener?.("change", deskApply);
-landMq.addEventListener?.("change", deskApply);
+landMq.addEventListener?.("change", () => { deskApply(); if (document.getElementById("rank-sheet")?.classList.contains("open") && typeof drawRankSheet === "function") drawRankSheet(false); });
 appScroll.addEventListener("scroll", syncHeaderSize, { passive: true });
 requestAnimationFrame(() => { try { syncHeaderSize(); } catch {} });
 const savedScroll = {};
@@ -6038,7 +6038,12 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   // A Scouting Report published from the Creative Studio, under the week.
   const scout = creativeArt?.art?.[`owner-card:owner:${name}`]?.text;
   const scoutRow = scout ? `<div class="rd-scout"><em>📋 SCOUTING REPORT</em><b>${escapeCd(scout.headline)}</b>${String(scout.body).split(/\n\s*\n/).map((p) => `<p>${escapeCd(p)}</p>`).join("")}</div>` : "";
-  if (opts.sheet) return `<div class="rank-detail ps-detail">${opts.vs ? "" : wpRow}${rowsHtml}${tbRow}${scoutRow}</div>`;
+  if (opts.sheet) {
+    // Phone landscape: two real columns (swing card and tiebreaker left, games right) so neither side leaves an empty band.
+    const side = (opts.vs ? "" : wpRow) + tbRow;
+    if (document.documentElement.classList.contains("land") && side) return `<div class="rank-detail ps-detail ps-two"><div class="ps-side">${side}</div><div class="ps-main">${rowsHtml}${scoutRow}</div></div>`;
+    return `<div class="rank-detail ps-detail">${opts.vs ? "" : wpRow}${rowsHtml}${tbRow}${scoutRow}</div>`;
+  }
   return `<div class="rank-detail">${wpRow}${scoutRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>${Object.keys(sway).length ? "PTS<br>IMPACT" : "PTS"}</span></div>${rowsHtml}${tbRow}${summary}</div>`;
 }
 
