@@ -11060,3 +11060,18 @@ html[data-sport="nfl"] .scorebug .bug-head .bug-lk { position: static; flex: non
 .help-go { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .help-btn { padding: 14px 10px; border-radius: 10px; border: 0; background: var(--neon-cyan); color: var(--bg); font: 10px 'Press Start 2P', monospace; cursor: pointer; }
 .help-btn.alt { background: transparent; color: var(--neon-cyan); border: 1px solid rgba(var(--neon-cyan-rgb), .5); }
+
+/* ==== RETRO: locked pick card (a plain scoreboard once a game locks) ==== */
+.locked-result.v2 { display: flex; flex-direction: column; gap: 8px; }
+.locked-result.v2 .lr-rows { display: flex; flex-direction: column; gap: 4px; }
+.locked-result.v2 .lr-row { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 7px 10px; border-radius: 8px; color: var(--text-dim); }
+.locked-result.v2 .lr-row .tm-logo { width: 26px; height: 26px; flex: none; object-fit: contain; }
+.locked-result.v2 .lr-nm { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.locked-result.v2 .lr-nm small { font-size: 11px; font-weight: 500; color: var(--text-meta); }
+.locked-result.v2 .lr-rk { flex: none; font-size: 12px; color: var(--text-meta); }
+.locked-result.v2 .lr-score { flex: none; min-width: 2ch; text-align: right; font: 17px 'Press Start 2P', monospace; color: var(--text-dim); }
+.locked-result.v2 .lr-row.won .lr-nm, .locked-result.v2 .lr-row.won .lr-score { color: var(--text); }
+.locked-result.v2 .lr-row.picked { background: rgba(var(--neon-cyan-rgb), .1); box-shadow: inset 3px 0 0 var(--neon-cyan); }
+.locked-result.v2 .lr-row.picked .lr-nm { color: var(--text); }
+.locked-result.v2 .lr-tag { flex: none; padding: 3px 5px; border-radius: 4px; border: 1px solid rgba(var(--neon-cyan-rgb), .5); font: 7px/1 'Press Start 2P', monospace; color: var(--neon-cyan); white-space: nowrap; }
+@media (max-width: 360px) { .locked-result.v2 .lr-tag { font-size: 6px; padding: 2px 4px; } .locked-result.v2 .lr-nm small { display: none; } }
