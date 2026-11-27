@@ -10717,7 +10717,9 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
   if (!toggle || !wrap) return;
   let open = false;
   const paint = () => { wrap.classList.toggle("hidden", !open); toggle.classList.toggle("open", open); toggle.setAttribute("aria-expanded", String(open)); };
-  toggle.addEventListener("click", () => { open = !open; paint(); if (open) track("all-picks-open", { event: true }); });
+  // It sits low on the board, so opening it brings the grid up into view:
+  // opened below the fold it looked like the tap did nothing.
+  toggle.addEventListener("click", () => { open = !open; paint(); if (open) { track("all-picks-open", { event: true }); requestAnimationFrame(() => toggle.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })); } });
   paint();
 })();
 
