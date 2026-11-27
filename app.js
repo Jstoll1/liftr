@@ -5074,9 +5074,8 @@ function renderLiveScores(live, cloudPicks) {
       }
       return `
         <div class="${cls}${myPick?.lock && lockRule() ? " lk" : ""}" data-game="${game.id}" role="button" tabindex="0" aria-label="Open ${game.awayShort} at ${game.homeShort}">
-          ${myPick?.lock && lockRule() ? lkI(lockState(game, myPick), "bug-lk", game, myPick) : ""}
           <div class="bug-head">
-            <span class="bug-gnum">G${gNum(game)}</span>${myPick?.lock && lockRule() ? `<i class="bug-lk" title="Your lock of the week">🔒</i>` : ""}
+            <span class="bug-gnum">G${gNum(game)}</span>${myPick?.lock && lockRule() ? lkI(lockState(game, myPick), "bug-lk", game, myPick) : ""}
             <span class="bug-status">${statusText}</span>${tvTag}
             ${myPill}
           </div>
