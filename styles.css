@@ -11022,8 +11022,9 @@ i.lk.rank-lk.lk-up, i.lk.rank-lk.lk-dn { display: inline-block; box-sizing: bord
   html.phone .rs-head { padding: 4px 12px 8px; gap: 6px; }
   html.phone .rs-grab { margin-top: 5px; }
   html.phone .rank-sheet { left: var(--rail-w); }
-  html.phone .rank-detail.ps-detail { display: grid; grid-template-columns: minmax(0, 38%) minmax(0, 1fr); column-gap: 14px; grid-auto-rows: min-content; align-content: start; padding: 8px 12px 10px; }
-  html.phone .rank-detail.ps-detail > * { grid-column: 2; }
-  html.phone .rank-detail.ps-detail > :is(.bs, .rd-wp, .rd-scout):first-child { grid-column: 1; grid-row: 1 / span 40; align-self: start; margin: 0; }
+  html.phone .rank-detail.ps-two { display: grid; grid-template-columns: minmax(0, 34%) minmax(0, 1fr); column-gap: 14px; align-items: start; padding: 8px 12px 10px; }
+  html.phone .ps-two .ps-side { display: flex; flex-direction: column; gap: 10px; }
+  html.phone .ps-two .ps-side > * { margin: 0; }
+  html.phone .ps-two .ps-side .rd-tb { border-top: 0; padding: 10px 12px; border: 1px solid var(--card-border); border-radius: 10px; }
   html.phone .ask-fab { font-size: 0; gap: 0; }
 }
