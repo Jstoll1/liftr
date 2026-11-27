@@ -626,8 +626,8 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   100% { background-position: 300% 50%; }
 }
 
+/* Locked cards are the scoreboard now: full strength, not faded. */
 .game-card.game-locked {
-  opacity: 0.6;
   border-color: rgba(255, 32, 121, 0.4);
 }
 
