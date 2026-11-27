@@ -584,7 +584,10 @@
   const storyTag = (sa, sb, odds) => {
     if (odds == null || sa + sb <= 0) return "";
     const upset = (sa > sb && odds < 0.4) || (sb > sa && odds > 0.6);
-    const t = upset ? ["UPSET ALERT", "dn"] : Math.abs(odds - 0.5) < 0.1 ? ["CLOSE WATCH", "gd"] : Math.abs(odds - 0.5) > 0.38 ? ["BLOWOUT", "up"] : null;
+    // BLOWOUT only when the score is one: the leader up 25+ and also the
+    // big favourite. A lopsided chance with a close score gets no tag.
+    const blow = Math.abs(sa - sb) >= 25 && Math.abs(odds - 0.5) > 0.38 && (sa > sb) === (odds > 0.5);
+    const t = upset ? ["UPSET ALERT", "dn"] : Math.abs(odds - 0.5) < 0.1 ? ["CLOSE WATCH", "gd"] : blow ? ["BLOWOUT", "up"] : null;
     return t ? `<span class="fx-cmk st ${t[1]}">${t[0]}</span>` : "";
   };
   // League pulse: what's happening now, one line each, worked out from the board.
