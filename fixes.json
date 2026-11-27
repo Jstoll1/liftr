@@ -420,6 +420,13 @@
       "at": 1795810999000,
       "commit": "00bf6b2",
       "note": "All Picks opened below the fold so the tap looked dead; opening it now scrolls the grid into view"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".ap-who",
+      "at": 1795817484000,
+      "commit": "5290696",
+      "note": "A name in the All Picks grid now opens that player's card"
     }
   ]
 }
