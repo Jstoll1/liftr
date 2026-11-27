@@ -413,6 +413,13 @@
       "at": 1795293048000,
       "commit": "3da4764",
       "note": "The hot-streak line was rebuilt into the race card's facts"
+    },
+    {
+      "k": "rage",
+      "match": "#all-picks-toggle",
+      "at": 1795810999000,
+      "commit": "00bf6b2",
+      "note": "All Picks opened below the fold so the tap looked dead; opening it now scrolls the grid into view"
     }
   ]
 }

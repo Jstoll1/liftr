@@ -2505,7 +2505,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .locked-result .rd-pts { min-width: 44px; }
 
 /* --- Scores: All Picks toggle --- */
-.all-picks-toggle { background: none; border: 0; cursor: pointer; padding: 6px 0; width: 100%; font-family: inherit; }
+.all-picks-toggle { background: none; border: 0; cursor: pointer; padding: 6px 0; width: 100%; font-family: inherit; scroll-margin-top: calc(var(--header-h, 64px) + 8px); }
 .all-picks-caret { display: inline-block; margin-left: 4px; transition: transform .2s; }
 .all-picks-toggle.open .all-picks-caret { transform: rotate(180deg); }
 
