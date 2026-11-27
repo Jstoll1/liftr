@@ -8792,8 +8792,12 @@ async function openInsights(gameId) {
       const who = pid != null ? abOfId(pid) || ab : ab;
       const off = p.start?.team?.id != null ? Number(p.start.team.id) : null;
       const v = penSigned(p, ab, n, wholePlay);
-      if (v == null || off == null || !abOfId(off)) return [`PENALTY ON ${who} · ${yds(n)}`, "flag"];
-      return [`PENALTY ON ${who} · ${abOfId(off)} ${v > 0 ? "+" : "-"}${Math.abs(v)}`, v > 0 ? "flag up" : "flag dn"];
+      // The foul by name ("False Start", "Offensive Holding" reads HOLDING),
+      // so one tag says what happened and what it cost.
+      const fm = txt.match(/PENALTY\s+on\s+[A-Z&.]{2,6}(?:-[^,]+)?,\s*([^,]+?),\s*\d+\s*yards?/i);
+      const foul = fm ? fm[1].replace(/^(offensive|defensive)\s+/i, "").replace(/\s+/g, " ").trim().toUpperCase().slice(0, 18) : `FLAG ON ${who}`;
+      if (v == null || off == null || !abOfId(off)) return [`${foul} · ${who} ${yds(n)}`, "flag"];
+      return [`${foul} · ${abOfId(off)} ${v > 0 ? "+" : "\u2212"}${Math.abs(v)}`, v > 0 ? "flag up" : "flag dn"];
     };
     const badgeOf = (p) => {
       if (isMarker(p)) return null;
@@ -8808,7 +8812,7 @@ async function openInsights(gameId) {
       if (noPlay || /^penalty$/i.test(type) || /^\s*penalty\b/i.test(txt)) {
         if (fl) return [fl];
         const pp = penPill(p, txt, true);
-        return [pp, ...(noPlay ? [["NO PLAY", "dim"]] : []), ...(/1ST DOWN/i.test(txt) && /\bup\b/.test(pp[1]) ? [["1ST DOWN", "first"]] : [])];
+        return [pp, ...(/1ST DOWN/i.test(txt) && /\bup\b/.test(pp[1]) ? [["1ST DOWN", "first"]] : [])];
       }
       if (/safety/i.test(t)) pills.push(["SAFETY", "td"]);
       else if (td) pills.push(["TOUCHDOWN", "td"]);
