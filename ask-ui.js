@@ -727,6 +727,30 @@
       const pctTxt = p >= 0.995 ? "over 99%" : p > 0 && p < 0.001 ? "under 0.1%" : `${(p * 100).toFixed(p < 0.1 ? 1 : 0)}%`;
       return p <= 0 ? null : `${who === currentManager ? "You're" : `${shown(who)} is`} at ${pctTxt} to win the week.\n[[PATH:${who}]]`;
     })();
+    // 'Why does Curt have a higher % than me': answered here from the same
+    // numbers the Chief's edge tool uses, so the lines and the reason are
+    // exact every time (the model kept rewriting them).
+    const why = (() => {
+      if (/fantasy/i.test(q) || !/\bwhy\b/i.test(q) || !/(higher|better|more|bigger|ahead)/i.test(q) || !/(%|percent|chance|odds)/i.test(q)) return null;
+      const named = (typeof MANAGERS !== "undefined" ? MANAGERS : []).filter((n) => n !== currentManager && new RegExp(`\\b${n}\\b`, "i").test(q));
+      if (named.length !== 1 || !currentManager) return null;
+      const other = named[0], hn = hiddenNote(); if (hn.picksHidden && /Everyone/.test(hn.picksHidden)) return null;
+      const memo = base(); if (!memo?.detail?.[currentManager] || !memo.detail[other]) return null;
+      const s = storyOf(currentManager, memo, lastGoodCloudPicks || {}, fins());
+      const v = (s.againstTheMembersAhead || []).find((x) => x.member === other); if (!v) return null;
+      const p = (x) => `${(x * 100).toFixed(1)}%`, me = banked(currentManager), th = banked(other), on = shown(other);
+      const k = v.lines.length, t = v.theirsLikelierIn;
+      const ptsLine = me.pts === th.pts ? `Both on ${me.pts} points.` : `${on} has ${th.pts} points to your ${me.pts}.`;
+      const out = [`${on} ${p(v.chance)}, you ${p(memo.detail[currentManager].pct)}. ${ptsLine}`];
+      if (!k) out.push(`You have the same open picks, so ${on}'s edge is the points already banked${th.max !== me.max ? ` (${on} can reach ${th.max}, you ${me.max})` : ""}.`);
+      else {
+        out.push(v.samePicks ? `You match ${on} on ${v.samePicks} of ${v.of} open picks, so only ${k} game${k === 1 ? "" : "s"} can separate you:` : k === 1 ? `One open game separates you:` : `You differ on all ${k} open picks:`);
+        out.push(...v.lines.map((l) => `• ${l.replace(new RegExp(`· ${other} `), `· ${on} `)}`));
+        out.push(t > k / 2 ? `${on}'s side is the likelier one ${k === 1 ? "there" : t === k ? (k === 2 ? "in both" : `in all ${k}`) : `in ${t} of the ${k}`}, so more of ${on}'s paths win.` : th.pts > me.pts ? `Your sides are as likely or likelier, but ${on} is ${th.pts - me.pts} points ahead already.` : th.max > me.max ? `Your sides are as likely or likelier, but ${on} can still reach ${th.max} points to your ${me.max}.` : `${on}'s side is likelier in ${t} of the ${k}, and the tiebreaker and who else wins those games decide the rest.`);
+      }
+      return out.join("\n");
+    })();
+    if (why) { item.a = why; convo.push({ role: "assistant", content: why }); busy = false; sheet(); if (typeof track === "function") track("ask-why-fast", { event: true }); return; }
     if (fast) { item.a = fast; convo.push({ role: "assistant", content: fast }); busy = false; sheet(); if (typeof track === "function") track("ask-path-fast", { event: true }); return; }
     let logId = null;
     const giveUp = (reason) => { if (logId) fetch(`${WORKER_URL}/week-chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "giveup", logId, reason }) }).catch(() => {}); };
