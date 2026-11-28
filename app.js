@@ -7355,6 +7355,8 @@ function openRankSheet(name) {
       const b = e.target.closest("[data-rs]"); if (!b) return;
       if (b.dataset.rs === "x") return closeRankSheet();
       if (b.dataset.rs === "vs") { rankSheet.vs = !rankSheet.vs; return drawRankSheet(false); }
+      // The name opens their season card, as a name does elsewhere.
+      if (b.dataset.rs === "season") { if (e.target.closest(".rs-lk, .nm-lk, i.lk")) return; return openPlayerCard(rankSheet.name); }
       stepRankSheet(b.dataset.rs === "next" ? 1 : -1);
     });
     // Drag: sideways steps to the next player; down from the top of the
@@ -7438,7 +7440,7 @@ function drawRankSheet(keepScroll) {
     <div class="rs-top rs-one">
       <button type="button" class="rs-nav" data-rs="prev" aria-label="Previous player">‹</button>
       <span class="ranking-place${row.score > 0 && row.place <= 3 ? ` medal m${row.place}` : ""}">${row.tied ? "T" : ""}${row.place}</span>
-      <span class="rs-name"><b>${escapeCd(shown(name).toUpperCase())}</b>${rankLockHtml(row)}<small>${row.subline || ""} · <span class="rs-pts">${row.score} PTS</span></small></span>
+      <span class="rs-name" data-rs="season" role="button" tabindex="0" aria-label="${escapeCd(shown(name))}'s season"><b>${escapeCd(shown(name).toUpperCase())}</b>${rankLockHtml(row)}<small>${row.subline || ""} · <span class="rs-pts">${row.score} PTS</span></small></span>
       ${pct != null ? `<span class="rs-win"><b class="rs-pct${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}${txt === "CLINCHED" ? " clin" : ""}">${txt}</b><small>WIN</small></span>` : ""}
       ${vsBtn}${canPath ? `<button type="button" class="rd-path-btn rs-path" data-path="${escapeCd(name)}">PATH</button>` : ""}
       <button type="button" class="rs-nav" data-rs="next" aria-label="Next player">›</button>
