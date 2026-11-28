@@ -729,6 +729,30 @@
       },
       "regression": true,
       "note": "Nov 27 (Skills): asked which games they had to get right; South Carolina −6 (lock) left them at 0.4% if it missed but the Chief never called it a must, and closed with 'Focus on these games'. Musts (under 1% if missed) come first and are named; the rest are helps. Path answers are now one or two lines plus the path to win button ([[PATH:Name]]), no game list. Now answered on the phone without the Chief (fast path), so no tool call"
+    },
+    {
+      "source": "miss",
+      "id": "why-higher",
+      "screen": "scores",
+      "turns": [
+        "Why does Curt have higher % than me in the pick'em"
+      ],
+      "checks": {
+        "tools": [
+          "edge"
+        ],
+        "must": [
+          "\\d+(\\.\\d)?%[^\\n]*\\d+(\\.\\d)?%",
+          "(?i)to hit|%\\)"
+        ],
+        "mustNot": [
+          "(?i)align",
+          "(?i)split picks"
+        ],
+        "noAsk": true
+      },
+      "regression": true,
+      "note": "Nov 27 (Jake): asked why Curt's % beat his; the Chief said Curt's picks 'align more with the leaders' and listed games without either side's pick. Now: both chances, shared picks, each split game with both picks and their odds to hit, one plain reason"
     }
   ]
 }
