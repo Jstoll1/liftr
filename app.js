@@ -8447,6 +8447,8 @@ async function openInsights(gameId) {
   // ESPN game page (from the phone) fills most of the sheet; news and the
   // Worker's extras slot in after, and slow Worker calls are capped.
   const token = ++insightsOpenToken;
+  // Each open replays the last play once (the field reads this as a first open).
+  if (window.__gcSpot?.[gameId]) { delete window.__gcSpot[gameId].play; delete window.__gcSpot[gameId].spot; delete window.__gcSpot[gameId].rp; }
   let data = null, snap = null, summaryRaw = null, awayNews = [], homeNews = [], wider = [], newsInj = null, gdelt = [], siteFeed = null;
   const pend = { summary: true, news: true, wider: true, ai: true, inj: true, gdelt: true, site: true, picks: true };
   let xpicks = null;
@@ -8612,11 +8614,24 @@ async function openInsights(gameId) {
     const prevKey = mem.play;
     window.__gcSpot[gameId].play = pKey;
     const pType = String(lastP?.type?.text || ""), pYds = Number(lastP?.statYardage);
-    const pKind = !pKey || !prevKey || pKey === prevKey || brkNow ? "" : /sack/i.test(pType) ? "sack" : /incomplet/i.test(pType) ? "inc" : /intercept/i.test(pType) ? "int" : /pass/i.test(pType) ? "pass" : /punt|kickoff/i.test(pType) ? "kick" : /rush|run/i.test(pType) ? "run" : /penalty/i.test(pType) ? "pen" : "";
+    // A new play, or the last one when the sheet opens, replays once: the
+    // ball slides from where it was (on open, where that play began) and a
+    // label names it. The sheet redraws as sources land, so a replay in
+    // progress carries on from where it got to. Not at a break.
+    const now = Date.now(), slot = window.__gcSpot[gameId];
+    const spotOf = (t) => { const s = String(t || ""), sm = s.match(/\bat\s+([A-Za-z&.' -]+?)\s+(\d{1,2})\s*$/); if (sm) { const w = sm[1].trim().toUpperCase(); return w === String(H).toUpperCase() ? 100 - Number(sm[2]) : w === String(A).toUpperCase() ? Number(sm[2]) : null; } return /\bat\s+50\b/.test(s) ? 50 : null; };
+    if (pKey && pKey !== prevKey && !brkNow && x !== null && !(slot.rp && slot.rp.key === pKey)) {
+      const sx = prevKey ? null : spotOf(lastP?.start?.downDistanceText || lastP?.start?.shortDownDistanceText);
+      slot.rp = { key: pKey, at: now, from: prevKey ? mem.spot ?? null : sx !== null ? pct(sx) : null };
+    }
+    const rp = slot.rp && slot.rp.key === pKey && now - slot.rp.at < 3200 && !brkNow ? slot.rp : null;
+    const rpAge = rp ? (now - rp.at) / 1000 : 0;
+    if (rp && rp.from != null) mem.spot = rp.from;
+    const pKind = !rp ? "" : /sack/i.test(pType) ? "sack" : /incomplet/i.test(pType) ? "inc" : /intercept/i.test(pType) ? "int" : /pass/i.test(pType) ? "pass" : /punt|kickoff/i.test(pType) ? "kick" : /rush|run/i.test(pType) ? "run" : /penalty/i.test(pType) ? "pen" : "";
     const ydsTxt = Number.isFinite(pYds) && pYds ? ` ${pYds > 0 ? "+" : "−"}${Math.abs(pYds)}` : "";
     const pLabel = { pass: `PASS${ydsTxt}`, run: `RUN${ydsTxt}`, sack: `SACK${ydsTxt}`, inc: "INCOMPLETE", int: "INTERCEPTED", kick: /punt/i.test(pType) ? "PUNT" : "KICKOFF", pen: `PENALTY${ydsTxt}` }[pKind] || "";
     const pTone = pKind === "sack" || pKind === "int" || (Number.isFinite(pYds) && pYds < 0) ? " neg" : pKind === "inc" || pKind === "pen" || pKind === "kick" ? " neu" : "";
-    const ball = x === null ? "" : `<div class="gc-spot gc-slide${pKind ? ` gc-p-${pKind}` : ""}" ${at("spot", pct(x))}>${possA || possH ? `<img class="gc-off" src="${logoUrl(possA ? game.awayId : game.homeId)}" alt="">` : ""}<i class="gc-ball"></i>${pLabel ? `<b class="gc-plbl${pTone}">${pLabel}</b>` : ""}</div>${dir ? `<span class="gc-chev gc-slide ${dir > 0 ? "r" : "l"}" ${at("spot", pct(x))}>${dir > 0 ? "&gt;&gt;&gt;" : "&lt;&lt;&lt;"}</span>` : ""}<i class="gc-los gc-slide" ${at("spot", pct(x))}></i>`;
+    const ball = x === null ? "" : `<div class="gc-spot gc-slide${pKind ? ` gc-p-${pKind}` : ""}" ${at("spot", pct(x)).replace(/^style="/, rp ? `style="transition-delay:-${rpAge.toFixed(2)}s;` : 'style="')}>${possA || possH ? `<img class="gc-off" src="${logoUrl(possA ? game.awayId : game.homeId)}" alt="">` : ""}<i class="gc-ball"></i>${pLabel ? `<b class="gc-plbl${pTone}" style="animation-delay:-${rpAge.toFixed(2)}s">${pLabel}</b>` : ""}</div>${dir ? `<span class="gc-chev gc-slide ${dir > 0 ? "r" : "l"}" ${at("spot", pct(x))}>${dir > 0 ? "&gt;&gt;&gt;" : "&lt;&lt;&lt;"}</span>` : ""}<i class="gc-los gc-slide" ${at("spot", pct(x))}></i>`;
     // The down rides on the line to gain, as on TV: "1&10", "3&G".
     const ddm = dd.match(/^\s*(\d)\w*\s*&\s*(\d+|goal)/i), ddTag = ddm ? `${ddm[1]}&${/goal/i.test(ddm[2]) ? "G" : ddm[2]}` : "";
     const gain = toGo === null ? "" : `<i class="gc-first gc-slide" ${at("first", pct(toGo))}>${ddTag ? `<b class="gc-ddtag">${esc(ddTag)}</b>` : ""}</i>`;
