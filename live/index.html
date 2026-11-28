@@ -1692,7 +1692,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     if (e.k === "js-error") return ["⚠ Hit an error", e.d || ""];
     if (e.k === "sheet-time") { const [id, sec] = String(e.d || "").split(":"); return [`Spent ${dur(Number(sec) * 1000)} in ${SHEET[id] || id}`, ""]; }
     if (e.k === "depth") { const [sc, pct] = String(e.d || "").split(":"); return [`Scrolled ${pct}% of ${SCREEN_NAME[sc] || sc}`, ""]; }
-    if (e.k === "visit-end") { const [sc, sec, dp, fl = "", taps] = String(e.d || "").split("|"); const saw = [/L/.test(fl) && "live box", /R/.test(fl) && "own row"].filter(Boolean); return [`Left from ${SCREEN_NAME[sc] || sc} after ${dur(Number(sec) * 1000)}`, [saw.length ? `saw ${saw.join(" and ")}` : "saw neither live box nor own row", `scrolled ${dp || 0}%`, `${taps || 0} tap${taps === "1" ? "" : "s"}`, /S/.test(fl) && "⚠ data stale"].filter(Boolean).join(" · ")]; }
+    if (e.k === "visit-end") { const [sc, sec, dp, fl = "", taps] = String(e.d || "").split("|"); const saw = [/L/.test(fl) && "live box", /R/.test(fl) && "own row"].filter(Boolean); return [`Left from ${SCREEN_NAME[sc] || sc} after ${dur(Number(sec) * 1000)} on screen`, [saw.length ? `saw ${saw.join(" and ")}` : "saw neither live box nor own row", `scrolled ${dp || 0}%`, `${taps || 0} tap${taps === "1" ? "" : "s"}`, /S/.test(fl) && "⚠ data stale"].filter(Boolean).join(" · ")]; }
     if (e.k === "theme-poll-shown") return ["Saw the theme poll", ""];
     if (e.k === "theme-poll-vote") return ["Voted in the theme poll", ({ retro: "Retro Arcade", dark: "Current Dark Mode", either: "Who Cares" })[e.d] || e.d || ""];
     if (e.k === "stat-break") return ["Opened a stat breakdown on a player card", String(e.d || "").replace("🔒 ", "")];
