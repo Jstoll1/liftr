@@ -738,21 +738,19 @@
         "Why does Curt have higher % than me in the pick'em"
       ],
       "checks": {
-        "tools": [
-          "edge"
-        ],
         "must": [
-          "\\d+(\\.\\d)?%[^\\n]*\\d+(\\.\\d)?%",
-          "(?m)You \\*\\*[^*]+\\*\\* \\d+% · \\w+ \\*\\*"
+          "(?i)ahead",
+          "(?i)root for",
+          "\\d+%"
         ],
         "mustNot": [
           "(?i)align",
-          "(?i)split picks"
+          "(?i)paths"
         ],
         "noAsk": true
       },
       "regression": true,
-      "note": "Nov 27 (Jake): asked why Curt's % beat his; the Chief said Curt's picks 'align more with the leaders' and listed games without either side's pick. Now: both chances, shared picks, each split game with both picks and their odds to hit, one plain reason. Nov 27 rerun: lines dropped who picked which side and put the % inside the bold; the tool now hands over ready lines to copy"
+      "note": "Nov 27 (Jake): asked why Curt's % beat his; the Chief said Curt's picks 'align more with the leaders' and listed games without either side's pick. Now: both chances, shared picks, each split game with both picks and their odds to hit, one plain reason. Nov 27 rerun: lines dropped who picked which side and put the % inside the bold; the tool now hands over ready lines to copy. Nov 28: answered on the phone (no Chief call): verdict first, then the picks to root for with whose side is likelier, then what winning them does"
     }
   ]
 }
