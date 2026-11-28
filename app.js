@@ -11537,7 +11537,7 @@ async function renderSeasonStats() {
     const top = Math.max(...list.map((r) => Math.abs(r.n)), 0) || 1;
     const lo = Math.min(...list.map((r) => r.n));
     const width = (r) => Math.max(6, Math.round(100 * (r.low ? (lo || 0.1) / (r.n || 0.1) : Math.abs(r.n) / top)));
-    const full = `<div class="hs-full"><div class="hs-note">${note}</div>${list.map((r) => `<div class="hs-r${r.name === me ? " me" : ""}${r.rank === 1 ? " first" : ""}"><i class="hs-rk">${r.rank}</i>${av(r.name)}<span class="hs-nm">${esc(shown(r.name))}</span><span class="hs-bar"><u class="${r.signed && r.n < 0 ? "neg" : ""}" style="width:${width(r)}%"></u></span><b class="hs-v${r.signed ? (r.n > 0 ? " up" : r.n < 0 ? " down" : "") : ""}">${esc(r.value)}<small>${esc(r.more || r.sub || "")}</small></b></div>`).join("")}</div>`;
+    const full = `<div class="hs-full"><div class="hs-note">${note}</div>${list.map((r) => `<div class="hs-r${r.name === me ? " me" : ""}${r.rank === 1 ? " first" : ""}" data-hsname="${esc(r.name)}" role="button" tabindex="0"><i class="hs-rk">${r.rank}</i>${av(r.name)}<span class="hs-nm">${esc(shown(r.name))}</span><span class="hs-bar"><u class="${r.signed && r.n < 0 ? "neg" : ""}" style="width:${width(r)}%"></u></span><b class="hs-v${r.signed ? (r.n > 0 ? " up" : r.n < 0 ? " down" : "") : ""}">${esc(r.value)}<small>${esc(r.more || r.sub || "")}</small></b></div>`).join("")}</div>`;
     HS_BOARDS[key] = { label, color, icon, html: lead ? full : `<div class="hs-none">NOBODY YET</div>` };
     // The tile art is pixel art cut from the league's own template, one
     // per board; the emoji stands in if it fails to load.
@@ -11585,6 +11585,8 @@ function openHsBoard(key) {
   m.classList.remove("hidden");
   track("hs-board", { event: true, d: key });
 }
+// A row on a high score board opens that player's season card.
+document.addEventListener("click", (e) => { const r = e.target.closest?.(".hs-r[data-hsname]"); if (r && typeof openPlayerCard === "function") openPlayerCard(r.dataset.hsname); });
 function openHsAll() {
   const m = bottomSheet("hs-all");
   m.innerHTML = `<div class="modal-card wks-card hs-card hs-all-card"><i class="wks-grab" aria-hidden="true"></i>
