@@ -427,6 +427,13 @@
       "at": 1795817484000,
       "commit": "5290696",
       "note": "A name in the All Picks grid now opens that player's card"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".rs-name",
+      "at": 1795831978000,
+      "commit": "fc0f90e",
+      "note": "The name on the week player card now opens that player's season card"
     }
   ]
 }
