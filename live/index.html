@@ -1656,6 +1656,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     "scorebug-open": "Opened a live score", "ranking-expand": "Opened a player card", "chief-msg-seen": "Saw a message from the Chief", "chief-msg": "Answered the Chief",
     "path-share": "Shared a Path to Win", "path-intro": "Saw the Path to Win intro",
     "wp-player": "Checked someone's odds to win the week", "wp-explain": "Read how win odds work", h2h: "Compared two players (VS)",
+    "ask-path-fast": "Asked Chief for their path (instant answer)", "ask-path-open": "Opened Path to Win from Chief", "hs-all": "Opened every high score board", "wp-engine": "Ran the win% engine",
     "pot-open": "Opened the pot and standings", "pot-seen": "Looked at the pot and standings", "season-open": "Opened season stats", "season-seen": "Looked at season stats", "recap-seen": "Looked at the week replay", "board-seen": "Looked at the leaderboard", "scores-seen": "Looked at the game scores", "all-picks-open": "Opened everyone's picks", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
     "poll-view": "Saw the lock of the week vote (retired)", poll: "Voted on the lock of the week (retired)",
     "quick-read": "Opened a game's quick read (FPI, ATS, last 5)", "past-gamecast": "Opened a past game from a last five", "side-open": "Opened the side bet sheet", "side-ask": "Opened the side bet from its invite",
@@ -1679,6 +1680,9 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     st.digestShow = true;
     copyText(text).then((ok) => { st.digestOk = ok ? Date.now() : 0; st.sig = ""; render(); setTimeout(() => { st.sig = ""; render(); }, 1800); });
   }, true);
+  // Event names Live has no words for: listed on Issues so a new feature
+  // never shows as a raw code without anyone noticing.
+  const UNLABELED = new Set();
   function says(e, feed) {
     if (e.k === "week-ask") return ["🧠 Asked Chief", e.d ? `“${e.d}”` : ""];
     if (e.k === "recap-card") return ["Opened a replay card", ({ hit: "Pick of the week", miss: "Worst pick", move: "Movement", split: "Coin flip", tb: "Tiebreaker" })[e.d] || e.d || ""];
@@ -1726,6 +1730,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     if (e.k === "hs-board") return ["Opened a high score board", ({ ats: "Best ATS", streak: "Hot Hand", dogs: "Dog Hits", lone: "Lone Wolf", fader: "Fader", tb: "TB Sniper", best: "Best Week", blanks: "No Shows", "side-bank": "Bankroll", "side-picks": "Side Picks" })[e.d] || e.d || ""];
     if (SAYS[e.k]) return [SAYS[e.k], /^(game-|gamecast|scorebug)/.test(e.k) ? st.games[e.d] || "" : e.k === "ranking-expand" && e.d ? name(e.d) : e.k === "chief-msg" && e.d ? (e.d === "reply" ? "replied" : "tapped Thanks Chief") : e.k === "history-ask" && e.d ? `“${e.d}”` : e.k === "h2h" && e.d ? String(e.d).split(" vs ").map(name).join(" vs ") : ""];
     if (SCREENS[e.k]) return [`Went to ${SCREENS[e.k]}`, ""];
+    UNLABELED.add(e.k);
     return [e.k.charAt(0).toUpperCase() + e.k.slice(1).replace(/-/g, " "), ""];
   }
 
@@ -2716,7 +2721,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       home: `${joinNudge()}${noteNudge()}${kpisNb}${timeline}${feedHtml}${st.range !== "3h" && (wk || st.range === "7d") ? `<section class="tl panel wk-rest">${weekView("rest")}</section>` : ""}${overview}${recCard("home")}${ucPanel}${strips}`,
       activity: "",
       members: membersPage(),
-      issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
+      issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}${UNLABELED.size ? `<section class="panel"><div class="ph"><h2>Unlabeled events</h2><span class="sub">${UNLABELED.size} · add words for these in Live</span></div><div class="note">${[...UNLABELED].map(esc).join(" · ")}</div></section>` : ""}`,
       bi: `<div class="pg-bar"><h1>Ask Chief</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${chiefMsgPanel()}${ctPanel()}${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
       stats: `<div class="pg-bar"><h1>Stats</h1><span class="seg" role="group" aria-label="Range">${[["24h", "24 hours"], ["7d", "7 days"]].map(([r, l]) => `<button type="button" class="${(r === "7d") === (st.range === "7d") ? "on" : ""}" data-range="${r === "7d" ? "7d" : "24h"}">${l}</button>`).join("")}</span></div>${recCard("stats")}${recordsPanel}${flowPanel}${rail}`,
     }[st.page] || "";
