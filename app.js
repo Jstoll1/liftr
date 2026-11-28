@@ -8904,6 +8904,7 @@ async function openInsights(gameId) {
     if (x === null) x = fromText(sit.lastPlay);
     if (x === null && sit.yardLine != null) x = 100 - sit.yardLine;
     const dir = possA ? 1 : possH ? -1 : 0;
+    const brkNow = atBreak;
     const goalToGo = /goal/i.test(dd);
     const dist = sit.distance != null ? sit.distance : (dd.match(/&\s*(\d+)/) ? Number(dd.match(/&\s*(\d+)/)[1]) : null);
     const toGo = !between && x !== null && dir && (dist != null || goalToGo) ? Math.max(0, Math.min(100, goalToGo ? (dir > 0 ? 100 : 0) : x + dir * dist)) : null;
@@ -8916,7 +8917,18 @@ async function openInsights(gameId) {
     (window.__gcSpot[gameId] = window.__gcSpot[gameId] || {});
     if (x !== null) window.__gcSpot[gameId].spot = pct(x);
     if (toGo !== null) window.__gcSpot[gameId].first = pct(toGo);
-    const ball = x === null ? "" : `<div class="gc-spot gc-slide" ${at("spot", pct(x))}>${possA || possH ? `<img class="gc-off" src="${logoUrl(possA ? game.awayId : game.homeId)}" alt="">` : ""}<i class="gc-ball"></i></div>${dir ? `<span class="gc-chev gc-slide ${dir > 0 ? "r" : "l"}" ${at("spot", pct(x))}>${dir > 0 ? "&gt;&gt;&gt;" : "&lt;&lt;&lt;"}</span>` : ""}<i class="gc-los gc-slide" ${at("spot", pct(x))}></i>`;
+    // The last play, replayed once as the ball moves: a pass or kick arcs,
+    // a run or sack slides, and a small label names it. Only for a play
+    // that is new since the last refresh, never on first open.
+    const pKey = lastP ? String(lastP.id || `${lastP.sequenceNumber}|${lastP.text}`) : "";
+    const prevKey = mem.play;
+    window.__gcSpot[gameId].play = pKey;
+    const pType = String(lastP?.type?.text || ""), pYds = Number(lastP?.statYardage);
+    const pKind = !pKey || !prevKey || pKey === prevKey || brkNow ? "" : /sack/i.test(pType) ? "sack" : /incomplet/i.test(pType) ? "inc" : /intercept/i.test(pType) ? "int" : /pass/i.test(pType) ? "pass" : /punt|kickoff/i.test(pType) ? "kick" : /rush|run/i.test(pType) ? "run" : /penalty/i.test(pType) ? "pen" : "";
+    const ydsTxt = Number.isFinite(pYds) && pYds ? ` ${pYds > 0 ? "+" : "−"}${Math.abs(pYds)}` : "";
+    const pLabel = { pass: `PASS${ydsTxt}`, run: `RUN${ydsTxt}`, sack: `SACK${ydsTxt}`, inc: "INCOMPLETE", int: "INTERCEPTED", kick: /punt/i.test(pType) ? "PUNT" : "KICKOFF", pen: `PENALTY${ydsTxt}` }[pKind] || "";
+    const pTone = pKind === "sack" || pKind === "int" || (Number.isFinite(pYds) && pYds < 0) ? " neg" : pKind === "inc" || pKind === "pen" || pKind === "kick" ? " neu" : "";
+    const ball = x === null ? "" : `<div class="gc-spot gc-slide${pKind ? ` gc-p-${pKind}` : ""}" ${at("spot", pct(x))}>${possA || possH ? `<img class="gc-off" src="${logoUrl(possA ? game.awayId : game.homeId)}" alt="">` : ""}<i class="gc-ball"></i>${pLabel ? `<b class="gc-plbl${pTone}">${pLabel}</b>` : ""}</div>${dir ? `<span class="gc-chev gc-slide ${dir > 0 ? "r" : "l"}" ${at("spot", pct(x))}>${dir > 0 ? "&gt;&gt;&gt;" : "&lt;&lt;&lt;"}</span>` : ""}<i class="gc-los gc-slide" ${at("spot", pct(x))}></i>`;
     // The down rides on the line to gain, as on TV: "1&10", "3&G".
     const ddm = dd.match(/^\s*(\d)\w*\s*&\s*(\d+|goal)/i), ddTag = ddm ? `${ddm[1]}&${/goal/i.test(ddm[2]) ? "G" : ddm[2]}` : "";
     const gain = toGo === null ? "" : `<i class="gc-first gc-slide" ${at("first", pct(toGo))}>${ddTag ? `<b class="gc-ddtag">${esc(ddTag)}</b>` : ""}</i>`;
