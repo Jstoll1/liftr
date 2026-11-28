@@ -1058,6 +1058,13 @@ html, body { overflow-x: hidden; }
 .att-c span { font-size: 13px; font-weight: 600; }
 .att-c small { font-size: 11px; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .att-c.ok b, .att-c.calm b { color: #8b93a7; }
+.dg { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; margin: 0 0 10px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); font-size: 13px; color: var(--meta); }
+.dg b { color: var(--text); }
+.dg > span, .dg-w { white-space: nowrap; }
+.dg-top { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.dg-top b { text-transform: none; }
+.dg i { font-style: normal; color: var(--dim); }
+.dg-w { border: 0; background: none; padding: 0; font: inherit; color: #ffc400; cursor: pointer; }
 /* All clear: the four zeros sit on one quiet strip instead of four big tiles. */
 .att.clear { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
 .att.clear .att-c { align-items: center; text-align: center; padding: 9px 4px; border: 0 !important; border-radius: 0; background: none !important; }
@@ -1777,14 +1784,29 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
         if (e.k === "in") continue;
       }
       if (e.k === "out") { s.end = e.at; s.done = true; delete open[e.n]; continue; }
+      if (e.k === "visit-end") s.vend = { at: e.at, ms: (Number(String(e.d || "").split("|")[1]) || 0) * 1000 };
       const last = s.acts[s.acts.length - 1];
       const [a, d] = says(e, feed);
       if (last && last.a === a && last.d === d) { last.x++; last.ids.push(evId(e)); } else s.acts.push({ at: e.at, a, d, x: 1, ids: [evId(e)], go: target(e, feed) });
       s.end = e.at;
     }
     for (const s of Object.values(open)) { const p = people[s.n]; if (p?.in && p.since <= s.start + 2000) { s.live = true; s.since = p.since; } }
-    for (const s of list) s.acts = tidyActs(s);
-    return list.sort((a, b) => b.start - a.start);
+    // One stretch on screen is one visit: a phone that goes quiet for a
+    // minute gets split by presence, but the app's own visit-end says how
+    // long it stayed up, so the pieces inside that stretch fold together.
+    const merged = new Set();
+    for (const s of list) {
+      if (!s.vend?.ms) continue;
+      const from = s.vend.at - s.vend.ms - 5000;
+      const parts = list.filter((p) => p !== s && p.n === s.n && !merged.has(p) && p.end >= from && p.start < s.start).sort((a, b) => a.start - b.start);
+      if (!parts.length) continue;
+      for (const p of parts) merged.add(p);
+      s.acts = [...parts.flatMap((p) => p.acts), ...s.acts];
+      s.start = parts[0].start; s.app = parts[0].app || s.app;
+    }
+    const kept = list.filter((s) => !merged.has(s));
+    for (const s of kept) s.acts = tidyActs(s);
+    return kept.sort((a, b) => b.start - a.start);
   }
   // Time on each screen (until the next thing they did), and back and
   // forth between two screens folded into one line with the time on each.
@@ -2506,6 +2528,8 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     const who = [...whoMs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
     const wMax = Math.max(1, ...who.map(([, ms]) => ms));
     const rankRows = (rows) => `<div class="rank">${rows.join("")}</div>`;
+    // The day in one line: who came in, what they used most, anything new to fix.
+    const digest = `<div class="dg">${[`<span><b class="num">${inToday.length}/${names.length}</b> in today</span>`, feats[0] && `<span class="dg-top">top: <b>${esc(feats[0][0].replace(/^Opened /, ""))}</b></span>`, issuesNew ? `<button type="button" data-page="issues" class="dg-w">⚠ ${issuesNew} new on Issues</button>` : "<span>Issues clear</span>"].filter(Boolean).join('<i aria-hidden="true">·</i>')}</div>`;
     const overview = `<section class="att${/att-c (warn|bad|info)/.test(attCards) ? "" : " clear"}">${attCards}</section>
       <div class="ov-duo">
         <section class="panel ov"><div class="ph"><h2>Most used</h2><span class="sub">people · 24h</span></div>${feats.length ? rankRows(feats.map(([l, x]) => `<div><span>${esc(l)} <small>${x.n} taps</small></span><b>${x.who.size}</b><i><s style="width:${((x.who.size / fMax) * 100).toFixed(1)}%"></s></i></div>`)) : `<div class="note">Nothing used yet today.</div>`}</section>
@@ -2718,7 +2742,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     ].filter(Boolean).join("");
     const kpisNb = kpis.replace("<!--NB-->", nRows ? `<div class="nb-rows">${nRows}</div>` : "");
     const pageBody = {
-      home: `${joinNudge()}${noteNudge()}${kpisNb}${timeline}${feedHtml}${st.range !== "3h" && (wk || st.range === "7d") ? `<section class="tl panel wk-rest">${weekView("rest")}</section>` : ""}${overview}${recCard("home")}${ucPanel}${strips}`,
+      home: `${joinNudge()}${noteNudge()}${digest}${kpisNb}${timeline}${feedHtml}${st.range !== "3h" && (wk || st.range === "7d") ? `<section class="tl panel wk-rest">${weekView("rest")}</section>` : ""}${overview}${recCard("home")}${ucPanel}${strips}`,
       activity: "",
       members: membersPage(),
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}${UNLABELED.size ? `<section class="panel"><div class="ph"><h2>Unlabeled events</h2><span class="sub">${UNLABELED.size} · add words for these in Live</span></div><div class="note">${[...UNLABELED].map(esc).join(" · ")}</div></section>` : ""}`,
