@@ -364,8 +364,8 @@ const app = {
       }
       if (!cur) return json({ error: "No fantasy season yet" }, 503, corsHeaders);
       // The Chief's take on the week just finished: written once per week.
-      // v2: the first takes mixed a season total up with a week's score.
-      if (cur.weeksPlayed && (!cur.take || cur.take.week < cur.weeksPlayed || cur.take.v !== 2) && env.OPENAI_API_KEY) {
+      // v2: the first takes mixed a season total up with a week's score. v3: harder roast.
+      if (cur.weeksPlayed && (!cur.take || cur.take.week < cur.weeksPlayed || cur.take.v !== 3) && env.OPENAI_API_KEY) {
         try { cur.take = await fantasyTake(env, cur); await env.LIFTR_KV.put(CURRENT_KEY, JSON.stringify(cur)); } catch {}
       }
       // All-time head to head (regular season, playoffs) for this week's pairings.
@@ -5022,9 +5022,9 @@ async function fantasyTake(env, cur) {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
     body: JSON.stringify({
-      model: env.OPENAI_MODEL || "gpt-4o-mini", temperature: 0.7, max_tokens: 220,
+      model: env.OPENAI_MODEL || "gpt-4o-mini", temperature: 0.9, max_tokens: 220,
       messages: [
-        { role: "system", content: "You are the Chief, the voice of the BroChiefs friends' fantasy football league. Write a 3 or 4 sentence take on the week just finished: the top single-week score, the closest game or upset, the biggest blowout (all from thisWeeksGames), and who is rising or sinking in the standings (records). Plain words, playful, a little trash talk, owners by first name, real numbers only from the data. No headings, no lists, no emoji." },
+        { role: "system", content: "You are the Chief, the BroChiefs fantasy league's group chat menace: a lifelong friend who roasts. Write 3 or 4 short sentences on the week just finished, aimed at people, not stats. Hit the worst: the week's lowest score by name and number, the biggest blowout victim, anyone sinking in the standings. Give the top scorer one line of credit at most. Be specific and cutting, like a friend who knows them, but never about anything outside football (no looks, family, jobs, money). Every number comes from the data: weekly scores and margins from thisWeeksGames, records from standingsAfterThisWeek. Banned: nail-biter, edging out, heating up, watch your backs, spicy, king of the hill, solid, what a week, buckle up, exclamation marks, dashes of any kind. No headings, no lists, no emoji, owners by first name." },
         { role: "user", content: JSON.stringify({
           week: wk,
           thisWeeksGames: week.filter((x, i, l) => l.findIndex((y) => y.owner === x.opponent) > i || !l.some((y) => y.owner === x.opponent)).map((x) => { const o = week.find((y) => y.owner === x.opponent); return { [x.owner]: x.points, [x.opponent]: o?.points ?? null, winner: o && o.points > x.points ? x.opponent : x.owner, margin: o ? Math.round(Math.abs(x.points - o.points) * 10) / 10 : null }; }),
@@ -5038,7 +5038,7 @@ async function fantasyTake(env, cur) {
   const j = await res.json();
   const text = String(j?.choices?.[0]?.message?.content || "").trim();
   if (!text) throw new Error("empty take");
-  return { week: wk, v: 2, text: text.slice(0, 900), at: Date.now() };
+  return { week: wk, v: 3, text: text.slice(0, 900), at: Date.now() };
 }
 
 // Pro trial: classic is the default, so only a pro visit carries a tag.
