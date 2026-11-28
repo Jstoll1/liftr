@@ -18,7 +18,7 @@
     const seen = new Set();
     const rx = teams.length ? new RegExp(`(^|[^A-Za-z])(${teams.map(([n]) => esc(n).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?![A-Za-z])`, "g") : null;
     const logos = (h) => !rx ? h : h.replace(rx, (m, pre, nm) => { const t = teams.find(([n]) => esc(n) === nm); if (!t || seen.has(t[1])) return m; seen.add(t[1]); return `${pre}<img class="ask-tlogo" src="${logoUrl(t[1])}" alt="" loading="lazy" decoding="async" onerror="this.remove()">${nm}`; });
-    const inl = (x) => logos(esc(x).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"));
+    const inl = (x) => logos(esc(x).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")).replace(/((?:[A-Z][a-z]+\s+)?(?:<img [^>]*>)?<b>(?:(?!<\/b>).)+<\/b>\s+\d+(?:\.\d)?%)/g, '<span class="ask-nw">$1</span>');
     for (const raw of String(t ?? "").split(/\n+/)) {
       const line = raw.trim(); if (!line) continue;
       const m = line.match(/^(\d+)[.)]\s+(.*)$/) || line.match(/^[-•]\s+(.*)$/);

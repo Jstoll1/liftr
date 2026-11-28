@@ -8762,6 +8762,7 @@ body:has(#ask-sheet:not(.hidden)) #ask-fab { display: none !important; }
 .ask { padding: 0 8px 8px; }
 .ask-hint { margin: 0; font-size: 13px; line-height: 1.35; color: var(--text-meta, #a99cc7); }
 .ask-chips { display: flex; flex-direction: column; gap: 0; border-top: 1px solid rgba(255, 255, 255, .08); }
+.ask-nw { white-space: nowrap; }
 .ask-which { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 2px 0 10px; }
 .ask-which:has(> [data-askpath]) { grid-template-columns: minmax(0, 1fr); }
 .ask-which > [data-askpath] { white-space: nowrap; padding: 12px; }
