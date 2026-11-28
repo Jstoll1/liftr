@@ -434,6 +434,13 @@
       "at": 1795831978000,
       "commit": "fc0f90e",
       "note": "The name on the week player card now opens that player's season card"
+    },
+    {
+      "k": "rage",
+      "match": ".hs-r",
+      "at": 1795838887000,
+      "commit": "8f19732",
+      "note": "A row on a high score board now opens that player's season card"
     }
   ]
 }
