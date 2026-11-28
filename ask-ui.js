@@ -141,7 +141,9 @@
       // Ready-made lines for the answer: yours first, theirs second, each pick bold with its % after.
       const lines = diff.map((g) => `You **${term(g, pick(who, g))}**${pctOf(who, g)} · ${n} ${pick(n, g)?.team ? (pick(n, g).hidden ? "hidden" : `**${term(g, pick(n, g))}**${pctOf(n, g)}`) : "no pick"}`);
       const theirsLikelier = diff.filter((g) => { const a1 = (memo?.detail?.[who]?.games || []).find((y) => String(y.game?.id) === String(g.id))?.pHit, b1 = (memo?.detail?.[n]?.games || []).find((y) => String(y.game?.id) === String(g.id))?.pHit; return Number.isFinite(a1) && Number.isFinite(b1) && b1 > a1; }).length;
-      return { member: n, chance: r3(chance(n)), samePicks: open.length - diff.length, of: open.length, lines, theirsLikelierIn: theirsLikelier, canOnlyGainOn: diff.map((g) => `${gName(g)}: you ${term(g, pick(who, g))}${hitP(who, g)}${pick(n, g)?.team ? `, ${n} ${pick(n, g).hidden ? "hidden" : term(g, pick(n, g)) + hitP(n, g)}` : `, ${n} no pick`}`), pointsNow: `${b.pts} to ${bn.pts}`, mostPossible: `${b.max} to ${bn.max}` };
+      const pv = (m, g) => (memo?.detail?.[m]?.games || []).find((y) => String(y.game?.id) === String(g.id))?.pHit;
+      const split = diff.map((g) => ({ g, mine: pick(who, g), theirs: pick(n, g), myP: pv(who, g), theirP: pv(n, g) }));
+      return { member: n, chance: r3(chance(n)), samePicks: open.length - diff.length, of: open.length, lines, split, theirsLikelierIn: theirsLikelier, canOnlyGainOn: diff.map((g) => `${gName(g)}: you ${term(g, pick(who, g))}${hitP(who, g)}${pick(n, g)?.team ? `, ${n} ${pick(n, g).hidden ? "hidden" : term(g, pick(n, g)) + hitP(n, g)}` : `, ${n} no pick`}`), pointsNow: `${b.pts} to ${bn.pts}`, mostPossible: `${b.max} to ${bn.max}` };
     });
     const solo = open.filter((g) => MANAGERS.every((n) => n === who || !same(pick(who, g), pick(n, g), g))).map((g) => `${gName(g)} ${term(g, pick(who, g))}`);
     const top = vs[0];
@@ -739,15 +741,26 @@
       const s = storyOf(currentManager, memo, lastGoodCloudPicks || {}, fins());
       const v = (s.againstTheMembersAhead || []).find((x) => x.member === other); if (!v) return null;
       const p = (x) => `${(x * 100).toFixed(1)}%`, me = banked(currentManager), th = banked(other), on = shown(other);
-      const k = v.lines.length, t = v.theirsLikelierIn;
-      const ptsLine = me.pts === th.pts ? `Both on ${me.pts} points.` : `${on} has ${th.pts} points to your ${me.pts}.`;
-      const out = [`${on} ${p(v.chance)}, you ${p(memo.detail[currentManager].pct)}. ${ptsLine}`];
-      if (!k) out.push(`You have the same open picks, so ${on}'s edge is the points already banked${th.max !== me.max ? ` (${on} can reach ${th.max}, you ${me.max})` : ""}.`);
-      else {
-        out.push(v.samePicks ? `You match ${on} on ${v.samePicks} of ${v.of} open picks, so only ${k} game${k === 1 ? "" : "s"} can separate you:` : k === 1 ? `One open game separates you:` : `You differ on all ${k} open picks:`);
-        out.push(...v.lines.map((l) => `• ${l.replace(new RegExp(`· ${other} `), `· ${on} `)}`));
-        out.push(t > k / 2 ? `${on}'s side is the likelier one ${k === 1 ? "there" : t === k ? (k === 2 ? "in both" : `in all ${k}`) : `in ${t} of the ${k}`}, so more of ${on}'s paths win.` : th.pts > me.pts ? `Your sides are as likely or likelier, but ${on} is ${th.pts - me.pts} points ahead already.` : th.max > me.max ? `Your sides are as likely or likelier, but ${on} can still reach ${th.max} points to your ${me.max}.` : `${on}'s side is likelier in ${t} of the ${k}, and the tiebreaker and who else wins those games decide the rest.`);
+      const k = v.lines.length, t = v.theirsLikelierIn, gap = th.pts - me.pts;
+      const P = (x) => `${Math.round(x * 100)}%`;
+      const pctPair = `${on} ${Math.round(v.chance * 100)}%, you ${Math.round(memo.detail[currentManager].pct * 100)}%`;
+      const out = [];
+      if (!k) {
+        out.push(`**You and ${on} have the same open picks, so ${gap > 0 ? `${on}'s ${gap}-point lead` : "points already banked"} is the whole gap** (${pctPair}).`);
+        if (th.max > me.max) out.push(`${on} can still reach ${th.max} points, you ${me.max}.`);
+        return out.join("\n");
       }
+      const why1 = t > k / 2 ? `${on}'s ahead because ${on} has the likelier side of ${t === k ? (k === 1 ? "the one game" : k === 2 ? "both games" : `all ${k} games`) : `${t} of the ${k} games`} you split.` : gap > 0 ? `${on}'s ahead on points: ${gap} more already banked.` : th.max > me.max ? `${on}'s ahead because ${on} can still reach more points (${th.max} to your ${me.max}).` : `It's close: you split ${k} game${k === 1 ? "" : "s"} and ${on}'s side is likelier in ${t}.`;
+      out.push(`**${why1}** ${gap === 0 ? `Same ${me.pts} points, so ${k === 1 ? "that game is" : "those games are"} the whole gap` : gap > 0 ? `${on} also has ${gap} more point${gap === 1 ? "" : "s"} banked` : `You have ${-gap} more point${gap === -1 ? "" : "s"} banked`} (${pctPair}).`);
+      out.push("Root for:");
+      let gain = 0, clean = true;
+      for (const x of v.split) {
+        const fav = Number.isFinite(x.myP) && Number.isFinite(x.theirP) ? (x.myP >= x.theirP ? `you're likelier, ${P(x.myP)} vs ${P(x.theirP)}` : `${on}'s side likelier, ${P(x.theirP)} vs ${P(x.myP)}`) : Number.isFinite(x.myP) ? P(x.myP) : "";
+        out.push(`• **${short(x.g, x.mine.team)} ${x.mine.mode === "ATS" ? `${x.mine.team === x.g.favorite ? "−" : "+"}${x.g.spread}` : "to win"}${x.mine.lock ? " (lock)" : ""}**${fav ? ` (${fav})` : ""}`);
+        gain += pickWorth(x.g, x.mine);
+        if (!x.theirs?.team || x.theirs.hidden || x.theirs.team === x.mine.team) clean = false;
+      }
+      if (clean) out.push(gain > gap ? `Win ${k === 1 ? "it" : k === 2 ? "both" : `all ${k}`} and you pass ${on}.` : gain === gap ? `Win ${k === 1 ? "it" : k === 2 ? "both" : `all ${k}`} and you draw level with ${on}.` : `Even winning ${k === 1 ? "it" : "all " + k} leaves you ${gap - gain} short of ${on}.`);
       return out.join("\n");
     })();
     if (why) { item.a = why; convo.push({ role: "assistant", content: why }); busy = false; sheet(); if (typeof track === "function") track("ask-why-fast", { event: true }); return; }
