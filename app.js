@@ -12351,7 +12351,12 @@ renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
     for (const [el, k] of [[live, "L"], [me, "R"]]) if (el && el.dataset.vw !== k && !el.classList.contains("hidden")) { el.dataset.vw = k; io.observe(el); }
   };
   setInterval(() => { if (!document.hidden) watchEls(); }, 3000);
-  addEventListener("pointerdown", () => { vTaps++; }, { capture: true, passive: true });
+  // A tap is a touch that lifts where it landed, quickly; drags and scrolls
+  // used to count too, so a scroll-heavy visit read as 100+ taps.
+  let vDown = null;
+  addEventListener("pointerdown", (e) => { vDown = { x: e.clientX, y: e.clientY, t: Date.now() }; }, { capture: true, passive: true });
+  addEventListener("pointerup", (e) => { if (vDown && Math.abs(e.clientX - vDown.x) < 10 && Math.abs(e.clientY - vDown.y) < 10 && Date.now() - vDown.t < 600) vTaps++; vDown = null; }, { capture: true, passive: true });
+  addEventListener("pointercancel", () => { vDown = null; }, { capture: true, passive: true });
   const visitEnd = () => {
     const scr = screen || (typeof activeScreenName !== "undefined" ? activeScreenName : null);
     if (!vStart || !scr) return;
