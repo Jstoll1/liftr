@@ -2763,7 +2763,11 @@ async function handleWeekSummaries(request, env, corsHeaders, url) {
   // The ledger is every pick of every manager, which the board does not
   // need to draw a trophy. It comes back only when asked for.
   const detail = url.searchParams.get("detail") === "1";
-  const lean = (s) => ({ ...s, rows: (s.rows || []).map(({ ledger, ...r }) => r), slate: undefined, finals: undefined });
+  // The chalk line (every favorite against the spread, 2 a cover) rides on
+  // the lean summary, so the Chief can compare the league with it without
+  // the full slate.
+  const chalkOf = (s) => { if (!Array.isArray(s?.slate) || !s.finals) return null; let t = 0; for (const g of s.slate) { const r = s.finals[g.id] || s.finals[String(g.id)]; if (!r || r.awayScore == null) continue; const favHome = g.favorite === g.home; const m = (favHome ? r.homeScore - r.awayScore : r.awayScore - r.homeScore) - Number(g.spread || 0); if (m > 0) t += 2; } return t; };
+  const lean = (s) => ({ ...s, chalk: s.complete ? chalkOf(s) : null, rows: (s.rows || []).map(({ ledger, ...r }) => r), slate: undefined, finals: undefined });
   // Team ids for the frozen slates, from each week's stored slate, so the
   // app can draw logos for past games without guessing from names.
   if (detail) await Promise.all(rows.filter(([, v]) => v?.slate).map(async ([n, v]) => {

@@ -751,6 +751,28 @@
       },
       "regression": true,
       "note": "Nov 27 (Jake): asked why Curt's % beat his; the Chief said Curt's picks 'align more with the leaders' and listed games without either side's pick. Now: both chances, shared picks, each split game with both picks and their odds to hit, one plain reason. Nov 27 rerun: lines dropped who picked which side and put the % inside the bold; the tool now hands over ready lines to copy. Nov 28: answered on the phone (no Chief call): verdict first, then the picks to root for with whose side is likelier, then what winning them does"
+    },
+    {
+      "source": "miss",
+      "id": "league-vs-chalk",
+      "screen": "scores",
+      "turns": [
+        "How has the league done historically vs chalk"
+      ],
+      "checks": {
+        "tools": [
+          "season"
+        ],
+        "must": [
+          "\\d"
+        ],
+        "mustNot": [
+          "(?i)not recorded|isn't recorded|no data|keep an eye"
+        ],
+        "noAsk": true
+      },
+      "regression": true,
+      "note": "Nov 27 (Jake): the Chief said the league vs the chalk line 'isn't recorded yet'; the phone's week summaries leave out the slate, so chalk was never worked out. The worker now adds each week's chalk, and season() gives a league summary"
     }
   ]
 }
