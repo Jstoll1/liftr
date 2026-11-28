@@ -137,7 +137,11 @@
     const vs = ahead.slice(0, 3).map((n) => {
       const diff = open.filter((g) => !same(pick(who, g), pick(n, g), g));
       const bn = banked(n);
-      return { member: n, chance: r3(chance(n)), samePicks: open.length - diff.length, of: open.length, canOnlyGainOn: diff.map((g) => `${gName(g)}: you ${term(g, pick(who, g))}${hitP(who, g)}${pick(n, g)?.team ? `, ${n} ${pick(n, g).hidden ? "hidden" : term(g, pick(n, g)) + hitP(n, g)}` : `, ${n} no pick`}`), pointsNow: `${b.pts} to ${bn.pts}`, mostPossible: `${b.max} to ${bn.max}` };
+      const pctOf = (m, g) => { const x = (memo?.detail?.[m]?.games || []).find((y) => String(y.game?.id) === String(g.id)); return x && Number.isFinite(x.pHit) ? ` ${Math.round(x.pHit * 100)}%` : ""; };
+      // Ready-made lines for the answer: yours first, theirs second, each pick bold with its % after.
+      const lines = diff.map((g) => `You **${term(g, pick(who, g))}**${pctOf(who, g)} · ${n} ${pick(n, g)?.team ? (pick(n, g).hidden ? "hidden" : `**${term(g, pick(n, g))}**${pctOf(n, g)}`) : "no pick"}`);
+      const theirsLikelier = diff.filter((g) => { const a1 = (memo?.detail?.[who]?.games || []).find((y) => String(y.game?.id) === String(g.id))?.pHit, b1 = (memo?.detail?.[n]?.games || []).find((y) => String(y.game?.id) === String(g.id))?.pHit; return Number.isFinite(a1) && Number.isFinite(b1) && b1 > a1; }).length;
+      return { member: n, chance: r3(chance(n)), samePicks: open.length - diff.length, of: open.length, lines, theirsLikelierIn: theirsLikelier, canOnlyGainOn: diff.map((g) => `${gName(g)}: you ${term(g, pick(who, g))}${hitP(who, g)}${pick(n, g)?.team ? `, ${n} ${pick(n, g).hidden ? "hidden" : term(g, pick(n, g)) + hitP(n, g)}` : `, ${n} no pick`}`), pointsNow: `${b.pts} to ${bn.pts}`, mostPossible: `${b.max} to ${bn.max}` };
     });
     const solo = open.filter((g) => MANAGERS.every((n) => n === who || !same(pick(who, g), pick(n, g), g))).map((g) => `${gName(g)} ${term(g, pick(who, g))}`);
     const top = vs[0];

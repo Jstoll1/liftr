@@ -743,7 +743,7 @@
         ],
         "must": [
           "\\d+(\\.\\d)?%[^\\n]*\\d+(\\.\\d)?%",
-          "(?i)to hit|%\\)"
+          "(?m)You \\*\\*[^*]+\\*\\* \\d+% · \\w+ \\*\\*"
         ],
         "mustNot": [
           "(?i)align",
@@ -752,7 +752,7 @@
         "noAsk": true
       },
       "regression": true,
-      "note": "Nov 27 (Jake): asked why Curt's % beat his; the Chief said Curt's picks 'align more with the leaders' and listed games without either side's pick. Now: both chances, shared picks, each split game with both picks and their odds to hit, one plain reason"
+      "note": "Nov 27 (Jake): asked why Curt's % beat his; the Chief said Curt's picks 'align more with the leaders' and listed games without either side's pick. Now: both chances, shared picks, each split game with both picks and their odds to hit, one plain reason. Nov 27 rerun: lines dropped who picked which side and put the % inside the bold; the tool now hands over ready lines to copy"
     }
   ]
 }
